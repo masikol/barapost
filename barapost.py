@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
 
 # |===== Check python interpreter version =====|
 
 from sys import version_info as verinf
 
 if verinf.major < 3:#{
-    print( "Your python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
+    print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
     print("\tPlease, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
@@ -71,7 +70,7 @@ def check_connection():#{
 
         # Just in case
         if status_code != 200:#{
-            print(get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
             print("Check your Internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
@@ -80,7 +79,7 @@ def check_connection():#{
     #}
     except OSError as err:#{
 
-        print(get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
         print( repr(err) )
@@ -93,7 +92,7 @@ def check_connection():#{
         platf_depend_exit(-2)
     #}
 #}
-print("Checking Internet connection...", end="")
+print("\nChecking Internet connection...", end="")
 check_connection()
 print("OK\n" + "~"*30 + '\n')
 
@@ -156,7 +155,7 @@ def get_packet_size(num_reads):#{
         
         packet_size = input("""
 Please, specify the number of sequences that should be sent to the NCBI server in one request.
-There are {} reads in current file.
+There are {} reads left to process in current file.
 Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         # Check if entered value is integer number. If no, give another attempt.
         try:#{
@@ -284,14 +283,14 @@ def get_fastq_list():#{
 
     # If there are files to process
     if len(fastq_list) != 0:#{
-        print("Following files have been found and will be processed:")
+        print("\nFollowing files have been found and will be processed:")
         for i, line in enumerate(fastq_list):#{
             print("\t{}. '{}'".format( str(i+1), fastq_list[i] ))
         #}
         print('-' * 40)
     #}
     else:#{
-        print("No '.fastq' or '.fastq.gz' files have been found in current directory!")
+        print("\nNo '.fastq' or '.fastq.gz' files have been found in current directory!")
         platf_depend_exit(1) # exit
     #}
     return fastq_list
@@ -333,8 +332,8 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
 
     Returns dict of the following structure:
     {
-        "fpath": path_to_fasta_file (str),
-        "nreads": number_of_reads_in_this_fasta_file (int)
+        "fpath": path_to_FASTA_file (str),
+        "nreads": number_of_reads_in_this_FASTA_file (int)
     }
     """
     
@@ -377,24 +376,28 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
         num_reads = int(num_lines / FASTA_LINES_PER_READ) # get number of reads
     #}
 
-    print("{}. '{}' ({} reads) --> FASTA\n".format(i+1, fastq_path, num_reads))
+    print("\n{}. '{}' ({} reads) --> FASTA\n".format(i+1, fastq_path, num_reads))
 
     return {"fpath": fasta_path, "nreads": num_reads}
 #}
 
+
 def remove_files_verbosely(*files):#{
+    print('~' * 40)
     for file in files:#{
         try:#{
-            print(get_work_time() + " - The following file will be removed:")
+            print('\n' + get_work_time() + " - Following file will be removed:")
             print("\t'{}'".format(file))
             os.unlink(file)
         #}
         except:#{
-            # Anything (and not only strings) can be passed to function
-            print("File '{}' cannot be removed".format( str(file)) )
+            # Anything (and not only strings) can be passed to the function
+            print("\nFile '{}' cannot be removed".format( str(file)) )
         #}
     #}
+    print('~' * 40 + '\n')
 #}
+
 
 def peek_around(new_dpath, fasta_path, blast_algorithm):#{
     """
@@ -407,7 +410,7 @@ def peek_around(new_dpath, fasta_path, blast_algorithm):#{
         "attmpt": saved_attempt (int),
         "RID": saved_RID (str),
         "tsv_respath": path_to_tsv_file_from_previous_run (str),
-        "n_done_reads": number_of_successfull_requests_from_currenrt_fasta_file (int),
+        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
         "tmp_fpath": path_to_pemporary_file (str)
     }
 
@@ -429,71 +432,102 @@ def peek_around(new_dpath, fasta_path, blast_algorithm):#{
     # Form path to result file
     tsv_res_fpath = "{}.{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
 
-    print(" |========== file: '{}' ===========|".format(fasta_path))
+    num_done_reads = None # variable to keep number of succeffdully processed reads
+
+    print("\n |========== file: '{}' ===========|".format(fasta_path))
     continuation = False    # default value
     # Check if there are results from previous run.
-    if os.path.exists(tmp_fpath):#{
-        print(get_work_time() + " - The previous result file is found in the directory:")
+    if os.path.exists(tsv_res_fpath):#{
+        print('\n' + get_work_time() + " - The previous result file is found in the directory:")
         print("\t'{}'".format(tmp_fpath))
         continuation = is_continued() # Allow politely to continue from last successful attempt.
+        if not continuation:
+            remove_files_verbosely(tsv_res_fpath, tmp_fpath)
     #}
 
     if continuation:#{   Find the name of last successfulli processed sequence
         print("Let's try to continue...")
         if os.path.exists(tsv_res_fpath):#{
             with open(tsv_res_fpath, 'r') as res_file:#{
-                try:
+                try:#{ There can be invalid information in result file
                     lines = res_file.readlines()
-                    num_done_reads = len(lines)
+                    num_done_reads = len(lines) - 1 # the first line is a head
                     last_line = lines[-1]
                     last_seq_id = last_line.split(DELIM)[0]
+                #}
                 except Exception as err:#{
-                    print("Data in temporary file '{}' is broken.")
+                    print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
                     print("Start from the beginning.")
+                    remove_files_verbosely(tsv_res_fpath, tmp_fpath)
+                    return None
+                #}
+                else:#{
+                    print("Last successful attempt: " + last_seq_id)
                 #}
             #}
-            print("Last successful attempt: " + last_seq_id)
         #}
 
-        try:
-            _ = num_done_reads
-        except NameError:
+        # If we start from the beginning, we have no reads processed
+        if num_done_reads is None:
             num_done_reads = 0
 
-        # Находим номер последней попытки и RID, а также размер пакета
-        with open(tmp_fpath, 'r') as tmp_file:
-            temp_lines = tmp_file.readlines()
-        packet_size = int(temp_lines[0])
-        attempt_save = int(temp_lines[-1].split(DELIM)[0])
-        RID_save = temp_lines[-1].split(DELIM)[1].strip()
-
-        return {
-            "pack_size": packet_size,
-            "attmpt": attempt_save,
-            "RID": RID_save,
-            "tsv_respath": tsv_res_fpath,
-            "n_done_reads": num_done_reads,
-            "tmp_fpath": tmp_fpath
-        }
-
-    else:#{ Удаляем файлы вывода с предыдущего запуска сценария, если запускаем поиск от начала файла
-        if os.path.exists(tsv_res_fpath):#{
-            print(get_work_time() + " - The following file is found in the current directory and will be deleted:")
-            print("\t'{}'".format(tsv_res_fpath))
-            os.unlink(tsv_res_fpath)
+        # Get packet size, number of the last attempt and RID
+        try:#{ There can be invalid information in tmp file of tmp file may not exist
+            with open(tmp_fpath, 'r') as tmp_file:
+                temp_lines = tmp_file.readlines()
+            packet_size = int(temp_lines[0])
+            attempt_save = int(temp_lines[-1].split(DELIM)[0])
+            RID_save = temp_lines[-1].split(DELIM)[1].strip()
         #}
-        if os.path.exists(tmp_fpath):#{
-            print(get_work_time() + " - The following file is found in the current directory and will be deleted:")
-            print("\t'{}'".format(tmp_fpath))
-            os.unlink(tmp_fpath)
+        except Exception:#{
+            print("\nTemporary file '{}' not found of broken!".format(tmp_fpath))
+            print("{} reads have been already processed".format(num_done_reads))
+            total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_READ )
+            print("{} reads left".format(total_num_seqs - num_done_reads))
+            packet_size = get_packet_size(total_num_seqs - num_done_reads)
+            return {
+                "pack_size": packet_size,
+                "attmpt": int(num_done_reads / packet_size),
+                "RID": None,
+                "tsv_respath": tsv_res_fpath,
+                "n_done_reads": num_done_reads,
+                "tmp_fpath": tmp_fpath
+            }
+        else:#{
+            # Return data from previous run
+            return {
+                "pack_size": packet_size,
+                "attmpt": attempt_save,
+                "RID": RID_save,
+                "tsv_respath": tsv_res_fpath,
+                "n_done_reads": num_done_reads,
+                "tmp_fpath": tmp_fpath
+            }
+        #}
         #}
 
+    # Remove files from previous run if we've desided to start from the beginning
+    else:#{
         return None
     #}
 #}
 
 
 def get_packet(fasta_file, packet_size):#{
+    """
+    Function collects the packet of query sequences to send to BLAST server.
+
+    :param fasta_file: file instance of FASTA file to retrieve reads from;
+    :type fasta_file: _io.TextIOWrapper;
+    :param packet_size: number of query sequences to send as a particular request;
+    :type packet_size: int;
+
+    Returns dict of the following structure:
+    {
+        "fasta": FASTA_data_containing_query_sequences (str),
+        "names": list_of_sequence_ids_from_fasta_file (list<str>)
+    }
+    """
 
     packet = ""
     names = list()
@@ -501,14 +535,13 @@ def get_packet(fasta_file, packet_size):#{
     for i in range(packet_size):#{
 
         seq_id = fasta_file.readline().strip().partition(' ')[0] # prune the seq id a little bit
-        names.append(seq_id)
-        # seq_id = fasta_file.readline().strip()
-        seq = fasta_file.readline().strip()
+        seq = fasta_file.readline().strip() # get the sequence
 
-        # 'seq' cannot be empty string
+        # if 'seq_d is an empty string -- 'seq' is as well
         if seq_id == "":  # if previous sequence was last in current file
-            return packet.strip()  # remove the last '\n' character
+            break
         else:
+            names.append(seq_id)
             packet += "{}\n{}\n".format(seq_id, seq)
     #}
 
@@ -517,16 +550,32 @@ def get_packet(fasta_file, packet_size):#{
 
 
 def configure_request(packet, blast_algorithm):#{
+    """
+    Function configures the request to BLAST server.
 
-    query = packet
+    :param packet: FASTA_data_containing_query_sequences;
+    :type packet: str;
+    :param blast_algorithm: BLASTn algorithm to use;
+    :type blast_algorithm: str;
+
+    Returns a dict of the following structure:
+    {
+        "payload": the_payload_of_the_request (dict),
+        "headers": headers of thee request (dict)
+    }
+    """
+
+    query = packet # FASTA data
     database = "nt"
+    # Databases slices
     taxonomy = "Escherichia (taxid:561)"
-    # taxonomy = "bacteria (taxid:2)" # Необязательные параметры для среза БД nt
-    # taxonomy1 = "viruses (taxid:10239)" # Необязательные параметры для среза БД nt
-    # taxonomy = "Pseudomonas (taxid:286)" # Необязательные параметры для среза БД nt
+    # taxonomy = "bacteria (taxid:2)" # arbitrary parameter for 'nt' database slice
+    # taxonomy1 = "viruses (taxid:10239)" # arbitrary parameter for 'nt' database slice
+    # taxonomy = "Pseudomonas (taxid:286)" # arbitrary parameter for 'nt' database slice
     taxonomy1 = ""
-    # taxonomy1 = "Rhodococcus (taxid:1827)" # Необязательные параметры для среза БД nt
-    num_org = '2' # Необязательные параметры для среза БД nt
+    # taxonomy1 = "Rhodococcus (taxid:1827)" # arbitrary parameter for 'nt' database slice
+    num_org = '2' # arbitrary parameter for 'nt' database slice
+
     program = "blastn"
 
     if "megablast" in blast_algorithm.lower():
@@ -541,54 +590,59 @@ def configure_request(packet, blast_algorithm):#{
         "MEGABLAST" : megablast,
         "BLAST_PROGRAMS" : blast_algorithm,
         "DATABASE" : database,
-        "EQ_MENU" : taxonomy,   # Необязательные параметры
-        "EQ_MENU1" : taxonomy1, # Необязательные параметры
-        "NUM_ORG" : num_org,    # Необязательные параметры
+        "EQ_MENU" : taxonomy,   # arbitrary parameter
+        "EQ_MENU1" : taxonomy1, # arbitrary parameter
+        "NUM_ORG" : num_org,    # arbitrary parameter
         "QUERY" : query,
         "HITLIST_SIZE": 1
     }
+
     payload = urllib.parse.urlencode(payload)
-    headers = {
-        "Content-Type" : "application/x-www-form-urlencoded"
-    }
+    headers = { "Content-Type" : "application/x-www-form-urlencoded" }
 
     return {"payload":payload, "headers": headers}
 #}
 
 def send_request(request):#{
-    
-    try:#{
-        payload = request["payload"]
-        headers = request["headers"]
-    #}
-    except KeyError as kerr:#{
-        print(repr(kerr))
-        print("KeyError in 'send_request' function\a")
-        platf_depend_exit(1)
-    #}
+    """
+    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi".
 
-    server = "blast.ncbi.nlm.nih.gov" #HTTPS
+    :param request: request_data (it is a dict that 'configure_request()' function returns);
+    :param request: dict<dict>;
+
+    Returns a dict of the following structure:
+    {
+        "RID": Request ID (str),
+        "RTOE", time_to_wait_provided_by_the_NCBI_server (int)
+    }
+    """
+    payload = request["payload"]
+    headers = request["headers"]
+
+    server = "blast.ncbi.nlm.nih.gov"
     url = "/blast/Blast.cgi"
     try:#{
-        conn = http.client.HTTPSConnection(server)
-        conn.request("POST", url, payload, headers)
-        response = conn.getresponse()
+        conn = http.client.HTTPSConnection(server) # create a connection
+        conn.request("POST", url, payload, headers) # send the request
+        response = conn.getresponse() # get the response
     #}
     except OSError as oserr:#{
-        print(get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
         print( repr(err) )
         platf_depend_exit(-2)
     #}
 
-    response_text = str(response.read(), "utf-8")
+    response_text = str(response.read(), "utf-8") # get response text
 
+    # /===== TEST =====\
     # with open("response.txt", 'w') as resp_file:
     #     resp_file.write(response_text + '\n')
+    # \================/
 
-    rid = re_search("RID = (.*)", response_text).group(1)
-    rtoe = int(re_search("RTOE = (.*)", response_text).group(1))
+    rid = re_search("RID = (.*)", response_text).group(1) # get Request ID
+    rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
 
     conn.close()
 
@@ -597,16 +651,27 @@ def send_request(request):#{
 
 
 def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
+    """
+    Function waits for satisfaction of the request and retrieves response text.
+
+    :param rid: Reques ID to wait for;
+    :type rid: str;
+    :param rtoe: time in seconds to wait provided by the NCBI server;
+    :type rtoe: int;
+    :param attempt: current attempt. This information is printed to console;
+    :type attempt: int;
+    :param attempt all: total number of attempts corresponding to current FASTA file.
+        This information is printed to console;
+    :type attempt_all: int;
+    :param filename: basename of current FASTA file;
+    :type filename: str;
+
+    Returns XML text of type 'str' with BLAST response.
+    """
     
-    try:#{
-        _ = rtoe                                                                    # WHAT FOR ???
-    #}
-    except NameError:#{
-        print("\n{} - Looking for respond for: '{}' ({}/{})".format(get_work_time(), filename, attempt, attempt_all))
-        print("{} - Checking query with Request ID {}.".format(get_work_time(), rid))
-    #}
-    else:#{
-        print("\n{} - Requested data for: '{}' ({}/{})".format(get_work_time(), filename, attempt, attempt_all))
+    
+    print("\n{} - Requested data for: '{}' ({}/{})".format(get_work_time(), filename, attempt, attempt_all))
+    if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
         print("{} - The system estimated that the query with Request ID '{}' will be resolved in {} seconds ".format(get_work_time(), rid, rtoe))
         print("{} - Going to sleep for that period...".format(get_work_time()))
         # Server migth be wrong -- we will give it 3 extra seconds
@@ -614,18 +679,17 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
         print("{} - Woke up. Checking request updates...".format(get_work_time()))
     #}
 
-    server = "blast.ncbi.nlm.nih.gov" #HTTPS
+    server = "blast.ncbi.nlm.nih.gov"
     wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
     there_are_hits = False
 
     while True:#{
-        sleep(60)
+        # sleep(60) ???
         error = True
         while error:#{
             try:
-                conn = http.client.HTTPSConnection(server)
-                conn.request("GET", wait_url)
-                error = False
+                conn = http.client.HTTPSConnection(server) # create connection
+                conn.request("GET", wait_url) # ask for if there areresults
             except TimeoutError as err:
                 print("{} - Unable to connect to the NCBI server. Let\'s try to connect in 30 seconds.".format(get_work_time()))
                 print('\t' + repr(err))
@@ -656,50 +720,53 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
                 print('\t' + repr(err))
                 error = True
                 sleep(30)
+            else:
+                error = False # if no exception ocured
         #}
 
-        response = conn.getresponse()
-        resp_content = str(response.read(), "utf-8")
+        response = conn.getresponse() # get the resonse
+        resp_content = str(response.read(), "utf-8") # get response text
         conn.close()
 
-        if re_search("Status=WAITING", resp_content) is not None:#{
-            print("{} - Still searching for '{}'.".format(get_work_time(), filename))
-            print("\tGoing to sleep for another 60 seconds.")
+        if re_search("Status=WAITING", resp_content) is not None:#{ if server asks to wait
+            print("{} - Still searching for '{}'.".format(get_work_time(), filename), end="")
+            print(" Going to sleep for another 60 seconds.")
+            sleep(60)
             continue
         #}
-        if re_search("Status=FAILED", resp_content) is not None:#{
-            print(get_work_time() + " - Query failed\a\n")
+        if re_search("Status=FAILED", resp_content) is not None:#{ if query failed
+            print('\n' + get_work_time() + " - Query failed\a\n")
             response_text = """{} - Query for {} with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, rid)
             return None
         #}
-        if re_search("Status=UNKNOWN", resp_content) is not None:#{
-            print(get_work_time() + " - Query expired\a\n")
+        if re_search("Status=UNKNOWN", resp_content) is not None:#{ if query expired
+            print('\n' + get_work_time() + " - Query expired\a\n")
             respond_text = """{} - Query for {} with Request ID {} expired.
     Try to start it again\n""".format(get_work_time(), filename, rid)
             return "expired"
         #}
-        if re_search("Status=READY", resp_content) is not None:#{
+        if re_search("Status=READY", resp_content) is not None:#{ if results are ready
             there_are_hits = True
-            print("{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, attempt, attempt_all))
-            if re_search("ThereAreHits=yes", resp_content) is not None:#{
+            print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, attempt, attempt_all))
+            if re_search("ThereAreHits=yes", resp_content) is not None:#{ if there are hits
                 print(get_work_time() + " - There are hits. Retrieving them.")
                 for i in range(45, 0, -5):
                     print('-' * i)
                 break
             #}
-            else:#{
+            else:#{ if there are no hits
                 print(get_work_time() + " - There are no hits. It happens.\n")
                 break
             #}
         #}
-        print(get_work_time() + " - Something unexpected happened. Contact the developer.\a\n")
+        # Execution should not reach here
+        print('\n' + get_work_time() + " - Something unexpected happened. Contact the developer.\a\n")
         platf_depend_exit(1)
-        
     #}
 
     # Retrieve XML result
-    retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid # + Tabular, - DESCRIPTIONS
+    retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
     conn = http.client.HTTPSConnection(server)
     conn.request("GET", retrieve_xml_url)
     response = conn.getresponse()
@@ -707,14 +774,15 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
     respond_text = str(response.read(), "utf-8")
     conn.close()
 
-
     # /==== TEST ====\
     with open("align_text.xml", 'w') as alfile:
         alfile.write(respond_text + '\n')
     # \==============/
 
+
+    # Retrieve human-readable text
     if there_are_hits:#{
-        # Retrieve human-readable text
+
         retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
         conn = http.client.HTTPSConnection(server)
         conn.request("GET", retrieve_text_url)
@@ -730,14 +798,25 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
     return respond_text
 #}
 
-#                      Genus    species                   strain id  anything after strain name
+#                      Genus    species                   strain name and anything after it
 hit_name_pattern = r"^[A-Z][a-z]+ [a-z]*(sp\.)?(phage)? (strain )?.+$"
 
 def format_taxonomy_name(hit_name, sens):#{
+    """
+    Function formats taxonomy name according to chosen sensibiliry of classification.
 
-    # If structure of hit name is unforseen
+    :param hit_name: full_fit_name_of_the_subject_sequence;
+    :type hit_name: str;
+    :param sens: sensibility returned by 'get_classif_sensibility()' function.
+        It's value can be one of the following strings: "genus", "sprcies", "strain";
+    :type sens: str;
+
+    Returns formatted hit name of 'str' type;
+    """
+
+    # If structure of hit name is strange
     if re_search(hit_name_pattern, hit_name.strip()) is None:#{
-        print("\tAttention!")
+        print("\n\tAttention!")
         print("Hit name '{}' has structure that hasn't been anticipated by the developer.".format(hit_name))
         print("This name migth be formatted incorrectly.")
         print("Therefore, full name ({}) will be used.".format(taxa_name))
@@ -749,15 +828,20 @@ def format_taxonomy_name(hit_name, sens):#{
     taxa_name = hit_name.partition(',')[0]
     taxa_splitnames = taxa_name.strip().split(' ')
 
+    # If hit is a phage sequence
     if taxa_splitnames[1] == "phage":#{
-        return taxa_name.replace(' ', '_')   # return full name
+        # Assumming that the man who sortes by genus or species isn't interested in phage strain name
+        if sens == "genus" or sens == "species":
+            return '_'.join( [taxa_splitnames[0], taxa_splitnames[1]] ) # return "<Host_name> phage"
+        else:
+            return taxa_name.replace(' ', '_')   # return full name if we sort by strain
     #}
 
     if sens == "genus":#{
         return taxa_splitnames[0] # return genus
     #}
     elif sens == "species":#{
-        if taxa_splitnames[1] == "sp.":#{ if there is no species specified
+        if taxa_splitnames[1] == "sp.":#{ if species is not specified
             return taxa_name.replace(' ', '_')   # return full name
         #}
         else:#{
@@ -769,17 +853,37 @@ def format_taxonomy_name(hit_name, sens):#{
     #}
 
     # Execution should not reach here
-    raise Exception("Taxonomy nama formatting error!")
+    raise Exception("Taxonomy name formatting error!")
 #}
 
 
 def parse_align_results_xml(xml_text, seq_names, sens):#{
+    """
+    Function parses BLAST xml response and returns tsv lines containing gathered information:
+        1. Query name.
+        2. Hit name formatted by 'format_taxonomy_name()' function.
+        3. Hit accession.
+        4. Length of alignment.
+        5. Percent of identity.
+        6. Percent of gaps.
+        7. E-value.
+    Erroneous tsv lines that function may produce:
+        1. "<query_name>\\tQuery has been lost: ERROR, Bad Gateway"
+            if data packet has been lost.
+        2. "<query_name>\\tQuery has been lost: BLAST ERROR"
+            if BLAST error occured.
+        3. "<query_name>\\tNo significant similarity found"
+            if no significant similarity has been found
+        Type of return object: list<str>.
+    """
 
     result_tsv_lines = list()
 
+    # /=== Validation ===/
+
     if "Bad Gateway" in xml_text:#{
         print('\n' + '=' * 45)
-        print(get_work_time() + " - ERROR! Bad Gateway! Data from last pocket has lost.")
+        print(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
         print("It would be better if you restart the script.")
         print("Here are names of lost queries:")
         for i, name in enumerate(seq_names):#{
@@ -792,7 +896,7 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
     #}
 
     if "to start it again" in xml_text:#{
-        print(get_work_time() + "BLAST ERROR!")
+        print('\n' + get_work_time() + "BLAST ERROR!")
 
         print("Here are names of lost queries:")
         for i, name in enumerate(seq_names):#{
@@ -806,106 +910,141 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
     #}
 
     # /=== Parse BLAST XML response ===/
-    root = ElementTree.fromstring(xml_text)
 
+    root = ElementTree.fromstring(xml_text) # get tree instance
+
+    # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
     
+        # "Iteration" node contains query name information
         query_name = iter_elem.find("Iteration_query-def").text
 
+        # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
         hit = iter_hit.find("Hit")
         if hit is not None:#{
 
+            # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
             hit_name = hit.find("Hit_def").text
+            # Format hit name accoding to classification sensitivity
             hit_taxa_name = format_taxonomy_name(hit_name, sens)
 
-            hit_acc = hit.find("Hit_accession").text
+            hit_acc = hit.find("Hit_accession").text # get hit accession
 
             # Find the first HSP (we need only the first one)
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
 
             align_len = hsp.find("Hsp_align-len").text.strip()
-            align_len = int(align_len)
+            align_len = int(align_len) # we need 'align_len' as int for computations by now
 
-            pident = float( hsp.find("Hsp_identity").text )
-            pident = round( (pident / align_len) * 100, 2 )
-            pident = str(pident)
+            pident = float( hsp.find("Hsp_identity").text ) # get number of matched nucleotides
+            pident = round( (pident / align_len) * 100, 2 ) # convert to percents and round it
+            pident = str(pident) # we do not need it sa float any more
 
-            gaps = float( hsp.find("Hsp_gaps").text )
-            gaps = round( (gaps / align_len) * 100, 2 )
-            gaps = str(gaps)
+            gaps = float( hsp.find("Hsp_gaps").text ) # get number of gaps
+            gaps = round( (gaps / align_len) * 100, 2 ) # convert to percents and round it
+            gaps = str(gaps) # we do not need it sa float any more
 
-            align_len = str(align_len)
+            align_len = str(align_len) # we need 'align_len' as intany more
 
-            evalue = hsp.find("Hsp_evalue").text
+            evalue = hsp.find("Hsp_evalue").text # get e-value
 
             print("\n\t'Hit!: {}' -- '{}' with e-value {}".format(query_name, hit_taxa_name, evalue))
-            print('=' * 30 + '\n')
 
+            # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc,
                 align_len, pident, gaps, evalue] ))
         #}
         else:
+            # If there is no hit for current sequence
             print("\t{} -- No significant similarity found".format(query_name))
             result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found"] ))
+        print('=' * 30 + '\n')
     #}
     return result_tsv_lines
 #}
 
 
 def write_result(res_tsv_lines, res_dpath, source_fastq_path, tsv_res_path):#{
+    """
+    Function writes result of blasting to result tsv file and sorts
+        recently blasted reads between corresponding FASTQ files.
 
+    :param res_tsv_lines: tsv lines returned by 'parse_align_results_xml()' funciton;
+    :type res_tsv_lines: list<str>;
+    :param res_dpath: path to result directory;
+    :type res_dpath: str;
+    :param source_fastq_path: path to source FASTQ file;
+    :type source_fastq_path: str;
+    :param tsv_res_path: path to reslut tsv file;
+    :type tsv_res_path: str;
+    """
+
+
+    # If there is no result tsv fil -- create it and write a head of the table.
     if not os.path.exists(tsv_res_path):#{
         with open(tsv_res_path, 'w') as tsv_res_file:#{
             tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION",
                 "ALIGNMENET_LENGTH", "IDENTITY(%)", "GAPS(%)", "E-VALUE"] ) + '\n')
         #}
     #}
+    # Write reslut tsv lines to this file
     with open(tsv_res_path, 'a') as tsv_res_file:#{
         for line in result_tsv_lines:
             tsv_res_file.write(line + '\n')
     #}
 
+    # Get ready for reading from '.fastq.gz'
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
 
+    # Iretare through result tsv lines
     for line in result_tsv_lines:#{
 
         line = line.strip()
 
-        seq_id = line.split(DELIM)[0]
+        seq_id = line.split(DELIM)[0] # seq id is the 1-st element of result tsv line
 
+        # Find FASTQ record with recently got 'seq_id' in source FASTQ file
         with how_to_open(source_fastq_path, 'r') as source_file:#{
             while True:#{
                 fqline = fmt_func(source_file.readline())
 
+                # If there if no such read in source FASTQ file.
+                # If it will occure, it is the developer mistake (not user's one).
+                # Therefore -- raise an exception.
                 if fqline is "":#{
                     raise Exception("ERROR! Sent query sequence not found in source FASTQ file")
                 #}
 
+                # If proper FASTQ record is found
                 if fqline.startswith('@'+seq_id):#{
-                    id_line = fqline
-                    seq = fmt_func(source_file.readline())
-                    opt_id = fmt_func(source_file.readline())
-                    qual_line = fmt_func(source_file.readline())
-                    break
+                    id_line = fqline # sequence id is recently read line
+                    seq = fmt_func(source_file.readline()) # get sequence
+                    opt_id = fmt_func(source_file.readline()) # get the 3-rd line
+                    qual_line = fmt_func(source_file.readline()) # get qulity line
+                    break # stop searching
                 #}
             #}
         #}
 
         if "ERROR" in line:#{
-            classified_name = "ERROR"
+            classified_name = "ERROR" # Erroneous reads will be written to separate file
         #}
+        # Reads that perform no significant similarity will be written to separate file
         elif "No significant similarity found" in line:#{
             classified_name = "unknown"
         #}
         else:#{
-            classified_name = line.split(DELIM)[1]
+            classified_name = line.split(DELIM)[1] # formatted hit name if the second element if tsv line
         #}
 
+        # Form a result file path
         classified_path = "{}{}{}.{}.fastq".format(res_dpath, os.sep, os.path.basename(fastq_path),
             classified_name)
+        # Colon in file name can provoke some problems on Windows
         classified_path = classified_path.replace(':', '')
 
+        # Write FASTQ record to appropriate file
         with open(classified_path, 'a') as classif_file:#{
             for fqline in (id_line, seq, opt_id, qual_line):#{
                 classif_file.write(fqline + '\n')
@@ -916,6 +1055,14 @@ def write_result(res_tsv_lines, res_dpath, source_fastq_path, tsv_res_path):#{
 
 
 def create_result_directory(fastq_path):#{
+    """
+    Function creates a result directory named according to how source FASTQ file is named.
+
+    :param fastq_path: path to source fastq file;
+    :type fastq_path: str;
+
+    Returns 'str' path to the recently created result directory.
+    """
 
     # dpath means "directory path"
     new_dpath = os.path.basename(fastq_path) # get rid of absolute path
@@ -930,20 +1077,17 @@ def create_result_directory(fastq_path):#{
 
 
 
-#                |===== Proceed =====|
-# =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
 
-fastq_list = get_fastq_list()
-blast_algorithm = get_algorithm()
-sensibility = get_classif_sensibility()
+# =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
+#                       |===== Proceed =====|
 
 
 # /=== Comments to the kernel loop ===/
 
 # 1. 'curr_fasta' is a dict of the following structure:
 #    {
-#       "fpath": path_to_fasta_file (str),
-#       "nreads": number_of_reads_in_this_fasta_file (int)
+#        "fpath": path_to_FASTA_file (str),
+#        "nreads": number_of_reads_in_this_FASTA_file (int)
 #    }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. 'previous_data' is a dict of the following structure:
@@ -952,18 +1096,35 @@ sensibility = get_classif_sensibility()
 #        "attmpt": saved_attempt (int),
 #        "RID": saved_RID (str),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-#        "n_done_reads": number_of_successfull_requests_from_currenrt_fasta_file (int),
+#        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
 #        "tmp_fpath": path_to_pemporary_file (str)
 #    }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 3. 'packet' is a dict of the following structure:
+#    {
+#        "fasta": FASTA_data_containing_query_sequences (str),
+#        "names": list_of_sequence_ids_from_FASTA_file (list<str>)
+#    }
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 4. 'response' is a dic of the following structure:
+#    {
+#        "RID": Request ID (str),
+#        "RTOE", time_to_wait_provided_by_the_NCBI_server (int)
+#    }
 
-# |===== Kernel loop =====|
+#                   |===== Kernel loop =====|
+
+fastq_list = get_fastq_list() # get source FASTQ files to process
+blast_algorithm = get_algorithm() # get BLAST algorithm
+sensibility = get_classif_sensibility() # get sorting sensibility
+
+# Iterate through found source FASTQ files
 for i, fastq_path in enumerate(fastq_list):#{
     
-    # Create the result directory with the name of FASTQ file being processed
+    # Create the result directory with the name of FASTQ file being processed:
     new_dpath = create_result_directory(fastq_path)
 
-    # Convert fastq file to fasta and get it's path and number of reads in it:
+    # Convert fastq file to FASTA and get it's path and number of reads in it:
     curr_fasta = fastq2fasta(fastq_path, i, new_dpath)
 
     # "hname" means human readable name (e.i. without file path and extention)
@@ -975,49 +1136,51 @@ for i, fastq_path in enumerate(fastq_list):#{
     previous_data = peek_around(new_dpath, curr_fasta["fpath"],
         blast_algorithm)
 
-    if previous_data is None:#{
-        num_done_reads = 0
-        saved_attempt = None
-        packet_size = get_packet_size(curr_fasta["nreads"])
+    if previous_data is None:#{ # If there is no data from previous run
+        num_done_reads = 0 # number of successfully processed reads
+        saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
+        packet_size = get_packet_size(curr_fasta["nreads"]) # ask a user for packet size
         tsv_res_path = "{}.{}_result.tsv".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm)
+            fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}.{}_temp.txt".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm)
+            fasta_hname), blast_algorithm) # form temporary file path
         # Создаём временный файл для хранения значения размера пакета и RID-запросов
         with open(tmp_fpath, 'w') as tmp_file:
             tmp_file.write(str(packet_size)+ '\n')
     #}
-    else:#{
-        num_done_reads = previous_data["n_done_reads"]
-        saved_attempt = previous_data["attmpt"]
-        packet_size = previous_data["pack_size"]
-        tsv_res_path = previous_data["tsv_respath"]
-        tmp_fpath = previous_data["tmp_fpath"]
-        saved_RID = previous_data["RID"]
+    else:#{ # if there is data from previous run
+        num_done_reads = previous_data["n_done_reads"] # get number of successfully processed reads
+        saved_attempt = previous_data["attmpt"] # get number of last successful attempt
+        packet_size = previous_data["pack_size"] # packet size sholud be the same as during previous run
+        tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
+        tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
+        saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
+        contin_rtoe = 0 # we will not sleep at the very beginning of continuation
     #}
 
-    attempt_all = curr_fasta["nreads"] // packet_size # Подсчитываем общее число отправок пакетов на сервер NCBI с одного файла
-    if curr_fasta["nreads"] % packet_size > 0: # А это округление в большую сторону, чтобы не использовать math
+    attempt_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
+    if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
         attempt_all += 1
-    attempts_done = int( num_done_reads / packet_size )
+    attempts_done = int( num_done_reads / packet_size ) # number of successfully processed reads
 
     with open(curr_fasta["fpath"], 'r') as fasta_file:#{
 
-        # Добираемся до последней обработанной последовательности
+        # Go untill the last processed sequence
         for _ in range( int(num_done_reads * 2) ):#{
             fasta_file.readline()
         #}
 
-        reads_left = curr_fasta["nreads"] - num_done_reads
-        attempts_left = attempt_all - attempts_done
-        attempt = attempts_done if attempts_done > 0 else 1
+        reads_left = curr_fasta["nreads"] - num_done_reads # number of reads left to precess
+        attempts_left = attempt_all - attempts_done # number of packets left to send
+        attempt = attempts_done+1 if attempts_done > 0 else 1 # current attempt
 
+        # Iterate througth packets left to send
         for i in range(attempts_left):#{
 
-            packet = get_packet(fasta_file, packet_size)
+            packet = get_packet(fasta_file, packet_size) # form the packet
 
-            if packet is "":#{   Just in case
-                print("Well done!")
+            if packet["fasta"] is "":#{   Just in case
+                print("Recent packet is empty")
                 break
             #}
 
@@ -1035,36 +1198,40 @@ for i, fastq_path in enumerate(fastq_list):#{
 
             send = True
 
-            if attempt == saved_attempt:#{
+            # If current packet has been already send, we can try to get it and not to send it again
+            if attempt == saved_attempt and saved_RID is not None:#{
 
-                align_xml_text = wait_for_align(saved_RID, response["RTOE"],
-                    attempt, attempt_all, fasta_hname+".fasta")
+                align_xml_text = wait_for_align(saved_RID, contin_rtoe,
+                    attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
+
+                # If request is not expired get he result and not send it again
                 if align_xml_text != "expired":#{
-
                     send = False
 
                     result_tsv_lines = parse_align_results_xml(align_xml_text,
-                        packet["names"], sensibility)
+                        packet["names"], sensibility) # get result tsv lines
 
+                    # Write the result to tsv and sort FASTQ sequences
                     write_result(result_tsv_lines, new_dpath, fastq_path, tsv_res_path)
                 #}
             #}
 
             if send:#{
             
-                request = configure_request(packet["fasta"], blast_algorithm)
-                response = send_request(request)
+                request = configure_request(packet["fasta"], blast_algorithm) # get the request
+                response = send_request(request) # send the request
 
                 # Save temporary data
                 with open(tmp_fpath, 'a') as tmpfile:
                     tmpfile.write("{}\t{}\n".format(attempt, response["RID"]))
 
                 align_xml_text = wait_for_align(response["RID"], response["RTOE"],
-                    attempt, attempt_all, fasta_hname+".fasta")
+                    attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
 
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"], sensibility)
+                    packet["names"], sensibility) # get result tsv lines
 
+                # Write the result to tsv and sort FASTQ sequences
                 write_result(result_tsv_lines, new_dpath, fastq_path, tsv_res_path)
             #}
 
@@ -1072,6 +1239,7 @@ for i, fastq_path in enumerate(fastq_list):#{
         #}
     #}
 
+    # Remove temporary file
     if os.path.exists(tmp_fpath):
         os.unlink(tmp_fpath)
 #}
