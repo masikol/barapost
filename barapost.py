@@ -30,6 +30,7 @@ import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree
+import zipfile # for getting taxid information for 'nt' database restriction
 
 import http.client
 import urllib.request
@@ -270,6 +271,189 @@ Enter the number (1, 2 or 3):>> """)
     return blast_algorithm
 #}
 
+taxid_zip_path = "new_taxdump.zip"
+
+def get_organisms():#{
+    
+    global taxid_zip_path
+
+    # NCBI keeps this information in zipfile of 99Mb.
+    # There fore we will download it only once during the run of script,
+    #    save to current directory, work with fetched zip file
+    #    and remove it after successful end.
+
+    # Downloading of taxid zip file
+    if not os.path.exists(taxid_zip_path):#{
+
+        import threading
+        taxid_zip_url = "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.zip"
+
+        def download_waiter():#{
+
+            while not os.path.exists(taxid_zip_path):
+                sleep(1)
+            print()
+            fsize = round(os.path.getsize(taxid_zip_path) / (1024**2), 1) # get megabytes
+            expect_size, ln_len = 98.0, 50 # file no ftp site is of 98,5 MB
+
+            while fsize < expect_size:#{
+                fsize = round(os.path.getsize(taxid_zip_path) / (1024**2), 1)
+                eqs = int( (fsize/expect_size) / (100/ln_len) * 100 )
+                spcs = ln_len - eqs
+                arr = '>' if eqs < ln_len else ""
+                print('\r' + '[' + '='*eqs + arr + ' '*spcs + ']' + "({}/{}) MB ".format(fsize, expect_size), end="")
+            #}
+            print()
+        #}
+
+        waiter = threading.Thread(target=download_waiter)
+        waiter.start()
+
+        print("There is to taxid file yet")
+        print("Downloading '{}'...".format(taxid_zip_url))
+        
+        urllib.request.urlretrieve(taxid_zip_url, taxid_zip_path)
+
+        waiter.join()
+        print("Downloading is completed\n\n")
+
+        if not zipfile.is_zipfile(taxid_zip_path):#{
+            print("ERROR: recently downloaded zip file '{}' is not a valid zipfile".format(taxid_zip_path))
+            platf_depend_exit(1)
+        #}
+    #}
+
+    # ~~~~~~~~~~~
+    
+    # Only 2 'nt' database restrictions for now
+    max_org = 2
+    organisms = list()
+    
+    error = True
+    while error:#{
+        reply = input("""~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Please specify organisms for 'nt' database restriction.
+Enter taxid OR organism name after prompt '>>' symbol. For example:
+\t>> 551
+or
+\t>> Erwinia
+
+You can enter 2 taxids OR 2 organism names divided by comma as follows:
+\t>> 551,1833
+or
+\t>> Erwinia,Rhodococcus erythropolis
+or even
+\t>> 551,Rhodococcus erythropolis
+(551 is taxid of Erwinia, 1833 -- of Rhodocuccus erythropolis)
+
+Default settings are: 'bacteria (taxid:2)' and 'viruses (taxid:10239)'.
+To use default settings just press ENTER.
+
+Enter organism name or taxid:>> """)
+
+        if reply is "":#{
+            organisms.append("bacteria (taxid:2)") # default
+            organisms.append("viruses (taxid:10239)") # default
+            print("\nYou have chosen following organisms:")
+            for i, org in enumerate(organisms):#{
+                print("\t{}. {}".format(i+1, org))
+            #}
+            print('~'*30 + '\n')
+            return organisms
+        #}
+
+        try:#{
+            org_list = reply.split(',')
+            org_list = list( map(str.strip, org_list) )
+            if len(org_list) > max_org:#{
+                print("\n\t!!! -ERROR: You can enter only 1 or 2 organisms")
+                print("This constraint is meant to be fixed\n")
+                sleep(3)
+                continue
+            #}
+        #}
+        except Exception:#{
+            print("Error: invalid input\n"+"~"*20+"\n")
+            continue
+        #}
+
+        taxid_col = 0
+        name_col = 1
+
+        # Search for input entry in "new_taxdump.zip"
+        print("Validating organisms...")
+        for org in org_list:#{
+
+            # If entrance can be interpreted as integer number -- probably, taxid was entered.
+            # If it isn't -- probably, organism name was entered.
+            try:
+                _ = int(org)
+            except ValueError:
+                col_to_search = name_col # Search organism name (2-nd column in file)
+            else:
+                col_to_search = taxid_col # Search for taxid (1-st column in file)
+
+            tax_zip =  zipfile.ZipFile(taxid_zip_path)
+            names_dmp = tax_zip.open("names.dmp")
+
+            org_found = False
+            while not org_found:#{
+
+                line = names_dmp.readline().decode("utf-8")
+                if line == "":#{
+                    print("\n\t!!! - ERROR: Organism(taxid) '{}' is not found\n\a".format(org))
+                    sleep(3)
+                    break
+                #}
+                check_obj = line.split('|')[col_to_search].strip()
+
+                if check_obj.upper() == org.upper():#{
+                    name = line.split('|')[name_col].strip()
+                    taxid = line.split('|')[taxid_col].strip()
+
+                    # It is better to choose scientific name
+                    if col_to_search == 0:#{
+                        tmp_taxid = taxid
+                        # Search whrough names with this taxid (names with the same taxid are placed together in file)
+                        while tmp_taxid == taxid:#{
+
+                            line = names_dmp.readline().decode("utf-8")
+                            if line == "":
+                                break
+
+                            tmp_taxid = line.split('|')[taxid_col].strip()
+                            tmp_name = line.split('|')[name_col].strip()
+                            comment = line.split('|')[3].strip()
+
+                            if comment == "scientific name": # Find scientific name
+                                name = tmp_name
+                            #}
+                    #}
+
+                    format_tax = "{} (taxid:{})".format(name, taxid)
+                    organisms.append(format_tax)
+                    org_found = True
+                #}
+            #}
+            tax_zip.close()
+            names_dmp.close()
+            if not org_found:
+                organisms = list() # reset organisms list
+                break
+        #}
+        error = True if not org_found else False
+    #}
+    print("\nYou have chosen following organisms:")
+    for i, org in enumerate(organisms):#{
+        print("\t{}. {}".format(i+1, org))
+    #}
+    print('~'*30 + '\n')
+    return organisms
+#}
+
+
+# |===== End of question funtions =====|
+
 
 is_fastq_or_fastqgz = lambda f: f.endswith(".fastq") | f.endswith(".fastq.gz")
 
@@ -287,7 +471,7 @@ def get_fastq_list():#{
         for i, line in enumerate(fastq_list):#{
             print("\t{}. '{}'".format( str(i+1), fastq_list[i] ))
         #}
-        print('-' * 40)
+        print()
     #}
     else:#{
         print("\nNo '.fastq' or '.fastq.gz' files have been found in current directory!")
@@ -549,7 +733,7 @@ def get_packet(fasta_file, packet_size):#{
 #}
 
 
-def configure_request(packet, blast_algorithm):#{
+def configure_request(packet, blast_algorithm, organisms):#{
     """
     Function configures the request to BLAST server.
 
@@ -557,6 +741,8 @@ def configure_request(packet, blast_algorithm):#{
     :type packet: str;
     :param blast_algorithm: BLASTn algorithm to use;
     :type blast_algorithm: str;
+    :param organisms: list of strings performing 'nt' database restriction;
+    :type organisms: list<str>;
 
     Returns a dict of the following structure:
     {
@@ -565,37 +751,20 @@ def configure_request(packet, blast_algorithm):#{
     }
     """
 
-    query = packet # FASTA data
-    database = "nt"
-    # Databases slices
-    taxonomy = "Escherichia (taxid:561)"
-    # taxonomy = "bacteria (taxid:2)" # arbitrary parameter for 'nt' database slice
-    # taxonomy1 = "viruses (taxid:10239)" # arbitrary parameter for 'nt' database slice
-    # taxonomy = "Pseudomonas (taxid:286)" # arbitrary parameter for 'nt' database slice
-    taxonomy1 = ""
-    # taxonomy1 = "Rhodococcus (taxid:1827)" # arbitrary parameter for 'nt' database slice
-    num_org = '2' # arbitrary parameter for 'nt' database slice
+    payload = dict()
+    payload["CMD"] = "PUT" # method
+    payload["PROGRAM"] = "blastn" # program
+    payload["MEGABLAST"] = "on" if "megablast" in blast_algorithm.lower() else "" # if megablast
+    payload["BLAST_PROGRAMS"] = blast_algorithm # blastn algoeithm
+    payload["DATABASE"] = "nt" # db
+    payload["QUERY"] = packet # FASTA data
+    payload["HITLIST_SIZE"] = 1 # we need only the best hit
 
-    program = "blastn"
-
-    if "megablast" in blast_algorithm.lower():
-        megablast = "on"
-    else:
-        megablast = ""
-
-    cmd = "PUT"
-    payload = {
-        "CMD" : cmd,
-        "PROGRAM": program,
-        "MEGABLAST" : megablast,
-        "BLAST_PROGRAMS" : blast_algorithm,
-        "DATABASE" : database,
-        "EQ_MENU" : taxonomy,   # arbitrary parameter
-        "EQ_MENU1" : taxonomy1, # arbitrary parameter
-        "NUM_ORG" : num_org,    # arbitrary parameter
-        "QUERY" : query,
-        "HITLIST_SIZE": 1
-    }
+    # 'nt' database restrictions:
+    for i, org in enumerate(organisms):#{
+        payload["EQ_MENU{}".format(i if i > 0 else "")] = org
+    #}
+    payload["NUM_ORG"] = str( len(organisms) )
 
     payload = urllib.parse.urlencode(payload)
     headers = { "Content-Type" : "application/x-www-form-urlencoded" }
@@ -695,11 +864,6 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
                 print('\t' + repr(err))
                 error = True
                 sleep(30)
-            # except socket.gaierror as err:
-            #     print("{} - Unable to connect to the NCBI server. Let\'s try to connect in 30 seconds.".format(get_work_time()))
-            #     print('\t' + repr(err))
-            #     error = 0
-            #     sleep(30)
             except http.client.RemoteDisconnected as err:
                 print("{} - Unable to connect to the NCBI server. Let\'s try to connect in 30 seconds.".format(get_work_time()))
                 print('\t' + repr(err))
@@ -948,7 +1112,7 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
 
             evalue = hsp.find("Hsp_evalue").text # get e-value
 
-            print("\n\t'Hit!: {}' -- '{}' with e-value {}".format(query_name, hit_taxa_name, evalue))
+            print("\n\tHit!: '{}' -- '{}' with e-value {}".format(query_name, hit_taxa_name, evalue))
 
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc,
@@ -1115,8 +1279,10 @@ def create_result_directory(fastq_path):#{
 #                   |===== Kernel loop =====|
 
 fastq_list = get_fastq_list() # get source FASTQ files to process
-blast_algorithm = get_algorithm() # get BLAST algorithm
+organisms = get_organisms() # get organisms for 'nt' database restriction
 sensibility = get_classif_sensibility() # get sorting sensibility
+blast_algorithm = get_algorithm() # get BLAST algorithm
+
 
 # Iterate through found source FASTQ files
 for i, fastq_path in enumerate(fastq_list):#{
@@ -1218,7 +1384,7 @@ for i, fastq_path in enumerate(fastq_list):#{
 
             if send:#{
             
-                request = configure_request(packet["fasta"], blast_algorithm) # get the request
+                request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
                 response = send_request(request) # send the request
 
                 # Save temporary data
@@ -1243,6 +1409,7 @@ for i, fastq_path in enumerate(fastq_list):#{
     if os.path.exists(tmp_fpath):
         os.unlink(tmp_fpath)
 #}
+# os.unlink(taxid_zip_path) # remove taxid-name mapping file
 
 
 print("\nTask completed successfully!")
