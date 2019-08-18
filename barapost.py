@@ -49,7 +49,7 @@ def platf_depend_exit(exit_code):#{
 
     :type exit_code: int;
     """
-    if "win" in platform:
+    if platform.startswith("win"):
         input("Press ENTER to exit:")
     exit(exit_code)
 #}
@@ -71,7 +71,7 @@ def check_connection():#{
 
         # Just in case
         if status_code != 200:#{
-            print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
             print("Check your Internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
@@ -80,7 +80,7 @@ def check_connection():#{
     #}
     except OSError as err:#{
 
-        print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
         print( repr(err) )
@@ -93,7 +93,7 @@ def check_connection():#{
         platf_depend_exit(-2)
     #}
 #}
-print("\nChecking Internet connection...", end="")
+print("\nChecking Internet connection...")
 check_connection()
 print("OK\n" + "~"*30 + '\n')
 
@@ -117,8 +117,7 @@ Would you like to continue the previous run?
     2. Start from the beginning.
 
 Enter the number (1 or 2):>> """)
-
-    # Проверка, введено ли целое число. Если нет, то даётся очередная попытка
+        # Check if entered value is integer number. If no, give another attempt.
         try:#{
             continuation = int(continuation)
             if continuation != 1 and continuation != 2:#{ Check if input number is 1 or 2
@@ -156,6 +155,11 @@ def get_packet_size(num_reads):#{
         
         packet_size = input("""
 Please, specify the number of sequences that should be sent to the NCBI server in one request.
+E.g. if you have 10 reads in your file, you can send 10 reads as single
+    request -- in this case you should enter numder 10. You may send 2 requests containing
+        5 reads both -- in this case you should enter number 5.
+
+
 There are {} reads left to process in current file.
 Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         # Check if entered value is integer number. If no, give another attempt.
@@ -193,10 +197,12 @@ def get_classif_sensibility():
 
     while sens is None:#{
         sens = input("""
-Please, specify the taxonomy level to classify by:
+Please, specify sensitivity of sorting -- choose the taxonomy level to classify by:
     1. Genus.
     2. Species.
     3. Strain.
+This taxonomy level (actual organisms' names, sure) will be used in names of resut files.
+
 Enter a number (1, 2 or 3):>> """)
         # Check if entered value is integer number. If no, give another attempt.
         try:#{
@@ -557,7 +563,7 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
     # We need only number of reads in it.
     else:#{
         num_lines = sum(1 for line in open(fasta_path, 'r')) # get number of lines
-        num_reads = int(num_lines / FASTA_LINES_PER_READ) # get number of reads
+        num_reads = int( num_lines / FASTA_LINES_PER_READ ) # get number of reads
     #}
 
     print("\n{}. '{}' ({} reads) --> FASTA\n".format(i+1, fastq_path, num_reads))
@@ -567,7 +573,7 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
 
 
 def remove_files_verbosely(*files):#{
-    print('~' * 40)
+    print('~' * 20)
     for file in files:#{
         try:#{
             print('\n' + get_work_time() + " - Following file will be removed:")
@@ -579,13 +585,13 @@ def remove_files_verbosely(*files):#{
             print("\nFile '{}' cannot be removed".format( str(file)) )
         #}
     #}
-    print('~' * 40 + '\n')
+    print('~' * 20 + '\n')
 #}
 
 
-def peek_around(new_dpath, fasta_path, blast_algorithm):#{
+def look_around(new_dpath, fasta_path, blast_algorithm):#{
     """
-    Function peeks around in order to ckeck if there are results from previous runs of this script.
+    Function looks around in order to ckeck if there are results from previous runs of this script.
 
     Returns None if there is no result from previous run.
     If there are results from previous run, returns a dict of the following structure:
@@ -938,13 +944,13 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
     respond_text = str(response.read(), "utf-8")
     conn.close()
 
-    # /==== TEST ====\
-    with open("align_text.xml", 'w') as alfile:
-        alfile.write(respond_text + '\n')
-    # \==============/
+    # # /==== TEST ====\
+    # with open("align_text.xml", 'w') as alfile:
+    #     alfile.write(respond_text + '\n')
+    # # \==============/
 
 
-    # Retrieve human-readable text
+    # Retrieve human-readable text and put it into result directory
     if there_are_hits:#{
 
         retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
@@ -1297,9 +1303,9 @@ for i, fastq_path in enumerate(fastq_list):#{
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
     fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of file extention
 
-    # Peek around and ckeck if there are results of previous runs of this script
-    # If 'peek_around' is None -- there is no data from previous run
-    previous_data = peek_around(new_dpath, curr_fasta["fpath"],
+    # Look around and ckeck if there are results of previous runs of this script
+    # If 'look_around' is None -- there is no data from previous run
+    previous_data = look_around(new_dpath, curr_fasta["fpath"],
         blast_algorithm)
 
     if previous_data is None:#{ # If there is no data from previous run
@@ -1310,14 +1316,13 @@ for i, fastq_path in enumerate(fastq_list):#{
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}.{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
-        # Создаём временный файл для хранения значения размера пакета и RID-запросов
         with open(tmp_fpath, 'w') as tmp_file:
             tmp_file.write(str(packet_size)+ '\n')
     #}
     else:#{ # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed reads
         saved_attempt = previous_data["attmpt"] # get number of last successful attempt
-        packet_size = previous_data["pack_size"] # packet size sholud be the same as during previous run
+        packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
