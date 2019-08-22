@@ -65,8 +65,8 @@ def platf_depend_exit(exit_code):#{
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
- barapost.py -- script is designed for determinating of the taxonomic position
-    of reads by blasting each of them and regarding the best hit.\n
+ barapost.py -- script is designed for determinating the taxonomic position
+    of long reads by blasting each of them and regarding the best hit.\n
  Script processes FASTQ (as well as '.fastq.gz') files.\n
  Results of the work of this script are written to TSV file,
     that can be found in result directry.\n
