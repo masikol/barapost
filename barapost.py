@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Version 1.0
+# 22.08.2019 edition
+
 # |===== Check python interpreter version =====|
 
 from sys import version_info as verinf
@@ -12,6 +15,8 @@ if verinf.major < 3:#{
     raw_input("Press ENTER to exit:")
     exit(1)
 #}
+
+print("\n |=== barapost.py (version 1.0) ===|\n")
 
 # |===== Function for dealing with time =====|
 
@@ -30,7 +35,6 @@ import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree
-import zipfile # for getting taxid information for 'nt' database restriction
 
 import http.client
 import urllib.request
@@ -38,7 +42,7 @@ from urllib.error import HTTPError
 import urllib.parse
 
 
-# |===== Function that asks to press ENTER press on Windows =====|
+# |===== Function that asks to press ENTER on Windows =====|
 
 from sys import platform
 
@@ -93,9 +97,6 @@ def check_connection():#{
         platf_depend_exit(-2)
     #}
 #}
-print("\nChecking Internet connection...")
-check_connection()
-print("OK\n" + "~"*30 + '\n')
 
 
 # |===== Question funtions =====|
@@ -156,8 +157,8 @@ def get_packet_size(num_reads):#{
         packet_size = input("""
 Please, specify the number of sequences that should be sent to the NCBI server in one request.
 E.g. if you have 10 reads in your file, you can send 10 reads as single
-    request -- in this case you should enter numder 10. You may send 2 requests containing
-        5 reads both -- in this case you should enter number 5.
+    request -- in this case you should enter number 10. You may send 2 requests containing
+    5 reads both -- in this case you should enter number 5.
 
 
 There are {} reads left to process in current file.
@@ -180,55 +181,6 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         #}
     #}
     return(packet_size)
-#}
-
-
-def get_classif_sensibility():
-    """
-    Function asks a user about the sensibility of classification.
-    It means that, for example, if the user decides 'Genus' variant,
-        sequences will be sorted by genus name -- species and strain names
-        won't be taken into consideration.
-
-    :return: one of the following strings: "genus", "species", "strain";
-    :return type: str;
-    """
-    sens = None
-
-    while sens is None:#{
-        sens = input("""
-Please, specify sensitivity of sorting -- choose the taxonomy level to classify by:
-    1. Genus.
-    2. Species.
-    3. Strain.
-This taxonomy level (actual organisms' names, sure) will be used in names of resut files.
-
-Enter a number (1, 2 or 3):>> """)
-        # Check if entered value is integer number. If no, give another attempt.
-        try:#{
-            sens = int(sens)
-            if sens < 1 or sens > 3:#{ Check if input number is in [1, 3]
-                print("\n\tNot a valid number entered!\a\n" + '~'*20)
-                sens + None
-            #}
-            else:#{
-                print("You have chosen number "+ str(sens) + '\n')
-                print('~' * 20 + '\n')
-
-                if sens is 1:
-                    sens = "genus"
-                elif sens is 2:
-                    sens = "species"
-                else:
-                    sens = "strain"
-            #}
-        #}
-        except ValueError:#{
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            algorithm = None
-        #}
-    #}
-    return sens
 #}
 
 
@@ -272,64 +224,13 @@ Enter the number (1, 2 or 3):>> """)
         #}
         except ValueError:
             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
+            reply = None
             algorithm = None
     #}
     return blast_algorithm
 #}
 
-taxid_zip_path = "new_taxdump.zip"
-
 def get_organisms():#{
-    
-    global taxid_zip_path
-
-    # NCBI keeps this information in zipfile of 99Mb.
-    # There fore we will download it only once during the run of script,
-    #    save to current directory, work with fetched zip file
-    #    and remove it after successful end.
-
-    # Downloading of taxid zip file
-    if not os.path.exists(taxid_zip_path):#{
-
-        import threading
-        taxid_zip_url = "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.zip"
-
-        def download_waiter():#{
-
-            while not os.path.exists(taxid_zip_path):
-                sleep(1)
-            print()
-            fsize = round(os.path.getsize(taxid_zip_path) / (1024**2), 1) # get megabytes
-            expect_size, ln_len = 98.0, 50 # file no ftp site is of 98,5 MB
-
-            while fsize < expect_size:#{
-                fsize = round(os.path.getsize(taxid_zip_path) / (1024**2), 1)
-                eqs = int( (fsize/expect_size) / (100/ln_len) * 100 )
-                spcs = ln_len - eqs
-                arr = '>' if eqs < ln_len else ""
-                print('\r' + '[' + '='*eqs + arr + ' '*spcs + ']' + "({}/{}) MB ".format(fsize, expect_size), end="")
-            #}
-            print()
-        #}
-
-        waiter = threading.Thread(target=download_waiter)
-        waiter.start()
-
-        print("There is to taxid file yet")
-        print("Downloading '{}'...".format(taxid_zip_url))
-        
-        urllib.request.urlretrieve(taxid_zip_url, taxid_zip_path)
-
-        waiter.join()
-        print("Downloading is completed\n\n")
-
-        if not zipfile.is_zipfile(taxid_zip_path):#{
-            print("ERROR: recently downloaded zip file '{}' is not a valid zipfile".format(taxid_zip_path))
-            platf_depend_exit(1)
-        #}
-    #}
-
-    # ~~~~~~~~~~~
     
     # Only 2 'nt' database restrictions for now
     max_org = 2
@@ -337,25 +238,20 @@ def get_organisms():#{
     
     error = True
     while error:#{
-        reply = input("""~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        reply = input("""\n~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Please specify organisms for 'nt' database restriction.
-Enter taxid OR organism name after prompt '>>' symbol. For example:
-\t>> 551
-or
-\t>> Erwinia
+You are to enter organism's name and it's Taxonomy ID (aka taxid) separated by comma
+ after prompt symbol '>>' as follows:\n
+    >> Erwinia,551\n
+You can enter 2 organisms separated by semicolon as follows:\n
+    >> Erwinia,551;Pseudomonas,286
 
-You can enter 2 taxids OR 2 organism names divided by comma as follows:
-\t>> 551,1833
-or
-\t>> Erwinia,Rhodococcus erythropolis
-or even
-\t>> 551,Rhodococcus erythropolis
-(551 is taxid of Erwinia, 1833 -- of Rhodocuccus erythropolis)
+You can find taxid of your organism from NCBI taxonomy browser:
+\t'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'
 
-Default settings are: 'bacteria (taxid:2)' and 'viruses (taxid:10239)'.
-To use default settings just press ENTER.
+Default settings are:    bacteria,2;viruses,10239
 
-Enter organism name or taxid:>> """)
+Enter organism's name and taxid:>> """)
 
         if reply is "":#{
             organisms.append("bacteria (taxid:2)") # default
@@ -369,91 +265,46 @@ Enter organism name or taxid:>> """)
         #}
 
         try:#{
-            org_list = reply.split(',')
+            org_list = reply.strip().split(';')
             org_list = list( map(str.strip, org_list) )
+
             if len(org_list) > max_org:#{
-                print("\n\t!!! -ERROR: You can enter only 1 or 2 organisms")
-                print("This constraint is meant to be fixed\n")
-                sleep(3)
-                continue
+                raise Exception("\nYou can enter only 1 or 2 organisms and they should be separated by semicolon (;)\a")
+            #}
+
+            for org in org_list:#{
+                name_and_taxid = org.strip().split(',')
+                name_and_taxid = list( map(str.strip, name_and_taxid) )
+                if len(name_and_taxid) != 2:
+                    raise Exception("\nOrganism's name and it's taxid should be separated by comma (,)\a")
+                # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
+                tmp_taxid = int(name_and_taxid[1])
+                if tmp_taxid < 1:
+                    raise Exception("\nTaxID should be positive integer number\a")
+                organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
             #}
         #}
-        except Exception:#{
-            print("Error: invalid input\n"+"~"*20+"\n")
+        except ValueError:#{
+            print("\n" + "=/"*20 + "\n")
+            print("\n\t!! - ERROR - TaxID should be positive integer number\a")
+            sleep(2)
+            continue
+        #}
+        except Exception as err:#{
+            print("\n" + "=/"*20 + "\n")
+            print("\n\t!! - ERROR: invalid input format")
+            print( str(err) )
+            sleep(2)
             continue
         #}
 
-        taxid_col = 0
-        name_col = 1
-
-        # Search for input entry in "new_taxdump.zip"
-        print("Validating organisms...")
-        for org in org_list:#{
-
-            # If entrance can be interpreted as integer number -- probably, taxid was entered.
-            # If it isn't -- probably, organism name was entered.
-            try:
-                _ = int(org)
-            except ValueError:
-                col_to_search = name_col # Search organism name (2-nd column in file)
-            else:
-                col_to_search = taxid_col # Search for taxid (1-st column in file)
-
-            tax_zip =  zipfile.ZipFile(taxid_zip_path)
-            names_dmp = tax_zip.open("names.dmp")
-
-            org_found = False
-            while not org_found:#{
-
-                line = names_dmp.readline().decode("utf-8")
-                if line == "":#{
-                    print("\n\t!!! - ERROR: Organism(taxid) '{}' is not found\n\a".format(org))
-                    sleep(3)
-                    break
-                #}
-                check_obj = line.split('|')[col_to_search].strip()
-
-                if check_obj.upper() == org.upper():#{
-                    name = line.split('|')[name_col].strip()
-                    taxid = line.split('|')[taxid_col].strip()
-
-                    # It is better to choose scientific name
-                    if col_to_search == 0:#{
-                        tmp_taxid = taxid
-                        # Search whrough names with this taxid (names with the same taxid are placed together in file)
-                        while tmp_taxid == taxid:#{
-
-                            line = names_dmp.readline().decode("utf-8")
-                            if line == "":
-                                break
-
-                            tmp_taxid = line.split('|')[taxid_col].strip()
-                            tmp_name = line.split('|')[name_col].strip()
-                            comment = line.split('|')[3].strip()
-
-                            if comment == "scientific name": # Find scientific name
-                                name = tmp_name
-                            #}
-                    #}
-
-                    format_tax = "{} (taxid:{})".format(name, taxid)
-                    organisms.append(format_tax)
-                    org_found = True
-                #}
-            #}
-            tax_zip.close()
-            names_dmp.close()
-            if not org_found:
-                organisms = list() # reset organisms list
-                break
+        print("\nYou have chosen following organisms:")
+        for i, tax_fmt in enumerate(organisms):#{
+            print("\t{}. {}".format(i+1, tax_fmt))
         #}
-        error = True if not org_found else False
-    #}
-    print("\nYou have chosen following organisms:")
-    for i, org in enumerate(organisms):#{
-        print("\t{}. {}".format(i+1, org))
-    #}
-    print('~'*30 + '\n')
+        print('~'*20 + '\n')
+        error = False
+
     return organisms
 #}
 
@@ -477,7 +328,7 @@ def get_fastq_list():#{
         for i, line in enumerate(fastq_list):#{
             print("\t{}. '{}'".format( str(i+1), fastq_list[i] ))
         #}
-        print()
+        print('-' * 30)
     #}
     else:#{
         print("\nNo '.fastq' or '.fastq.gz' files have been found in current directory!")
@@ -572,18 +423,22 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
 #}
 
 
-def remove_files_verbosely(*files):#{
+def rename_file_verbosely(file, directory):#{
+    is_analog = lambda f: file[file.rfind('.')] in f
+    num_analog_files = len( list(filter(is_analog, os.listdir(directory))) )
     print('~' * 20)
-    for file in files:#{
-        try:#{
-            print('\n' + get_work_time() + " - Following file will be removed:")
-            print("\t'{}'".format(file))
-            os.unlink(file)
-        #}
-        except:#{
-            # Anything (and not only strings) can be passed to the function
-            print("\nFile '{}' cannot be removed".format( str(file)) )
-        #}
+    try:#{
+        print('\n' + get_work_time() + " - Renaming old file:")
+        name_itself = os.path.basename(file)[: os.path.basename(file).rfind('.')]
+        ext = file[file.rfind('.'):]
+        num_analog_files = str(num_analog_files)
+        new_name = name_itself+"_old_"+num_analog_files+ext
+        print("\t'{}' --> '{}'".format(file, new_name))
+        os.rename(file, new_name)
+    #}
+    except:#{
+        # Anything (and not only strings) can be passed to the function
+        print("\nFile '{}' cannot be renamed".format( str(file)) )
     #}
     print('~' * 20 + '\n')
 #}
@@ -618,9 +473,9 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of '.fasta' extention
 
     # Form path to temporary file
-    tmp_fpath = "{}.{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
+    tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
     # Form path to result file
-    tsv_res_fpath = "{}.{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
+    tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
 
     num_done_reads = None # variable to keep number of succeffdully processed reads
 
@@ -632,7 +487,8 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
         print("\t'{}'".format(tmp_fpath))
         continuation = is_continued() # Allow politely to continue from last successful attempt.
         if not continuation:
-            remove_files_verbosely(tsv_res_fpath, tmp_fpath)
+            rename_file_verbosely(tsv_res_fpath, new_dpath)
+            rename_file_verbosely(tmp_fpath, new_dpath)
     #}
 
     if continuation:#{   Find the name of last successfulli processed sequence
@@ -648,7 +504,8 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
                 except Exception as err:#{
                     print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
                     print("Start from the beginning.")
-                    remove_files_verbosely(tsv_res_fpath, tmp_fpath)
+                    rename_file_verbosely(tsv_res_fpath, new_dpath)
+                    rename_file_verbosely(tmp_fpath, new_dpath)
                     return None
                 #}
                 else:#{
@@ -968,66 +825,8 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
     return respond_text
 #}
 
-#                      Genus    species                   strain name and anything after it
-hit_name_pattern = r"^[A-Z][a-z]+ [a-z]*(sp\.)?(phage)? (strain )?.+$"
 
-def format_taxonomy_name(hit_name, sens):#{
-    """
-    Function formats taxonomy name according to chosen sensibiliry of classification.
-
-    :param hit_name: full_fit_name_of_the_subject_sequence;
-    :type hit_name: str;
-    :param sens: sensibility returned by 'get_classif_sensibility()' function.
-        It's value can be one of the following strings: "genus", "sprcies", "strain";
-    :type sens: str;
-
-    Returns formatted hit name of 'str' type;
-    """
-
-    # If structure of hit name is strange
-    if re_search(hit_name_pattern, hit_name.strip()) is None:#{
-        print("\n\tAttention!")
-        print("Hit name '{}' has structure that hasn't been anticipated by the developer.".format(hit_name))
-        print("This name migth be formatted incorrectly.")
-        print("Therefore, full name ({}) will be used.".format(taxa_name))
-        print("Contact the develooper -- send this name to him.")
-
-        return taxa_name.replace(' ', '_')   # return full name
-    #}
-
-    taxa_name = hit_name.partition(',')[0]
-    taxa_splitnames = taxa_name.strip().split(' ')
-
-    # If hit is a phage sequence
-    if taxa_splitnames[1] == "phage":#{
-        # Assumming that the man who sortes by genus or species isn't interested in phage strain name
-        if sens == "genus" or sens == "species":
-            return '_'.join( [taxa_splitnames[0], taxa_splitnames[1]] ) # return "<Host_name> phage"
-        else:
-            return taxa_name.replace(' ', '_')   # return full name if we sort by strain
-    #}
-
-    if sens == "genus":#{
-        return taxa_splitnames[0] # return genus
-    #}
-    elif sens == "species":#{
-        if taxa_splitnames[1] == "sp.":#{ if species is not specified
-            return taxa_name.replace(' ', '_')   # return full name
-        #}
-        else:#{
-            return '_'.join( [taxa_splitnames[0], taxa_splitnames[1]] ) # return genus and species
-        #}
-    #}
-    elif sens == "strain":#{
-        return taxa_name.replace(' ', '_')   # return full name
-    #}
-
-    # Execution should not reach here
-    raise Exception("Taxonomy name formatting error!")
-#}
-
-
-def parse_align_results_xml(xml_text, seq_names, sens):#{
+def parse_align_results_xml(xml_text, seq_names):#{
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -1095,8 +894,11 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
 
             # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
             hit_name = hit.find("Hit_def").text
-            # Format hit name accoding to classification sensitivity
-            hit_taxa_name = format_taxonomy_name(hit_name, sens)
+            # Format hit name (get rid of stuff after comma)
+            hit_taxa_name = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
+            hit_taxa_name = hit_taxa_name.replace(" complete genome", "") # sometimes there are no comma before it
+            hit_taxa_name = hit_taxa_name.replace(' ', '_')
+
 
             hit_acc = hit.find("Hit_accession").text # get hit accession
 
@@ -1104,21 +906,19 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
 
             align_len = hsp.find("Hsp_align-len").text.strip()
-            align_len = int(align_len) # we need 'align_len' as int for computations by now
 
-            pident = float( hsp.find("Hsp_identity").text ) # get number of matched nucleotides
-            pident = round( (pident / align_len) * 100, 2 ) # convert to percents and round it
-            pident = str(pident) # we do not need it sa float any more
+            pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
 
-            gaps = float( hsp.find("Hsp_gaps").text ) # get number of gaps
-            gaps = round( (gaps / align_len) * 100, 2 ) # convert to percents and round it
-            gaps = str(gaps) # we do not need it sa float any more
-
-            align_len = str(align_len) # we need 'align_len' as intany more
+            gaps = hsp.find("Hsp_gaps").text # get number of gaps
 
             evalue = hsp.find("Hsp_evalue").text # get e-value
 
-            print("\n\tHit!: '{}' -- '{}' with e-value {}".format(query_name, hit_taxa_name, evalue))
+            pident_ratio = round( float(pident) / int(align_len) * 100, 2)
+            gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
+
+            print("""\n\tHit!: '{}' -- '{}'
+                Identity - {}/{} ({}%); Gaps - {}/{} ({}%)""".format(query_name, hit_taxa_name,
+                    pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc,
@@ -1134,17 +934,13 @@ def parse_align_results_xml(xml_text, seq_names, sens):#{
 #}
 
 
-def write_result(res_tsv_lines, res_dpath, source_fastq_path, tsv_res_path):#{
+def write_result(res_tsv_lines, tsv_res_path):#{
     """
     Function writes result of blasting to result tsv file and sorts
         recently blasted reads between corresponding FASTQ files.
 
     :param res_tsv_lines: tsv lines returned by 'parse_align_results_xml()' funciton;
     :type res_tsv_lines: list<str>;
-    :param res_dpath: path to result directory;
-    :type res_dpath: str;
-    :param source_fastq_path: path to source FASTQ file;
-    :type source_fastq_path: str;
     :param tsv_res_path: path to reslut tsv file;
     :type tsv_res_path: str;
     """
@@ -1159,68 +955,10 @@ def write_result(res_tsv_lines, res_dpath, source_fastq_path, tsv_res_path):#{
     #}
     # Write reslut tsv lines to this file
     with open(tsv_res_path, 'a') as tsv_res_file:#{
-        for line in result_tsv_lines:
+        for line in res_tsv_lines:
             tsv_res_file.write(line + '\n')
     #}
 
-    # Get ready for reading from '.fastq.gz'
-    how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
-    fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
-
-    # Iretare through result tsv lines
-    for line in result_tsv_lines:#{
-
-        line = line.strip()
-
-        seq_id = line.split(DELIM)[0] # seq id is the 1-st element of result tsv line
-
-        # Find FASTQ record with recently got 'seq_id' in source FASTQ file
-        with how_to_open(source_fastq_path, 'r') as source_file:#{
-            while True:#{
-                fqline = fmt_func(source_file.readline())
-
-                # If there if no such read in source FASTQ file.
-                # If it will occure, it is the developer mistake (not user's one).
-                # Therefore -- raise an exception.
-                if fqline is "":#{
-                    raise Exception("ERROR! Sent query sequence not found in source FASTQ file")
-                #}
-
-                # If proper FASTQ record is found
-                if fqline.startswith('@'+seq_id):#{
-                    id_line = fqline # sequence id is recently read line
-                    seq = fmt_func(source_file.readline()) # get sequence
-                    opt_id = fmt_func(source_file.readline()) # get the 3-rd line
-                    qual_line = fmt_func(source_file.readline()) # get qulity line
-                    break # stop searching
-                #}
-            #}
-        #}
-
-        if "ERROR" in line:#{
-            classified_name = "ERROR" # Erroneous reads will be written to separate file
-        #}
-        # Reads that perform no significant similarity will be written to separate file
-        elif "No significant similarity found" in line:#{
-            classified_name = "unknown"
-        #}
-        else:#{
-            classified_name = line.split(DELIM)[1] # formatted hit name if the second element if tsv line
-        #}
-
-        # Form a result file path
-        classified_path = "{}{}{}.{}.fastq".format(res_dpath, os.sep, os.path.basename(fastq_path),
-            classified_name)
-        # Colon in file name can provoke some problems on Windows
-        classified_path = classified_path.replace(':', '')
-
-        # Write FASTQ record to appropriate file
-        with open(classified_path, 'a') as classif_file:#{
-            for fqline in (id_line, seq, opt_id, qual_line):#{
-                classif_file.write(fqline + '\n')
-            #}
-        #}
-    #}
 #}
 
 
@@ -1243,8 +981,6 @@ def create_result_directory(fastq_path):#{
 
     return new_dpath
 #}
-
-
 
 
 
@@ -1285,8 +1021,10 @@ def create_result_directory(fastq_path):#{
 #                   |===== Kernel loop =====|
 
 fastq_list = get_fastq_list() # get source FASTQ files to process
+print("\nChecking Internet connection...")
+check_connection()
+print("OK\n")
 organisms = get_organisms() # get organisms for 'nt' database restriction
-sensibility = get_classif_sensibility() # get sorting sensibility
 blast_algorithm = get_algorithm() # get BLAST algorithm
 
 
@@ -1312,9 +1050,9 @@ for i, fastq_path in enumerate(fastq_list):#{
         num_done_reads = 0 # number of successfully processed reads
         saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
         packet_size = get_packet_size(curr_fasta["nreads"]) # ask a user for packet size
-        tsv_res_path = "{}.{}_result.tsv".format(os.path.join(new_dpath,
+        tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
-        tmp_fpath = "{}.{}_temp.txt".format(os.path.join(new_dpath,
+        tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
         with open(tmp_fpath, 'w') as tmp_file:
             tmp_file.write(str(packet_size)+ '\n')
@@ -1362,8 +1100,8 @@ for i, fastq_path in enumerate(fastq_list):#{
             # with open("align_text.xml", 'r') as xml_file:
             #     xml_text = xml_file.read()
             # result_tsv_lines = parse_align_results_xml(xml_text,
-            #                 packet["names"], sensibility)
-            # write_result(result_tsv_lines, new_dpath, fastq_path, tsv_res_path)
+            #                 packet["names"])
+            # write_result(result_tsv_lines, tsv_res_path)
             # continue
             # # \============/
 
@@ -1380,10 +1118,10 @@ for i, fastq_path in enumerate(fastq_list):#{
                     send = False
 
                     result_tsv_lines = parse_align_results_xml(align_xml_text,
-                        packet["names"], sensibility) # get result tsv lines
+                        packet["names"]) # get result tsv lines
 
                     # Write the result to tsv and sort FASTQ sequences
-                    write_result(result_tsv_lines, new_dpath, fastq_path, tsv_res_path)
+                    write_result(result_tsv_lines, tsv_res_path)
                 #}
             #}
 
@@ -1400,10 +1138,10 @@ for i, fastq_path in enumerate(fastq_list):#{
                     attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
 
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"], sensibility) # get result tsv lines
+                    packet["names"]) # get result tsv lines
 
                 # Write the result to tsv and sort FASTQ sequences
-                write_result(result_tsv_lines, new_dpath, fastq_path, tsv_res_path)
+                write_result(result_tsv_lines, tsv_res_path)
             #}
 
             attempt += 1
@@ -1414,7 +1152,6 @@ for i, fastq_path in enumerate(fastq_list):#{
     if os.path.exists(tmp_fpath):
         os.unlink(tmp_fpath)
 #}
-# os.unlink(taxid_zip_path) # remove taxid-name mapping file
 
 
 print("\nTask completed successfully!")

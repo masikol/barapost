@@ -1,4 +1,4 @@
-#*.fastq*
+*.fastq*
 *.fasta*
 *xml*
 *test/*
