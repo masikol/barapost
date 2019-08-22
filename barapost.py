@@ -18,12 +18,15 @@ if verinf.major < 3:#{
 
 print("\n |=== barapost.py (version 1.0) ===|\n")
 
-# |===== Function for dealing with time =====|
+# |===== Stuff for dealing with time =====|
+
+# Get start time for default outdir name
+from datetime import datetime
+now = datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
 
 from time import time, strftime, localtime, sleep
 start_time = time()
 
-print( strftime("\n%H:%M:%S", localtime(start_time)) + " - START WORKING\n")
 
 def get_work_time():#{
     return strftime("%H:%M:%S", localtime( time() ))
@@ -59,6 +62,200 @@ def platf_depend_exit(exit_code):#{
 #}
 
 
+# |===== Handle command line arguments =====|
+help_msg = """
+DESCRIPTION:\n
+ barapost.py -- script is designed for determinating of the taxonomic position
+    of reads by blasting each of them and regarding the best hit.\n
+ Script processes FASTQ (as well as '.fastq.gz') files.\n
+ Results of the work of this script are written to TSV file,
+    that can be found in result directry.\n
+ FASTQ files processed by this script are meant to be sorted afterwards by 'fastq_sorted.py'.
+----------------------------------------------------------
+
+OPTIONS:\n
+    -h (--help) --- show help message;\n
+    -f (--infile) --- input FASTQ (or '.fastq.gz') file;
+            You can specify multiple input files with this option (see EXAMPLES #2);\n
+    -d (--indir) --- directory which contains FASTQ (or '.fastq.gz') files meant to be processed.
+            E.i. all FASTQ files in this direcory will be processed;\n
+    -o (--outdir) --- output directory;\n
+    -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
+            Value: integer number [1, 1000]. Default value is 20;\n
+    -a (--algorithm) --- BLASTn algorithm to use for aligning.
+            Available values: 'megaBlast', 'discoMegablast', 'blastn'.
+            Default is megaBlast;\n
+    -g (--organisms) --- 'nt' database restriction, e.i. organisms that you expect to see in result files.
+            More clearly, functionality of this option is totally equal to "Organism" text boxes
+            on this BLASTn page:
+             'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
+            Format of value: 
+              <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
+            See EXAMPLES #2 and #3 below.
+            Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
+            Default value is:   bacteria,2+viruses,10239.
+            You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.
+----------------------------------------------------------
+
+EXAMPLES:\n
+  1) Process one file with default settings:\n
+       ./barapost.py -f reads.fastq\n
+  2) Process two files with discoMegablast, packet size of 5 reads.
+     Search only among Erwinia sequences:\n
+       ./barapost.py -f reads_1.fastq.gz -f reads_2.fastq -a discoMegablast -p 5 -g Erwinia,551\n
+  3) Process all FASTQ (and '.fastq.gz') files in directory named "some_dir".
+     Search only among Escherichia and viral sequences:\n
+       ./barapost.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir
+"""
+from sys import argv
+import getopt
+
+try:#{
+    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:g:",
+        ["help", "infile=", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms="])
+#}
+except getopt.GetoptError as gerr:#{
+    print( str(gerr) )
+    platf_depend_exit(2)
+#}
+
+is_fastq_or_fastqgz = lambda f: f.endswith(".fastq") | f.endswith(".fastq.gz")
+
+fastq_list = list()
+indir_path = None
+outdir_path = "barapost_result_{}".format(now) # default
+packet_size = 20 # default
+blast_algorithm = "megaBlast" # default
+organisms = ["bacteria (taxid:2)", "viruses (taxid:10239)"] # default
+
+for opt, arg in opts:#{
+    
+    if opt in ("-h", "--help"):#{
+        print(help_msg)
+        platf_depend_exit(0)
+    #}
+
+    if opt in ("-f", "--infile"):#{
+        if not os.path.exists(arg):#{
+            print("\n\t\a!! - ERROR: file '{}' does not exist!".format(arg))
+            platf_depend_exit(1)
+        #}
+        if not is_fastq_or_fastqgz(arg):#{
+            print("\n\t\a!! - ERROR: file '{}' is not '.fastq' of '.fastq.gz'!".format(arg))
+            platf_depend_exit(1)
+        #}
+        fastq_list.append( os.path.abspath(arg) )
+    #}
+
+    if opt in ("-d", "--indir"):#{
+        if not os.path.exists(arg):#{
+            print("\n\t\a!! - ERROR: directory '{}' does not exist!".format(arg))
+            platf_depend_exit(1)
+        #}
+        if not os.path.isdir(arg):#{
+            print("\n\t\a!! - ERROR: '{}' is not a directory!".format(arg))
+            platf_depend_exit(1)
+        #}
+        indir_path = os.path.abspath(arg)
+
+        fastq_list.extend(list( filter(is_fastq_or_fastqgz, os.listdir(indir_path)) ))
+    #}
+
+    if opt in ("-o", "--outdir"):#{
+        outdir_path = os.path.abspath(arg)
+    #}
+
+    if opt in ("-p", "--packet-size"):#{
+        try:#{
+            packet_size = int(arg)
+            if packet_size < 1 or packet_size > 100:
+                raise ValueError
+        #}
+        except ValueError:#{
+            print("\n\t\a!! - ERROR: packet_size (-p option) must be integer number from 1 to 1000")
+            platf_depend_exit(1)
+        #}
+    #}
+
+    if opt in ("-a", "--algorithm"):#{
+        if not arg in ("megaBlast", "discoMegablast", "blastn"):#{
+            print("\n\t\a!! - ERROR: invalid value specified by '-a' option!")
+            print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
+            platf_depend_exit(1)
+        #}
+        blast_algorithm = arg
+    #}
+
+    if opt in ("-g", "--organisms"):#{
+        max_org = 5
+        organisms = list() # reset default
+
+        try:#{
+            org_list = arg.strip().split('+')
+            org_list = list( map(str.strip, org_list) )
+
+            if len(org_list) > max_org:#{
+                raise Exception("\nYou can enter from 1 to {} organisms.\a".format(max_org))
+            #}
+
+            for org in org_list:#{
+                name_and_taxid = org.strip().split(',')
+                name_and_taxid = list( map(str.strip, name_and_taxid) )
+                if len(name_and_taxid) != 2:#{
+                    raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
+    and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
+                #}
+                # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
+                tmp_taxid = int(name_and_taxid[1])
+                if tmp_taxid < 1:#{
+                    raise Exception("\nTaxID should be positive integer number\a")
+                #}
+                organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
+            #}
+        #}
+        except ValueError:#{
+            print("\n" + "=/"*20 + "\n")
+            print("\n\t!! - ERROR - TaxID should be positive integer number\a")
+            platf_depend_exit(1)
+        #}
+        except Exception as err:#{
+            print("\n" + "=/"*20 + "\n")
+            print("\n\t\a!! - ERROR: invalid organisms (-g option) input format")
+            print( str(err) )
+            platf_depend_exit(1)
+        #}
+    #}
+#}
+
+
+# If no FASTQ file have been found
+if len(fastq_list) == 0:#{
+    # If input directory was specified -- exit
+    if not indir_path is None:#{
+        print("\n\t\a !! - ERROR: no input FASTQ files specified or there is no FASTQ files in the input directory.\n")
+        platf_depend_exit(1)
+    #}
+    # If input directory was not specified -- look for FASTQ files in current directory
+    else:#{
+        fastq_list = list( filter(is_fastq_or_fastqgz, os.listdir('.')) )
+        if len(fastq_list) == 0:#{
+            print("\n\t\a!!- ERROR: there is no FASTQ files to process found.")
+            platf_depend_exit(1)
+        #}
+    #}
+#}
+
+del help_msg # we do not need it any more
+
+print( strftime("\n%H:%M:%S", localtime(start_time)) + " - START WORKING\n")
+
+print(" Following FASTQ files will be processed:")
+for i, path in enumerate(fastq_list):#{
+    print("    {}. '{}'".format(i+1, path))
+#}
+print('-'*30 + '\n')
+
+
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
 
 def check_connection():#{
@@ -87,7 +284,7 @@ def check_connection():#{
         print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
-        print( repr(err) )
+        print( str(err) )
 
         # 'urllib.request.HTTPError' can provide a user with information about the error
         if isinstance(err, HTTPError):#{
@@ -184,158 +381,131 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
 #}
 
 
-def get_algorithm():#{
-    """
-    Function asks the user about what BLASTn algorithm to use.
+# def get_algorithm():#{
+#     """
+#     Function asks the user about what BLASTn algorithm to use.
 
-    :return: one of the following strings "megaBlast", "discoMegablast", "blastn";
-    :return type: str;
-    """
+#     :return: one of the following strings "megaBlast", "discoMegablast", "blastn";
+#     :return type: str;
+#     """
 
-    reply = None
-    blast_algorithm = "megaBlast" # default value
+#     reply = None
+#     blast_algorithm = "megaBlast" # default value
 
-    while reply is None:#{
-        reply = input("""
-Please choose a BLAST algorithm:
-    1. Highly similar sequences (megablast)
-    2. Optimize for More dissimilar sequences (discontiguous megablast)
-    3. Optimize for Somewhat similar sequences (blastn)
+#     while reply is None:#{
+#         reply = input("""
+# Please choose a BLAST algorithm:
+#     1. Highly similar sequences (megablast)
+#     2. Optimize for More dissimilar sequences (discontiguous megablast)
+#     3. Optimize for Somewhat similar sequences (blastn)
 
-Enter the number (1, 2 or 3):>> """)
-        # Check if entered value is integer number. If no, give another attempt.
-        try:#{
-            reply = int(reply)
-            if reply < 1 or reply > 3:#{ Check if input number is in [1, 3]
-                print("\n\tNot a VALID number entered!\a\n" + '~'*20)
-                reply = None
-            #}
-            else:#{
-                print("You have chosen number "+ str(reply) + '\n')
-                print('~' * 20 + '\n')
+# Enter the number (1, 2 or 3):>> """)
+#         # Check if entered value is integer number. If no, give another attempt.
+#         try:#{
+#             reply = int(reply)
+#             if reply < 1 or reply > 3:#{ Check if input number is in [1, 3]
+#                 print("\n\tNot a VALID number entered!\a\n" + '~'*20)
+#                 reply = None
+#             #}
+#             else:#{
+#                 print("You have chosen number "+ str(reply) + '\n')
+#                 print('~' * 20 + '\n')
 
-                if reply == 1:
-                    blast_algorithm = "megaBlast"
-                elif reply == 2:
-                    blast_algorithm = "discoMegablast"
-                else:
-                    blast_algorithm = "blastn"
-            #}
-        #}
-        except ValueError:
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            reply = None
-            algorithm = None
-    #}
-    return blast_algorithm
-#}
+#                 if reply == 1:
+#                     blast_algorithm = "megaBlast"
+#                 elif reply == 2:
+#                     blast_algorithm = "discoMegablast"
+#                 else:
+#                     blast_algorithm = "blastn"
+#             #}
+#         #}
+#         except ValueError:
+#             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
+#             reply = None
+#             algorithm = None
+#     #}
+#     return blast_algorithm
+# #}
 
-def get_organisms():#{
+# def get_organisms():#{
     
-    # Only 2 'nt' database restrictions for now
-    max_org = 2
-    organisms = list()
+#     # Only 2 'nt' database restrictions for now
+#     max_org = 5
+#     organisms = list()
     
-    error = True
-    while error:#{
-        reply = input("""\n~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Please specify organisms for 'nt' database restriction.
-You are to enter organism's name and it's Taxonomy ID (aka taxid) separated by comma
- after prompt symbol '>>' as follows:\n
-    >> Erwinia,551\n
-You can enter 2 organisms separated by semicolon as follows:\n
-    >> Erwinia,551;Pseudomonas,286
+#     error = True
+#     while error:#{
+#         reply = input("""\n~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Please specify organisms for 'nt' database restriction.
+# You are to enter organism's name and it's Taxonomy ID (aka taxid) separated by comma
+#  after prompt symbol '>>' as follows:\n
+#     >> Erwinia,551\n
+# You can enter 2 organisms separated by plus as follows:\n
+#     >> Erwinia,551+Pseudomonas,286
 
-You can find taxid of your organism from NCBI taxonomy browser:
-\t'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'
+# You can find taxid of your organism from NCBI taxonomy browser:
+# \t'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'
 
-Default settings are:    bacteria,2;viruses,10239
+# Default settings are:    bacteria,2+viruses,10239
 
-Enter organism's name and taxid:>> """)
+# Enter organism's name and taxid:>> """)
 
-        if reply is "":#{
-            organisms.append("bacteria (taxid:2)") # default
-            organisms.append("viruses (taxid:10239)") # default
-            print("\nYou have chosen following organisms:")
-            for i, org in enumerate(organisms):#{
-                print("\t{}. {}".format(i+1, org))
-            #}
-            print('~'*30 + '\n')
-            return organisms
-        #}
+#         if reply is "":#{
+#             organisms.append("bacteria (taxid:2)") # default
+#             organisms.append("viruses (taxid:10239)") # default
+#             print("\nYou have chosen following organisms:")
+#             for i, org in enumerate(organisms):#{
+#                 print("\t{}. {}".format(i+1, org))
+#             #}
+#             print('~'*30 + '\n')
+#             return organisms
+#         #}
 
-        try:#{
-            org_list = reply.strip().split(';')
-            org_list = list( map(str.strip, org_list) )
+#         try:#{
+#             org_list = reply.strip().split('+')
+#             org_list = list( map(str.strip, org_list) )
 
-            if len(org_list) > max_org:#{
-                raise Exception("\nYou can enter only 1 or 2 organisms and they should be separated by semicolon (;)\a")
-            #}
+#             if len(org_list) > max_org:#{
+#                 raise Exception("\nYou can enter from 1 to {} organisms.\a".format(max_org))
+#             #}
 
-            for org in org_list:#{
-                name_and_taxid = org.strip().split(',')
-                name_and_taxid = list( map(str.strip, name_and_taxid) )
-                if len(name_and_taxid) != 2:
-                    raise Exception("\nOrganism's name and it's taxid should be separated by comma (,)\a")
-                # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
-                tmp_taxid = int(name_and_taxid[1])
-                if tmp_taxid < 1:
-                    raise Exception("\nTaxID should be positive integer number\a")
-                organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
-            #}
-        #}
-        except ValueError:#{
-            print("\n" + "=/"*20 + "\n")
-            print("\n\t!! - ERROR - TaxID should be positive integer number\a")
-            sleep(2)
-            continue
-        #}
-        except Exception as err:#{
-            print("\n" + "=/"*20 + "\n")
-            print("\n\t!! - ERROR: invalid input format")
-            print( str(err) )
-            sleep(2)
-            continue
-        #}
+#             for org in org_list:#{
+#                 name_and_taxid = org.strip().split(',')
+#                 name_and_taxid = list( map(str.strip, name_and_taxid) )
+#                 if len(name_and_taxid) != 2:
+#                     raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
+#     and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
+#                 # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
+#                 tmp_taxid = int(name_and_taxid[1])
+#                 if tmp_taxid < 1:
+#                     raise Exception("\nTaxID should be positive integer number\a")
+#                 organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
+#             #}
+#         #}
+#         except ValueError:#{
+#             print("\n" + "=/"*20 + "\n")
+#             print("\n\t!! - ERROR - TaxID should be positive integer number\a")
+#             sleep(2)
+#             continue
+#         #}
+#         except Exception as err:#{
+#             print("\n" + "=/"*20 + "\n")
+#             print("\n\t!! - ERROR: invalid input format")
+#             print( str(err) )
+#             sleep(2)
+#             continue
+#         #}
 
-        print("\nYou have chosen following organisms:")
-        for i, tax_fmt in enumerate(organisms):#{
-            print("\t{}. {}".format(i+1, tax_fmt))
-        #}
-        print('~'*20 + '\n')
-        error = False
+#         print("\nYou have chosen following organisms:")
+#         for i, tax_fmt in enumerate(organisms):#{
+#             print("\t{}. {}".format(i+1, tax_fmt))
+#         #}
+#         print('~'*20 + '\n')
+#         error = False
 
-    return organisms
-#}
-
-
+#     return organisms
+# #}
 # |===== End of question funtions =====|
-
-
-is_fastq_or_fastqgz = lambda f: f.endswith(".fastq") | f.endswith(".fastq.gz")
-
-
-def get_fastq_list():#{
-
-    # Get all '.fastq' and '.fastq.gz' files in current directory
-    fastq_list = os.listdir('.')
-    global is_fastq_or_fastqgz
-    fastq_list = list( filter(is_fastq_or_fastqgz, fastq_list) )
-
-    # If there are files to process
-    if len(fastq_list) != 0:#{
-        print("\nFollowing files have been found and will be processed:")
-        for i, line in enumerate(fastq_list):#{
-            print("\t{}. '{}'".format( str(i+1), fastq_list[i] ))
-        #}
-        print('-' * 30)
-    #}
-    else:#{
-        print("\nNo '.fastq' or '.fastq.gz' files have been found in current directory!")
-        platf_depend_exit(1) # exit
-    #}
-    return fastq_list
-#}
 
 
 # |===== Functionality for proper processing of gzipped files =====|
@@ -378,7 +548,7 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
     }
     """
     
-    fasta_path = fastq_path.replace(".fastq", ".fasta") # change extention
+    fasta_path = os.path.basename(fastq_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
     global FASTQ_LINES_PER_READ
@@ -480,7 +650,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     num_done_reads = None # variable to keep number of succeffdully processed reads
 
     print("\n |========== file: '{}' ===========|".format(fasta_path))
-    continuation = False    # default value
+    continuation = False
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath):#{
         print('\n' + get_work_time() + " - The previous result file is found in the directory:")
@@ -809,13 +979,14 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
 
     # Retrieve human-readable text and put it into result directory
     if there_are_hits:#{
+        global outdir_path
 
         retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
         conn = http.client.HTTPSConnection(server)
         conn.request("GET", retrieve_text_url)
         response = conn.getresponse()
 
-        txt_hpath = "{}{}blast_result_{}.txt".format(filename[:filename.rfind(".fasta")], os.sep, attempt)
+        txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(attempt))
         # Write text result for a human to read
         with open(txt_hpath, 'w') as txt_file:
             txt_file.write(str(response.read(), "utf-8") + '\n')
@@ -962,7 +1133,7 @@ def write_result(res_tsv_lines, tsv_res_path):#{
 #}
 
 
-def create_result_directory(fastq_path):#{
+def create_result_directory(fastq_path, outdir_path):#{
     """
     Function creates a result directory named according to how source FASTQ file is named.
 
@@ -973,7 +1144,7 @@ def create_result_directory(fastq_path):#{
     """
 
     # dpath means "directory path"
-    new_dpath = os.path.basename(fastq_path) # get rid of absolute path
+    new_dpath = os.path.join(outdir_path, os.path.basename(fastq_path)) # get rid of absolute path
     new_dpath = new_dpath[: new_dpath.rfind(".fastq")] # get rid if '.fastq' or 'fastq.gz'
     if not os.path.exists(new_dpath):#{
         os.makedirs(new_dpath)
@@ -1020,19 +1191,21 @@ def create_result_directory(fastq_path):#{
 
 #                   |===== Kernel loop =====|
 
-fastq_list = get_fastq_list() # get source FASTQ files to process
+
 print("\nChecking Internet connection...")
 check_connection()
 print("OK\n")
-organisms = get_organisms() # get organisms for 'nt' database restriction
-blast_algorithm = get_algorithm() # get BLAST algorithm
+
+# ???
+# organisms = get_organisms() # get organisms for 'nt' database restriction
+# blast_algorithm = get_algorithm() # get BLAST algorithm
 
 
 # Iterate through found source FASTQ files
 for i, fastq_path in enumerate(fastq_list):#{
     
     # Create the result directory with the name of FASTQ file being processed:
-    new_dpath = create_result_directory(fastq_path)
+    new_dpath = create_result_directory(fastq_path, outdir_path)
 
     # Convert fastq file to FASTA and get it's path and number of reads in it:
     curr_fasta = fastq2fasta(fastq_path, i, new_dpath)
@@ -1049,7 +1222,10 @@ for i, fastq_path in enumerate(fastq_list):#{
     if previous_data is None:#{ # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed reads
         saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
-        packet_size = get_packet_size(curr_fasta["nreads"]) # ask a user for packet size
+
+        # ???
+        # packet_size = get_packet_size(curr_fasta["nreads"]) # ask a user for packet size
+
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
