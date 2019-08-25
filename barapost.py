@@ -38,6 +38,7 @@ import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree
+from shutil import copyfile as shutilcpyfile
 
 import http.client
 import urllib.request
@@ -67,7 +68,7 @@ help_msg = """
 DESCRIPTION:\n
  barapost.py -- script is designed for determinating the taxonomic position
     of long reads by blasting each of them and regarding the best hit.\n
- Script processes FASTQ (as well as '.fastq.gz') files.\n
+ Script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
  Results of the work of this script are written to TSV file,
     that can be found in result directry.\n
  FASTQ files processed by this script are meant to be sorted afterwards by 'fastq_sorted.py'.
@@ -75,10 +76,11 @@ DESCRIPTION:\n
 
 OPTIONS:\n
     -h (--help) --- show help message;\n
-    -f (--infile) --- input FASTQ (or '.fastq.gz') file;
+    -f (--infile) --- input FASTQ or FASTA (or '.fastq.gz', '.fasta.gz') file;
             You can specify multiple input files with this option (see EXAMPLES #2);\n
-    -d (--indir) --- directory which contains FASTQ (or '.fastq.gz') files meant to be processed.
-            E.i. all FASTQ files in this direcory will be processed;\n
+    -d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
+            E.i. all FASTQ and FASTA files in this direcory will be processed;
+            Input files can be gzipped.\n
     -o (--outdir) --- output directory;\n
     -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
             Value: integer number [1, 1000]. Default value is 20;\n
@@ -98,12 +100,12 @@ OPTIONS:\n
 ----------------------------------------------------------
 
 EXAMPLES:\n
-  1) Process one file with default settings:\n
+  1) Process one FASTQ file with default settings:\n
        ./barapost.py -f reads.fastq\n
-  2) Process two files with discoMegablast, packet size of 5 reads.
+  2) Process FASTQ file and FASTA file with discoMegablast, packet size of 5 reads.
      Search only among Erwinia sequences:\n
-       ./barapost.py -f reads_1.fastq.gz -f reads_2.fastq -a discoMegablast -p 5 -g Erwinia,551\n
-  3) Process all FASTQ (and '.fastq.gz') files in directory named "some_dir".
+       ./barapost.py -f reads_1.fastq.gz -f reads_2.fasta -a discoMegablast -p 5 -g Erwinia,551\n
+  3) Process all FASTQ and FASTA files in directory named "some_dir".
      Search only among Escherichia and viral sequences:\n
        ./barapost.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir
 """
@@ -119,9 +121,9 @@ except getopt.GetoptError as gerr:#{
     platf_depend_exit(2)
 #}
 
-is_fastq_or_fastqgz = lambda f: f.endswith(".fastq") | f.endswith(".fastq.gz")
+is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is None else False
 
-fastq_list = list()
+fq_fa_list = list()
 indir_path = None
 outdir_path = "barapost_result_{}".format(now) # default
 packet_size = 20 # default
@@ -140,11 +142,11 @@ for opt, arg in opts:#{
             print("\n\t\a!! - ERROR: file '{}' does not exist!".format(arg))
             platf_depend_exit(1)
         #}
-        if not is_fastq_or_fastqgz(arg):#{
-            print("\n\t\a!! - ERROR: file '{}' is not '.fastq' of '.fastq.gz'!".format(arg))
+        if not is_fq_or_fa(arg):#{
+            print("\n\t\a!! - ERROR: file '{}' is not '.fastq' or '.fasta'!".format(arg))
             platf_depend_exit(1)
         #}
-        fastq_list.append( os.path.abspath(arg) )
+        fq_fa_list.append( os.path.abspath(arg) )
     #}
 
     if opt in ("-d", "--indir"):#{
@@ -158,7 +160,7 @@ for opt, arg in opts:#{
         #}
         indir_path = os.path.abspath(arg)
 
-        fastq_list.extend(list( filter(is_fastq_or_fastqgz, os.listdir(indir_path)) ))
+        fq_fa_list.extend(list( filter(is_fq_or_fa, os.listdir(indir_path)) ))
     #}
 
     if opt in ("-o", "--outdir"):#{
@@ -228,18 +230,19 @@ for opt, arg in opts:#{
 #}
 
 
-# If no FASTQ file have been found
-if len(fastq_list) == 0:#{
+# If no FASTQ or FASTA file have been found
+if len(fq_fa_list) == 0:#{
     # If input directory was specified -- exit
     if not indir_path is None:#{
-        print("\n\t\a !! - ERROR: no input FASTQ files specified or there is no FASTQ files in the input directory.\n")
+        print("""\n\t\a !! - ERROR: no input FASTQ or FASTA files specified
+    or there is no FASTQ and FASTA files in the input directory.\n""")
         platf_depend_exit(1)
     #}
     # If input directory was not specified -- look for FASTQ files in current directory
     else:#{
-        fastq_list = list( filter(is_fastq_or_fastqgz, os.listdir('.')) )
-        if len(fastq_list) == 0:#{
-            print("\n\t\a!!- ERROR: there is no FASTQ files to process found.")
+        fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
+        if len(fq_fa_list) == 0:#{
+            print("\n\t\a!!- ERROR: there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
         #}
     #}
@@ -249,8 +252,8 @@ del help_msg # we do not need it any more
 
 print( strftime("\n%H:%M:%S", localtime(start_time)) + " - START WORKING\n")
 
-print(" Following FASTQ files will be processed:")
-for i, path in enumerate(fastq_list):#{
+print(" Following files will be processed:")
+for i, path in enumerate(fq_fa_list):#{
     print("    {}. '{}'".format(i+1, path))
 #}
 print('-'*30 + '\n')
@@ -514,11 +517,11 @@ OPEN_FUNCS = (open, open_as_gzip)
 
 is_gzipped = lambda file: True if file.endswith(".gz") else False
 
-# Data from .fastq and .fastq.gz should be parsed in different way,
+# Data from plain text and gzipped should be parsed in different way,
 #   because data from .gz is read as 'bytes', not 'str'.
 FORMATTING_FUNCS = (
-    lambda line: line.strip(),   # format '.fastq' line
-    lambda line: line.decode("utf-8").strip()  # format '.fastq.gz' line
+    lambda line: line.strip(),   # format text line
+    lambda line: line.decode("utf-8").strip()  # format gzipped line
 )
 
 # |=== Delimiter for result tsv file ===|
@@ -529,16 +532,16 @@ FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_READ = 2
 
 
-def fastq2fasta(fastq_path, i, new_dpath):#{
+def fastq2fasta(fq_fa_path, i, new_dpath):#{
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
-        the same name as FASTQ file.
+        the same name as FASTQ file. Also it counts reads in this file.
 
-    :param fastq_path: path to FASTQ file being processed;
-    :type fastq_path: str;
-    :param i: order number of fastq_file;
+    :param fq_fa_path: path to FASTQ or FASTA file being processed;
+    :type fq_fa_path: str;
+    :param i: order number of fq_fa_path;
     :type i: int;
-    :param new_dpath: path to current (corresponding to fastq_path file) result directory;
+    :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
     :type new_dpath: str;
 
     Returns dict of the following structure:
@@ -548,27 +551,29 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
     }
     """
     
-    fasta_path = os.path.basename(fastq_path).replace(".fastq", ".fasta") # change extention
+    # fasta_patt = r".*\,f(ast)?a(\.gz)?$")
+    fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
-    global FASTQ_LINES_PER_READ
-    global FASTA_LINES_PER_READ
+    fastq_patt = r".*\,f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
-    if not os.path.exists(fasta_path):#{
+    if not re_search(fastq_patt, fq_fa_path) is None:#{
+
+        global FASTQ_LINES_PER_READ
 
         # Get ready to process gzipped files
-        how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
-        fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
+        how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+        fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
-        with how_to_open(fastq_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
+        with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
 
             counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
             for line in fastq_file:#{
                 line = fmt_func(line)
                 if counter <= 2:#{      write only 1-st and 2-nd line out of 4
                     if line[0] == '@':
-                        line = '>' + line[1:]  # replace '>' with '@'
+                        line = '>' + line[1:]  # replace '@' with '>'
                     fasta_file.write(line + '\n')
                 #}
                 # reset the counter if the 4-th (quality) line has been encountered
@@ -579,15 +584,19 @@ def fastq2fasta(fastq_path, i, new_dpath):#{
             #}
         #}
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of reads
+
+        print("\n{}. '{}' ({} reads) --> FASTA\n".format(i+1, fq_fa_path, num_reads))
     #}
-    # If there if corresponding FASTA file from previous run, we do not need to create it.
+    # We've got FASTA source file
     # We need only number of reads in it.
-    else:#{
+    else:#{ 
+        global FASTA_LINES_PER_READ
+
+        shutilcpyfile(fq_fa_path, fasta_path)
+
         num_lines = sum(1 for line in open(fasta_path, 'r')) # get number of lines
         num_reads = int( num_lines / FASTA_LINES_PER_READ ) # get number of reads
     #}
-
-    print("\n{}. '{}' ({} reads) --> FASTA\n".format(i+1, fastq_path, num_reads))
 
     return {"fpath": fasta_path, "nreads": num_reads}
 #}
@@ -629,9 +638,9 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
         "tmp_fpath": path_to_pemporary_file (str)
     }
 
-    :param new_dpath: path to current (corresponding to fastq_path file) result directory;
+    :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
     :type new_dpath: str;
-    :param fasta_path: path to current (corresponding to fastq_path file) FASTA file;
+    :param fasta_path: path to current (corresponding to fq_fa_path file) FASTA file;
     :type fasta_path: str;
     :param blast_algorithm: BLASTn algorithm to use.
         This parameter is necessary because it is included in name of result files;
@@ -843,10 +852,21 @@ def send_request(request):#{
     #     resp_file.write(response_text + '\n')
     # \================/
 
-    rid = re_search("RID = (.*)", response_text).group(1) # get Request ID
-    rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
-
-    conn.close()
+    try:#{
+        rid = re_search("RID = (.*)", response_text).group(1) # get Request ID
+        rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
+    #}
+    except AttributeError:#{
+        print("\n\t\a!! - ERROR: seems, ncbi has denied your request.")
+        print("Response is in file 'request_denial_response.html'")
+        with open("request_denial_response.html", 'w') as den_file:#{
+            den_file.write(response_text)
+        #}
+        exit(1)
+    #}
+    finally:#{
+        conn.close()
+    #}
 
     return {"RID": rid, "RTOE": rtoe}
 #}
@@ -1107,8 +1127,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
 def write_result(res_tsv_lines, tsv_res_path):#{
     """
-    Function writes result of blasting to result tsv file and sorts
-        recently blasted reads between corresponding FASTQ files.
+    Function writes result of blasting to result tsv file.
 
     :param res_tsv_lines: tsv lines returned by 'parse_align_results_xml()' funciton;
     :type res_tsv_lines: list<str>;
@@ -1133,19 +1152,20 @@ def write_result(res_tsv_lines, tsv_res_path):#{
 #}
 
 
-def create_result_directory(fastq_path, outdir_path):#{
+def create_result_directory(fq_fa_path, outdir_path):#{
     """
-    Function creates a result directory named according to how source FASTQ file is named.
+    Function creates a result directory named according 
+        to how source FASTQor FASTA file is named.
 
-    :param fastq_path: path to source fastq file;
-    :type fastq_path: str;
+    :param fq_fa_path: path to source FASTQ or FASTA file;
+    :type fq_fa_path: str;
 
     Returns 'str' path to the recently created result directory.
     """
 
     # dpath means "directory path"
-    new_dpath = os.path.join(outdir_path, os.path.basename(fastq_path)) # get rid of absolute path
-    new_dpath = new_dpath[: new_dpath.rfind(".fastq")] # get rid if '.fastq' or 'fastq.gz'
+    new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
+    new_dpath = new_dpath[: new_dpath.rfind(".fast")] # get rid of extention
     if not os.path.exists(new_dpath):#{
         os.makedirs(new_dpath)
     #}
@@ -1201,14 +1221,14 @@ print("OK\n")
 # blast_algorithm = get_algorithm() # get BLAST algorithm
 
 
-# Iterate through found source FASTQ files
-for i, fastq_path in enumerate(fastq_list):#{
+# Iterate through found source FASTQ and FASTA files
+for i, fq_fa_path in enumerate(fq_fa_list):#{
     
-    # Create the result directory with the name of FASTQ file being processed:
-    new_dpath = create_result_directory(fastq_path, outdir_path)
+    # Create the result directory with the name of FASTQ of FASTA file being processed:
+    new_dpath = create_result_directory(fq_fa_path, outdir_path)
 
-    # Convert fastq file to FASTA and get it's path and number of reads in it:
-    curr_fasta = fastq2fasta(fastq_path, i, new_dpath)
+    # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of reads in it:
+    curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
 
     # "hname" means human readable name (e.i. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
@@ -1296,7 +1316,7 @@ for i, fastq_path in enumerate(fastq_list):#{
                     result_tsv_lines = parse_align_results_xml(align_xml_text,
                         packet["names"]) # get result tsv lines
 
-                    # Write the result to tsv and sort FASTQ sequences
+                    # Write the result to tsv
                     write_result(result_tsv_lines, tsv_res_path)
                 #}
             #}
@@ -1316,7 +1336,7 @@ for i, fastq_path in enumerate(fastq_list):#{
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
                     packet["names"]) # get result tsv lines
 
-                # Write the result to tsv and sort FASTQ sequences
+                # Write the result to tsv
                 write_result(result_tsv_lines, tsv_res_path)
             #}
 
