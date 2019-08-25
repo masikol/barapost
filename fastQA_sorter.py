@@ -372,7 +372,7 @@ def read_fasta_record(read_file):#{
         platf_depend_exit(1)
     #}
 
-    return fastq_rec
+    return fasta_rec
 #}
 
 
@@ -400,7 +400,7 @@ def write_fastq_record(outfile_path, fastq_record):#{
 #}
 
 
-def write_fastq_record(outfile_path, fasta_record):#{
+def write_fasta_record(outfile_path, fasta_record):#{
     """
     :param outfile: file, which data from fasta_record is written in
     :type outfile: _io.TextIOWrapper

@@ -80,6 +80,7 @@
 
 
 ## 2. fastQA_sorter.py
+(fast**Q** and fast**A** sorter)
 
 ### DESCRIPTION:
 
@@ -112,7 +113,8 @@
 
     -f (--infile) --- input FASTQ or FASTA file (can be gzipped);
 
-    -d (--indir) --- directory which contains FASTQ and/or FASTA files (files can be gzipped) meant to be sorted;
+    -d (--indir) --- directory which contains FASTQ and/or FASTA files
+        (files can be gzipped) meant to be sorted;
 
     -o (--outdir) --- output directory;
 
