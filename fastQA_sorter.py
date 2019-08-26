@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.0
-# 22.08.2019 edition
+# Version 1.1
+# 26.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -21,7 +21,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 1.0) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 1.1) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -76,9 +76,9 @@ EXAMPLES:\n
   1) Process one FASTQ file with default settings:\n
      ./fastq_sorter.py -f reads.fastq.gz -b test_megaBlast_result.tsv\n
   2) Process a FASTQ file and a FASTA file, place results in "outdir" directory:\n
-     ./fastq_sorter.py -f reads_1.fastq.gz -f reads_2.fasta -o outdir -b test_megaBlast_result.tsv\n
-  3) Process all FASTQ and FASTA files in directory named "dir_with_reads". Sort by genus:\n
-     ./fastq_sorter.py -d dir_with_reads -o outdir -b test_megaBlast_result.tsv -s genus
+     ./fastq_sorter.py -f reads_1.fastq.gz -f some_sequences_2.fasta -o outdir -b test_megaBlast_result.tsv\n
+  3) Process all FASTQ and FASTA files in directory named "dir_with_seqs". Sort by genus:\n
+     ./fastq_sorter.py -d dir_with_seqs -o outdir -b test_megaBlast_result.tsv -s genus
 """
 # -------------------
 
@@ -245,7 +245,7 @@ Enter a number (1, 2 or 3):>> """)
     #}
 #}
 
-print(" Reads will be sorted by {}".format(sens))
+print(" Sequences will be sorted by {}".format(sens))
 print('-'*20+'\n')
 
 #                      Genus    species                   strain name and anything after it
@@ -314,12 +314,12 @@ for read_name in resfile_lines.keys():#{
 
 def read_fastq_record(read_file):#{
     """
-    :param read_file: file instance of FASTQ file to retrieve reads from;
+    :param read_file: file instance of FASTQ file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
 
     Returns dictionary of the following structure:
     {
-        "seq_id": ID_of_read,
+        "seq_id": ID_of_sequence,
         "seq": sequence_itself,
         "opt_id": the_third_line,
         "qual_line": quality_line
@@ -348,12 +348,12 @@ def read_fastq_record(read_file):#{
 
 def read_fasta_record(read_file):#{
     """
-    :param read_file: file instance of FASTA file to retrieve reads from;
+    :param read_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
 
     Returns dictionary of the following structure:
     {
-        "seq_id": ID_of_read,
+        "seq_id": ID_of_sequence,
         "seq": sequence_itself
     }
     """
@@ -440,7 +440,7 @@ if not os.path.exists(outdir_path):#{
 
 
 LINES_PER_READ_FASTQ = 4
-LINES_PER_READ_FASTA = 2
+LINES_PER_SEQ_FASTA = 2
 is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
 num_files = len(fq_fa_paths)
 
@@ -451,7 +451,7 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     source_path_pruned = source_path_pruned.partition(".fast")[0] # get rid of extention
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ] # get ready to open gzipped files
-    lines_format = LINES_PER_READ_FASTQ if is_fastq(fq_fa_path) else LINES_PER_READ_FASTA
+    lines_format = LINES_PER_READ_FASTQ if is_fastq(fq_fa_path) else LINES_PER_SEQ_FASTA
     num_reads = int (sum(1 for line in how_to_open(fq_fa_path)) / lines_format) # count number of reads in file
 
     # Get function that will read one record -- FASTQ of FASTA, in dependence of your file
@@ -464,10 +464,10 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
         for _ in range(num_reads):#{
 
             fastq_rec = read_fun(source_fastq_file) # get FASTQ or FASTA record
-            read_name = fastq_rec["seq_id"].partition(' ')[0][1:] # get ID of the read
+            read_name = fastq_rec["seq_id"].partition(' ')[0][1:] # get ID of the sequence
 
             try:#{
-                hit_name = resfile_lines[read_name] # find hit corresponding to tis read
+                hit_name = resfile_lines[read_name] # find hit corresponding to this sequence
             #}
             except KeyError:#{
                 print("\n\t\a !! - Warning: read '{}' not found in '{}' result file".format(read_name, barapost_res_path))

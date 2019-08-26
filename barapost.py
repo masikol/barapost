@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.0
-# 22.08.2019 edition
+# Version 1.1
+# 26.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 1.0) ===|\n")
+print("\n |=== barapost.py (version 1.1) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -39,6 +39,7 @@ from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree
 from shutil import copyfile as shutilcpyfile
+import threading
 
 import http.client
 import urllib.request
@@ -63,11 +64,16 @@ def platf_depend_exit(exit_code):#{
 #}
 
 
+def print_error(text):#{
+    print("\n\t\a!! - ERROR: " + text + '\n')
+#}
+
+
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
  barapost.py -- script is designed for determinating the taxonomic position
-    of long reads by blasting each of them and regarding the best hit.\n
+    of nucleotide sequences by blasting each of them and regarding the best hit.\n
  Script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
  Results of the work of this script are written to TSV file,
     that can be found in result directry.\n
@@ -87,7 +93,7 @@ OPTIONS:\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
             Available values: 'megaBlast', 'discoMegablast', 'blastn'.
             Default is megaBlast;\n
-    -g (--organisms) --- 'nt' database restriction, e.i. organisms that you expect to see in result files.
+    -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
             More clearly, functionality of this option is totally equal to "Organism" text boxes
             on this BLASTn page:
              'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
@@ -95,16 +101,16 @@ OPTIONS:\n
               <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
             See EXAMPLES #2 and #3 below.
             Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-            Default value is:   bacteria,2+viruses,10239.
+            Default value is full 'nt' database.
             You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.
 ----------------------------------------------------------
 
 EXAMPLES:\n
   1) Process one FASTQ file with default settings:\n
        ./barapost.py -f reads.fastq\n
-  2) Process FASTQ file and FASTA file with discoMegablast, packet size of 5 reads.
+  2) Process FASTQ file and FASTA file with discoMegablast, packet size of 5 sequences.
      Search only among Erwinia sequences:\n
-       ./barapost.py -f reads_1.fastq.gz -f reads_2.fasta -a discoMegablast -p 5 -g Erwinia,551\n
+       ./barapost.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -p 5 -g Erwinia,551\n
   3) Process all FASTQ and FASTA files in directory named "some_dir".
      Search only among Escherichia and viral sequences:\n
        ./barapost.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir
@@ -126,9 +132,9 @@ is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is
 fq_fa_list = list()
 indir_path = None
 outdir_path = "barapost_result_{}".format(now) # default
-packet_size = 20 # default
+packet_size = 100 # default
 blast_algorithm = "megaBlast" # default
-organisms = ["bacteria (taxid:2)", "viruses (taxid:10239)"] # default
+organisms = list() # default
 
 for opt, arg in opts:#{
     
@@ -139,11 +145,11 @@ for opt, arg in opts:#{
 
     if opt in ("-f", "--infile"):#{
         if not os.path.exists(arg):#{
-            print("\n\t\a!! - ERROR: file '{}' does not exist!".format(arg))
+            print_error("file '{}' does not exist!".format(arg))
             platf_depend_exit(1)
         #}
         if not is_fq_or_fa(arg):#{
-            print("\n\t\a!! - ERROR: file '{}' is not '.fastq' or '.fasta'!".format(arg))
+            print_error("file '{}' is not '.fastq' or '.fasta'!".format(arg))
             platf_depend_exit(1)
         #}
         fq_fa_list.append( os.path.abspath(arg) )
@@ -151,11 +157,11 @@ for opt, arg in opts:#{
 
     if opt in ("-d", "--indir"):#{
         if not os.path.exists(arg):#{
-            print("\n\t\a!! - ERROR: directory '{}' does not exist!".format(arg))
+            print_error("directory '{}' does not exist!".format(arg))
             platf_depend_exit(1)
         #}
         if not os.path.isdir(arg):#{
-            print("\n\t\a!! - ERROR: '{}' is not a directory!".format(arg))
+            print_error("'{}' is not a directory!".format(arg))
             platf_depend_exit(1)
         #}
         indir_path = os.path.abspath(arg)
@@ -174,14 +180,14 @@ for opt, arg in opts:#{
                 raise ValueError
         #}
         except ValueError:#{
-            print("\n\t\a!! - ERROR: packet_size (-p option) must be integer number from 1 to 1000")
+            print_error("packet_size (-p option) must be integer number from 1 to 1000")
             platf_depend_exit(1)
         #}
     #}
 
     if opt in ("-a", "--algorithm"):#{
         if not arg in ("megaBlast", "discoMegablast", "blastn"):#{
-            print("\n\t\a!! - ERROR: invalid value specified by '-a' option!")
+            print_error("invalid value specified by '-a' option!")
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
             platf_depend_exit(1)
         #}
@@ -190,7 +196,6 @@ for opt, arg in opts:#{
 
     if opt in ("-g", "--organisms"):#{
         max_org = 5
-        organisms = list() # reset default
 
         try:#{
             org_list = arg.strip().split('+')
@@ -217,12 +222,12 @@ for opt, arg in opts:#{
         #}
         except ValueError:#{
             print("\n" + "=/"*20 + "\n")
-            print("\n\t!! - ERROR - TaxID should be positive integer number\a")
+            print_error("TaxID should be positive integer number\a")
             platf_depend_exit(1)
         #}
         except Exception as err:#{
             print("\n" + "=/"*20 + "\n")
-            print("\n\t\a!! - ERROR: invalid organisms (-g option) input format")
+            print_error("ERROR: invalid organisms (-g option) input format")
             print( str(err) )
             platf_depend_exit(1)
         #}
@@ -234,7 +239,7 @@ for opt, arg in opts:#{
 if len(fq_fa_list) == 0:#{
     # If input directory was specified -- exit
     if not indir_path is None:#{
-        print("""\n\t\a !! - ERROR: no input FASTQ or FASTA files specified
+        print_error("""no input FASTQ or FASTA files specified
     or there is no FASTQ and FASTA files in the input directory.\n""")
         platf_depend_exit(1)
     #}
@@ -242,7 +247,7 @@ if len(fq_fa_list) == 0:#{
     else:#{
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
         if len(fq_fa_list) == 0:#{
-            print("\n\t\a!!- ERROR: there is no FASTQ or FASTA files to process found.")
+            print_error("there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
         #}
     #}
@@ -251,12 +256,6 @@ if len(fq_fa_list) == 0:#{
 del help_msg # we do not need it any more
 
 print( strftime("\n%H:%M:%S", localtime(start_time)) + " - START WORKING\n")
-
-print(" Following files will be processed:")
-for i, path in enumerate(fq_fa_list):#{
-    print("    {}. '{}'".format(i+1, path))
-#}
-print('-'*30 + '\n')
 
 
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
@@ -356,12 +355,12 @@ def get_packet_size(num_reads):#{
         
         packet_size = input("""
 Please, specify the number of sequences that should be sent to the NCBI server in one request.
-E.g. if you have 10 reads in your file, you can send 10 reads as single
+E.g. if you have 10 sequences in your file, you can send 10 sequences as single
     request -- in this case you should enter number 10. You may send 2 requests containing
-    5 reads both -- in this case you should enter number 5.
+    5 sequences both -- in this case you should enter number 5.
 
 
-There are {} reads left to process in current file.
+There are {} sequences left to process in current file.
 Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         # Check if entered value is integer number. If no, give another attempt.
         try:#{
@@ -384,130 +383,6 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
 #}
 
 
-# def get_algorithm():#{
-#     """
-#     Function asks the user about what BLASTn algorithm to use.
-
-#     :return: one of the following strings "megaBlast", "discoMegablast", "blastn";
-#     :return type: str;
-#     """
-
-#     reply = None
-#     blast_algorithm = "megaBlast" # default value
-
-#     while reply is None:#{
-#         reply = input("""
-# Please choose a BLAST algorithm:
-#     1. Highly similar sequences (megablast)
-#     2. Optimize for More dissimilar sequences (discontiguous megablast)
-#     3. Optimize for Somewhat similar sequences (blastn)
-
-# Enter the number (1, 2 or 3):>> """)
-#         # Check if entered value is integer number. If no, give another attempt.
-#         try:#{
-#             reply = int(reply)
-#             if reply < 1 or reply > 3:#{ Check if input number is in [1, 3]
-#                 print("\n\tNot a VALID number entered!\a\n" + '~'*20)
-#                 reply = None
-#             #}
-#             else:#{
-#                 print("You have chosen number "+ str(reply) + '\n')
-#                 print('~' * 20 + '\n')
-
-#                 if reply == 1:
-#                     blast_algorithm = "megaBlast"
-#                 elif reply == 2:
-#                     blast_algorithm = "discoMegablast"
-#                 else:
-#                     blast_algorithm = "blastn"
-#             #}
-#         #}
-#         except ValueError:
-#             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-#             reply = None
-#             algorithm = None
-#     #}
-#     return blast_algorithm
-# #}
-
-# def get_organisms():#{
-    
-#     # Only 2 'nt' database restrictions for now
-#     max_org = 5
-#     organisms = list()
-    
-#     error = True
-#     while error:#{
-#         reply = input("""\n~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Please specify organisms for 'nt' database restriction.
-# You are to enter organism's name and it's Taxonomy ID (aka taxid) separated by comma
-#  after prompt symbol '>>' as follows:\n
-#     >> Erwinia,551\n
-# You can enter 2 organisms separated by plus as follows:\n
-#     >> Erwinia,551+Pseudomonas,286
-
-# You can find taxid of your organism from NCBI taxonomy browser:
-# \t'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'
-
-# Default settings are:    bacteria,2+viruses,10239
-
-# Enter organism's name and taxid:>> """)
-
-#         if reply is "":#{
-#             organisms.append("bacteria (taxid:2)") # default
-#             organisms.append("viruses (taxid:10239)") # default
-#             print("\nYou have chosen following organisms:")
-#             for i, org in enumerate(organisms):#{
-#                 print("\t{}. {}".format(i+1, org))
-#             #}
-#             print('~'*30 + '\n')
-#             return organisms
-#         #}
-
-#         try:#{
-#             org_list = reply.strip().split('+')
-#             org_list = list( map(str.strip, org_list) )
-
-#             if len(org_list) > max_org:#{
-#                 raise Exception("\nYou can enter from 1 to {} organisms.\a".format(max_org))
-#             #}
-
-#             for org in org_list:#{
-#                 name_and_taxid = org.strip().split(',')
-#                 name_and_taxid = list( map(str.strip, name_and_taxid) )
-#                 if len(name_and_taxid) != 2:
-#                     raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
-#     and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
-#                 # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
-#                 tmp_taxid = int(name_and_taxid[1])
-#                 if tmp_taxid < 1:
-#                     raise Exception("\nTaxID should be positive integer number\a")
-#                 organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
-#             #}
-#         #}
-#         except ValueError:#{
-#             print("\n" + "=/"*20 + "\n")
-#             print("\n\t!! - ERROR - TaxID should be positive integer number\a")
-#             sleep(2)
-#             continue
-#         #}
-#         except Exception as err:#{
-#             print("\n" + "=/"*20 + "\n")
-#             print("\n\t!! - ERROR: invalid input format")
-#             print( str(err) )
-#             sleep(2)
-#             continue
-#         #}
-
-#         print("\nYou have chosen following organisms:")
-#         for i, tax_fmt in enumerate(organisms):#{
-#             print("\t{}. {}".format(i+1, tax_fmt))
-#         #}
-#         print('~'*20 + '\n')
-#         error = False
-
-#     return organisms
-# #}
 # |===== End of question funtions =====|
 
 
@@ -529,13 +404,23 @@ DELIM = '\t'
 
 # |=== File format constants ===|
 FASTQ_LINES_PER_READ = 4
-FASTA_LINES_PER_READ = 2
+FASTA_LINES_PER_SEQ = 2
+
+
+get_phred33 = lambda q_symb: ord(q_symb) - 33
+
+def get_read_sum_qual(qual_str):#{
+
+    phred33 = map(get_phred33, list(qual_str))
+    sum_qual = sum(phred33)
+    return sum_qual
+#}
 
 
 def fastq2fasta(fq_fa_path, i, new_dpath):#{
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
-        the same name as FASTQ file. Also it counts reads in this file.
+        the same name as FASTQ file. Also it counts sequences in this file.
 
     :param fq_fa_path: path to FASTQ or FASTA file being processed;
     :type fq_fa_path: str;
@@ -555,7 +440,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
-    fastq_patt = r".*\,f(ast)?q(\.gz)?$"
+    fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
     if not re_search(fastq_patt, fq_fa_path) is None:#{
@@ -568,6 +453,9 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
 
         with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
 
+            sum_qual = 0
+            total_len = 0
+
             counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
             for line in fastq_file:#{
                 line = fmt_func(line)
@@ -578,24 +466,28 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
                 #}
                 # reset the counter if the 4-th (quality) line has been encountered
                 elif counter == 4:
+                    sum_qual += get_read_sum_qual(line.strip())
+                    total_len += len(line.strip())
                     counter = 0
                 counter += 1
                 num_lines += 1
             #}
         #}
-        num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of reads
+        num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
+        file_avg_qual = round(sum_qual / total_len, 2)
 
-        print("\n{}. '{}' ({} reads) --> FASTA\n".format(i+1, fq_fa_path, num_reads))
+        print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, fq_fa_path, num_reads))
+        print("\tAverage quality of reads in this file: {} (Phred33)".format(file_avg_qual))
     #}
     # We've got FASTA source file
-    # We need only number of reads in it.
+    # We need only number of sequences in it.
     else:#{ 
-        global FASTA_LINES_PER_READ
+        global FASTA_LINES_PER_SEQ
 
         shutilcpyfile(fq_fa_path, fasta_path)
 
         num_lines = sum(1 for line in open(fasta_path, 'r')) # get number of lines
-        num_reads = int( num_lines / FASTA_LINES_PER_READ ) # get number of reads
+        num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
     #}
 
     return {"fpath": fasta_path, "nreads": num_reads}
@@ -656,7 +548,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     # Form path to result file
     tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
 
-    num_done_reads = None # variable to keep number of succeffdully processed reads
+    num_done_reads = None # variable to keep number of succeffdully processed sequences
 
     print("\n |========== file: '{}' ===========|".format(fasta_path))
     continuation = False
@@ -693,7 +585,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
             #}
         #}
 
-        # If we start from the beginning, we have no reads processed
+        # If we start from the beginning, we have no sequences processed
         if num_done_reads is None:
             num_done_reads = 0
 
@@ -708,7 +600,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
         except Exception:#{
             print("\nTemporary file '{}' not found of broken!".format(tmp_fpath))
             print("{} reads have been already processed".format(num_done_reads))
-            total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_READ )
+            total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_SEQ )
             print("{} reads left".format(total_num_seqs - num_done_reads))
             packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
@@ -743,7 +635,7 @@ def get_packet(fasta_file, packet_size):#{
     """
     Function collects the packet of query sequences to send to BLAST server.
 
-    :param fasta_file: file instance of FASTA file to retrieve reads from;
+    :param fasta_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper;
     :param packet_size: number of query sequences to send as a particular request;
     :type packet_size: int;
@@ -775,6 +667,102 @@ def get_packet(fasta_file, packet_size):#{
 #}
 
 
+# def get_gi_by_acc(acc):#{
+#     """
+#     Function accepts sequence accession and returns it's GI number for further downloading
+#         via E-utilities.
+
+#     :param acc: sequence accession;
+#     :type acc: str;
+
+#     Returns sequence's GI number of 'str'.
+#     """
+    
+#     server = "www.ncbi.nlm.nih.gov"
+#     url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
+
+#     conn = http.client.HTTPSConnection(server)
+#     conn.request("GET", url)
+#     response = conn.getresponse()
+#     gi_text = str(response.read(), "utf-8")
+#     gi = re_search(r"<pre>([0-9]+)", gi_text).group(1)
+#     conn.close()
+
+#     return gi
+# #}
+
+
+# def retrieve_fastas_by_gi(*gis):#{
+
+#     local_fasta = "local_seq_set.fasta"
+#     gis_del_comma = ','.join(gis)
+#     retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
+
+#     def download_waiter(filename):#{
+#         global stop_wait
+#         while not os.path.exists(filename):
+#             if stop_wait:
+#                 return
+#             sleep(1)
+#         print()
+#         fsize = round(os.path.getsize(filename) / (1024), 1) # get kilobytes
+#         while not stop_wait:#{
+#             fsize = round(os.path.getsize(filename) / (1024), 1)
+#             print("\r {} KB downloaded", end="")
+#             sleep(1)
+#         #}
+#         fsize = round(os.path.getsize(filename) / (1024), 1)
+#         print("\r {} KB downloaded \n")
+#     #}
+
+#     waiter = threading.Thread(target=download_waiter, args=(local_fasta))
+#     stop_wait = False
+#     waiter.start()
+    
+#     print("Downloading sequences for local database building...")
+
+#     urllib.request.urlretrieve(retrieve_url, local_fasta)
+#     stop_wait = True
+#     waiter.join()
+
+#     print("Downloading is completed\n\n")
+
+#     return local_fasta
+# #}
+
+
+# acc_dict = dict()
+
+# def build_local_db(acc_dict):#{
+    
+#     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
+
+#     print("Following sequences will be downloaded from Genbank \
+#         for further blasting on yor local machine with 'blast+' toolkit:")
+#     for i, acc in enumerate(acc_dict.keys()):#{
+#         print("  {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
+#     #}
+#     print('~'*20 + '\n')
+
+#     local_fasta = retrieve_fastas_by_gi(gi_list)
+
+#     print("Creating database...")
+#     make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
+#     exit_code = os.system(make_db_cmd)
+#     if exit_code != 0:#{
+#         print_error("error while making the database")
+#         platf_depend_exit(exit_code)
+#     #}
+#     print("Database is successfully installed: \
+#         '{}'\n".format(local_fasta))
+# #}
+
+
+# def switch_to_blast_plus(configure_request, send_request, wait_for_align):#{
+    
+# #}
+
+
 def configure_request(packet, blast_algorithm, organisms):#{
     """
     Function configures the request to BLAST server.
@@ -783,7 +771,7 @@ def configure_request(packet, blast_algorithm, organisms):#{
     :type packet: str;
     :param blast_algorithm: BLASTn algorithm to use;
     :type blast_algorithm: str;
-    :param organisms: list of strings performing 'nt' database restriction;
+    :param organisms: list of strings performing 'nt' database slices;
     :type organisms: list<str>;
 
     Returns a dict of the following structure:
@@ -802,7 +790,7 @@ def configure_request(packet, blast_algorithm, organisms):#{
     payload["QUERY"] = packet # FASTA data
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
 
-    # 'nt' database restrictions:
+    # 'nt' database slices:
     for i, org in enumerate(organisms):#{
         payload["EQ_MENU{}".format(i if i > 0 else "")] = org
     #}
@@ -814,6 +802,7 @@ def configure_request(packet, blast_algorithm, organisms):#{
     return {"payload":payload, "headers": headers}
 #}
 
+    
 def send_request(request):#{
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi".
@@ -857,7 +846,7 @@ def send_request(request):#{
         rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
     #}
     except AttributeError:#{
-        print("\n\t\a!! - ERROR: seems, ncbi has denied your request.")
+        print_error("seems, ncbi has denied your request.")
         print("Response is in file 'request_denial_response.html'")
         with open("request_denial_response.html", 'w') as den_file:#{
             den_file.write(response_text)
@@ -999,21 +988,27 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
 
     # Retrieve human-readable text and put it into result directory
     if there_are_hits:#{
-        global outdir_path
-
-        retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-        conn = http.client.HTTPSConnection(server)
-        conn.request("GET", retrieve_text_url)
-        response = conn.getresponse()
-
-        txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(attempt))
-        # Write text result for a human to read
-        with open(txt_hpath, 'w') as txt_file:
-            txt_file.write(str(response.read(), "utf-8") + '\n')
-        conn.close()
+        save_txt_align_result(server, filename, attempt, rid)
     #}
 
     return respond_text
+#}
+
+
+def save_txt_align_result(server, filename, attempt, rid):#{
+
+    global outdir_path
+
+    retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
+    conn = http.client.HTTPSConnection(server)
+    conn.request("GET", retrieve_text_url)
+    response = conn.getresponse()
+
+    txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(attempt))
+    # Write text result for a human to read
+    with open(txt_hpath, 'w') as txt_file:
+        txt_file.write(str(response.read(), "utf-8") + '\n')
+    conn.close()
 #}
 
 
@@ -1072,12 +1067,15 @@ def parse_align_results_xml(xml_text, seq_names):#{
     # /=== Parse BLAST XML response ===/
 
     root = ElementTree.fromstring(xml_text) # get tree instance
+    global acc_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
     
         # "Iteration" node contains query name information
         query_name = iter_elem.find("Iteration_query-def").text
+
+        query_len = iter_elem.find("Iteration_query-len").text
 
         # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
         hit = iter_hit.find("Hit")
@@ -1103,22 +1101,26 @@ def parse_align_results_xml(xml_text, seq_names):#{
             gaps = hsp.find("Hsp_gaps").text # get number of gaps
 
             evalue = hsp.find("Hsp_evalue").text # get e-value
+            # If E-value is low enough -- add this subject sequence to 'acc_dict' to further downloading
+            if float(evalue) < 0.01:
+                acc_dict[hit_acc] = hit_name
 
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
 
             print("""\n\tHit!: '{}' -- '{}'
+                Query length - {} nt;
                 Identity - {}/{} ({}%); Gaps - {}/{} ({}%)""".format(query_name, hit_taxa_name,
-                    pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
+                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
             # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc,
+            result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
                 align_len, pident, gaps, evalue] ))
         #}
         else:
             # If there is no hit for current sequence
-            print("\t{} -- No significant similarity found".format(query_name))
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found"] ))
+            print("\t{} -- No significant similarity found. Query length - {}".format(query_name, query_len))
+            result_tsv_lines.append(DELIM.join( [query_name, query_len, "No significant similarity found"] ))
         print('=' * 30 + '\n')
     #}
     return result_tsv_lines
@@ -1139,7 +1141,7 @@ def write_result(res_tsv_lines, tsv_res_path):#{
     # If there is no result tsv fil -- create it and write a head of the table.
     if not os.path.exists(tsv_res_path):#{
         with open(tsv_res_path, 'w') as tsv_res_file:#{
-            tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION",
+            tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
                 "ALIGNMENET_LENGTH", "IDENTITY(%)", "GAPS(%)", "E-VALUE"] ) + '\n')
         #}
     #}
@@ -1216,9 +1218,12 @@ print("\nChecking Internet connection...")
 check_connection()
 print("OK\n")
 
-# ???
-# organisms = get_organisms() # get organisms for 'nt' database restriction
-# blast_algorithm = get_algorithm() # get BLAST algorithm
+
+print(" Following files will be processed:")
+for i, path in enumerate(fq_fa_list):#{
+    print("    {}. '{}'".format(i+1, path))
+#}
+print('-'*30 + '\n')
 
 
 # Iterate through found source FASTQ and FASTA files
@@ -1227,7 +1232,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     # Create the result directory with the name of FASTQ of FASTA file being processed:
     new_dpath = create_result_directory(fq_fa_path, outdir_path)
 
-    # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of reads in it:
+    # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
 
     # "hname" means human readable name (e.i. without file path and extention)
@@ -1240,11 +1245,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         blast_algorithm)
 
     if previous_data is None:#{ # If there is no data from previous run
-        num_done_reads = 0 # number of successfully processed reads
+        num_done_reads = 0 # number of successfully processed sequences
         saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
-
-        # ???
-        # packet_size = get_packet_size(curr_fasta["nreads"]) # ask a user for packet size
 
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
@@ -1254,7 +1256,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             tmp_file.write(str(packet_size)+ '\n')
     #}
     else:#{ # if there is data from previous run
-        num_done_reads = previous_data["n_done_reads"] # get number of successfully processed reads
+        num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
         saved_attempt = previous_data["attmpt"] # get number of last successful attempt
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
@@ -1266,7 +1268,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     attempt_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
     if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
         attempt_all += 1
-    attempts_done = int( num_done_reads / packet_size ) # number of successfully processed reads
+    attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
     with open(curr_fasta["fpath"], 'r') as fasta_file:#{
 
@@ -1275,7 +1277,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             fasta_file.readline()
         #}
 
-        reads_left = curr_fasta["nreads"] - num_done_reads # number of reads left to precess
+        reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
         attempts_left = attempt_all - attempts_done # number of packets left to send
         attempt = attempts_done+1 if attempts_done > 0 else 1 # current attempt
 

@@ -1,12 +1,15 @@
 # barapost toolkit
 **So to speak, "*a posteriori* barcoding"**
 
+Version 1.1
+26.08.2019 edition
+
 ## 1. barapost.py
 
 ### DESCRIPTION:
 
  Script "barapost.py" is designed for determinating the taxonomic position
-    of long reads by blasting each of them and regarding the best hit.
+    of nucleotide sequences by blasting each of them and regarding the best hit.
 
  Script processes FASTQ and FASTA files (files can be gzipped).
 
@@ -22,9 +25,9 @@
 ### Default parameters:
 
 - all FASTQ and FASTA files in current directory will be processed;
-- packet size (see `-p` option): 20 sequences;
+- packet size (see `-p` option): 100 sequences;
 - algorithm (see `-a` option): `megaBlast`;
-- organisms (see `-g` option): `bacteria,2+viruses,10239`;
+- organisms (see `-g` option): full `nt` database, e.i. no slices;
 - output directory (`-o` option): directory named `"barapost_result_<date_and_time_of_run>"`
   nested in current directory;
 
@@ -49,12 +52,12 @@
             Available values: 'megaBlast', 'discoMegablast', 'blastn'.
             Default is megaBlast;
 
-    -g (--organisms) --- 'nt' database restriction, e.i. organisms that you expect to see in result files.
+    -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
             Format of value: 
               <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
             See EXAMPLES #2 and #3 below.
             Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-            Default value is:   bacteria,2+viruses,10239.
+            Default is: full 'nt' database, e.i. no slices.
 ```
 
 - More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:
@@ -68,10 +71,10 @@
 
 `./barapost.py -f reads.fastq`
 
-  2) Process a FASTQ file and a FASTA file with discoMegablast, packet size of 5 reads.
+  2) Process a FASTQ file and a FASTA file with discoMegablast, packet size of 5 sequences.
        Search only among Erwinia sequences:
 
-`./barapost.py -f reads_1.fastq.gz -f reads_2.fasta -a discoMegablast -p 5 -g Erwinia,551`
+`./barapost.py -f reads_1.fastq.gz -f some_sequences.fasta -a discoMegablast -p 5 -g Erwinia,551`
 
   3) Process all FASTQ and FASTA files in directory named `some_dir`.
      Search only among Escherichia and viral sequences:
@@ -132,11 +135,11 @@
 
   2) Process a FASTQ file and a FASTA file, place results in "outdir" directory:
 
-`./fastQA_sorter.py -f reads_1.fastq.gz -f reads_2.fasta -o outdir -b test_megaBlast_result.tsv`
+`./fastQA_sorter.py -f reads_1.fastq.gz -f some_sequnces.fasta -o outdir -b test_megaBlast_result.tsv`
 
-  3) Process all files in directory named "dir_with_reads". Sort by genus:
+  3) Process all files in directory named "dir_with_seqs". Sort by genus:
 
-`./fastQA_sorter.py -d dir_with_reads -o outdir -b test_megaBlast_result.tsv -s genus`
+`./fastQA_sorter.py -d dir_with_seqs -o outdir -b test_megaBlast_result.tsv -s genus`
 
 ## Example of usage in combination:
 
