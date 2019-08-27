@@ -145,6 +145,6 @@ Version 1.1
 
 You can try this scripts on test dataset named `some_reads.fastq` (there are 4 reads):
 
-  `./barapost.py -f some_reads.fastq -o ./ -g Escherichia,561+viruses,10239`
+`./barapost.py -f some_reads.fastq -o ./ -g Escherichia,561+viruses,10239`
 
-  `./fastQA_sorter.py -f some_reads.fastq -b some_reads/some_reads_megaBlast_result.tsv -o some_sorted_reads`
+`./fastQA_sorter.py -f some_reads.fastq -b some_reads/some_reads_megaBlast_result.tsv -o some_sorted_reads`
