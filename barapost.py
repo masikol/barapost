@@ -20,10 +20,6 @@ print("\n |=== barapost.py (version 1.1) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
-# Get start time for default outdir name
-from datetime import datetime
-now = datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
-
 from time import time, strftime, localtime, sleep
 start_time = time()
 
@@ -38,7 +34,6 @@ import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree
-from shutil import copyfile as shutilcpyfile
 import threading
 
 import http.client
@@ -131,7 +126,7 @@ is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is
 
 fq_fa_list = list()
 indir_path = None
-outdir_path = "barapost_result_{}".format(now) # default
+outdir_path = "barapost_result" # default
 packet_size = 100 # default
 blast_algorithm = "megaBlast" # default
 organisms = list() # default
@@ -483,8 +478,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     else:#{ 
         global FASTA_LINES_PER_SEQ
 
-        shutilcpyfile(fq_fa_path, fasta_path)
-
         num_lines = sum(1 for line in open(fasta_path, 'r')) # get number of lines
         num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
     #}
@@ -549,7 +542,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
-    print("\n |========== file: '{}' ===========|".format(fasta_path))
+    print("\n |========== file: '{}' ===========|".format(os.path.basename(fasta_path)))
     continuation = False
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath):#{
@@ -561,7 +554,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
             rename_file_verbosely(tmp_fpath, new_dpath)
     #}
 
-    if continuation:#{   Find the name of last successfulli processed sequence
+    if continuation:#{   Find the name of last successfull processed sequence
         print("Let's try to continue...")
         if os.path.exists(tsv_res_fpath):#{
             with open(tsv_res_fpath, 'r') as res_file:#{
@@ -597,9 +590,25 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
             RID_save = temp_lines[-1].split(DELIM)[1].strip()
         #}
         except Exception:#{
-            print("\nTemporary file '{}' not found or broken!".format(tmp_fpath))
-            print("{} reads have been already processed".format(num_done_reads))
             total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_SEQ )
+            print("\nTemporary file '{}' not found or broken!".format(tmp_fpath))
+            print("{} sequences have been already processed".format(num_done_reads))
+            print("There are {} sequences in this file.")
+            print("Maybe you've process this file with 'barapost' and have forgotten about it?\n")
+
+            reply = "BULLSHIT"
+            while True:#{
+                reply = input("Press ENTER to continue processing this file. Press 'q' to quite:>>")
+                if reply == "":
+                    break
+                elif reply == 'q':
+                    platf_depend_exit(0)
+                else:
+                    print_error("invalid reply")
+            #}
+
+
+            print("{} reads have been already processed".format(num_done_reads))
             print("{} reads left".format(total_num_seqs - num_done_reads))
             packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
@@ -891,20 +900,25 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
 
     server = "blast.ncbi.nlm.nih.gov"
     url = "/blast/Blast.cgi"
-    try:#{
-        conn = http.client.HTTPSConnection(server) # create a connection
-        conn.request("POST", url, payload, headers) # send the request
-        response = conn.getresponse() # get the response
-    #}
-    except OSError as oserr:#{
-        print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-        print("Check your Internet connection.\a")
-        print('\n' + '=/' * 20)
-        print( repr(err) )
-        platf_depend_exit(-2)
-    #}
+    error = True
 
-    response_text = str(response.read(), "utf-8") # get response text
+    while error:#{
+        try:#{
+            conn = http.client.HTTPSConnection(server) # create a connection
+            conn.request("POST", url, payload, headers) # send the request
+            response = conn.getresponse() # get the response
+            response_text = str(response.read(), "utf-8") # get response text
+        #}
+        except OSError as oserr:#{
+            print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print( repr(err) )
+            print("barapost will try to connect again in 30 seconds...\n")
+            sleep(30)
+        #}
+        else:#{ if no exception occured
+            error = False
+        #}
+    #}
 
     # /===== TEST =====\
     # with open("response.txt", 'w') as resp_file:
@@ -965,6 +979,11 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
                 error = True
                 sleep(30)
             except http.client.RemoteDisconnected as err:
+                print("{} - Unable to connect to the NCBI server. Let\'s try to connect in 30 seconds.".format(get_work_time()))
+                print('\t' + repr(err))
+                error = True
+                sleep(30)
+            except socket.gaierror as err:
                 print("{} - Unable to connect to the NCBI server. Let\'s try to connect in 30 seconds.".format(get_work_time()))
                 print('\t' + repr(err))
                 error = True
@@ -1125,7 +1144,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
     # /=== Parse BLAST XML response ===/
 
     root = ElementTree.fromstring(xml_text) # get tree instance
-    global acc_dict
+    # global acc_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
@@ -1160,8 +1179,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
             evalue = hsp.find("Hsp_evalue").text # get e-value
             # If E-value is low enough -- add this subject sequence to 'acc_dict' to further downloading
-            if float(evalue) < 0.01:
-                acc_dict[hit_acc] = hit_name
+            # if float(evalue) < 0.01:
+            #     acc_dict[hit_acc] = hit_name
 
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
@@ -1177,7 +1196,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
         #}
         else:
             # If there is no hit for current sequence
-            print("\t{} -- No significant similarity found. Query length - {}".format(query_name, query_len))
+            print("\t{} -- No significant similarity found.\n Query length - {}".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( [query_name, query_len, "No significant similarity found"] ))
         print('=' * 30 + '\n')
     #}
