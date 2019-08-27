@@ -436,7 +436,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     }
     """
     
-    # fasta_patt = r".*\,f(ast)?a(\.gz)?$")
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
@@ -598,7 +597,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
             RID_save = temp_lines[-1].split(DELIM)[1].strip()
         #}
         except Exception:#{
-            print("\nTemporary file '{}' not found of broken!".format(tmp_fpath))
+            print("\nTemporary file '{}' not found or broken!".format(tmp_fpath))
             print("{} reads have been already processed".format(num_done_reads))
             total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_SEQ )
             print("{} reads left".format(total_num_seqs - num_done_reads))
@@ -667,100 +666,167 @@ def get_packet(fasta_file, packet_size):#{
 #}
 
 
-# def get_gi_by_acc(acc):#{
-#     """
-#     Function accepts sequence accession and returns it's GI number for further downloading
-#         via E-utilities.
+def get_gi_by_acc(acc):#{
+    """
+    Function accepts sequence accession and returns it's GI number for further downloading
+        via E-utilities.
 
-#     :param acc: sequence accession;
-#     :type acc: str;
+    :param acc: sequence accession;
+    :type acc: str;
 
-#     Returns sequence's GI number of 'str'.
-#     """
+    Returns sequence's GI number of 'str'.
+    """
     
-#     server = "www.ncbi.nlm.nih.gov"
-#     url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
+    server = "www.ncbi.nlm.nih.gov"
+    url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
 
-#     conn = http.client.HTTPSConnection(server)
-#     conn.request("GET", url)
-#     response = conn.getresponse()
-#     gi_text = str(response.read(), "utf-8")
-#     gi = re_search(r"<pre>([0-9]+)", gi_text).group(1)
-#     conn.close()
+    conn = http.client.HTTPSConnection(server)
+    conn.request("GET", url)
+    response = conn.getresponse()
+    gi_text = str(response.read(), "utf-8")
+    gi = re_search(r"<pre>([0-9]+)", gi_text).group(1)
+    conn.close()
 
-#     return gi
-# #}
+    return gi
+#}
 
 
-# def retrieve_fastas_by_gi(*gis):#{
+def retrieve_fastas_by_gi(*gis):#{
 
-#     local_fasta = "local_seq_set.fasta"
-#     gis_del_comma = ','.join(gis)
-#     retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
+    local_fasta = "local_seq_set.fasta"
+    gis_del_comma = ','.join(gis)
+    retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
 
-#     def download_waiter(filename):#{
-#         global stop_wait
-#         while not os.path.exists(filename):
-#             if stop_wait:
-#                 return
-#             sleep(1)
-#         print()
-#         fsize = round(os.path.getsize(filename) / (1024), 1) # get kilobytes
-#         while not stop_wait:#{
-#             fsize = round(os.path.getsize(filename) / (1024), 1)
-#             print("\r {} KB downloaded", end="")
-#             sleep(1)
-#         #}
-#         fsize = round(os.path.getsize(filename) / (1024), 1)
-#         print("\r {} KB downloaded \n")
-#     #}
+    def download_waiter(filename):#{
+        global stop_wait
+        while not os.path.exists(filename):
+            if stop_wait:
+                return
+            sleep(1)
+        print()
+        fsize = round(os.path.getsize(filename) / (1024), 1) # get kilobytes
+        while not stop_wait:#{
+            fsize = round(os.path.getsize(filename) / (1024), 1)
+            print("\r {} KB downloaded", end="")
+            sleep(1)
+        #}
+        fsize = round(os.path.getsize(filename) / (1024), 1)
+        print("\r {} KB downloaded \n")
+    #}
 
-#     waiter = threading.Thread(target=download_waiter, args=(local_fasta))
-#     stop_wait = False
-#     waiter.start()
+    waiter = threading.Thread(target=download_waiter, args=(local_fasta))
+    stop_wait = False
+    waiter.start()
     
-#     print("Downloading sequences for local database building...")
+    print("Downloading sequences for local database building...")
 
-#     urllib.request.urlretrieve(retrieve_url, local_fasta)
-#     stop_wait = True
-#     waiter.join()
+    urllib.request.urlretrieve(retrieve_url, local_fasta)
+    stop_wait = True
+    waiter.join()
 
-#     print("Downloading is completed\n\n")
+    print("Downloading is completed\n\n")
 
-#     return local_fasta
-# #}
+    return local_fasta
+#}
 
 
-# acc_dict = dict()
+acc_dict = dict()
 
-# def build_local_db(acc_dict):#{
+def build_local_db(acc_dict):#{
     
-#     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
+    gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
 
-#     print("Following sequences will be downloaded from Genbank \
-#         for further blasting on yor local machine with 'blast+' toolkit:")
-#     for i, acc in enumerate(acc_dict.keys()):#{
-#         print("  {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
-#     #}
-#     print('~'*20 + '\n')
+    print("Following sequences will be downloaded from Genbank \
+        for further blasting on yor local machine with 'blast+' toolkit:")
+    for i, acc in enumerate(acc_dict.keys()):#{
+        print("  {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
+    #}
+    print('~'*20 + '\n')
 
-#     local_fasta = retrieve_fastas_by_gi(gi_list)
+    local_fasta = retrieve_fastas_by_gi(gi_list)
 
-#     print("Creating database...")
-#     make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
-#     exit_code = os.system(make_db_cmd)
-#     if exit_code != 0:#{
-#         print_error("error while making the database")
-#         platf_depend_exit(exit_code)
-#     #}
-#     print("Database is successfully installed: \
-#         '{}'\n".format(local_fasta))
-# #}
+    print("Creating database...")
+    make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
+    exit_code = os.system(make_db_cmd)
+    if exit_code != 0:#{
+        print_error("error while making the database")
+        platf_depend_exit(exit_code)
+    #}
+    print("Database is successfully installed: \
+        '{}'\n".format(local_fasta))
+
+    print("Creating database index...")
+    make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
+    exit_code = os.system(make_index_cmd)
+    if exit_code != 0:#{
+        print_error("error while creating database index")
+        platf_depend_exit(exit_code)
+    #}
+    print("Database index has benn successfully created\n")
+
+    os.unlink(local_fasta) # remove source FASTA file, not the database
+
+    return local_fasta
+#}
 
 
-# def switch_to_blast_plus(configure_request, send_request, wait_for_align):#{
-    
-# #}
+query_path = "query.fasta"
+xml_output_path = "xml_output.xml"
+
+def remove_tmp_files(*paths):#{
+    for path in paths:#{
+        if os.path.exists(path):#{
+            os.unlink(path)
+        #}
+    #}
+#}
+
+
+def switch_to_blast_plus(local_fasta):#{
+
+    global xml_output_path
+    global query_path
+
+    def configure_localdb_request(packet, blast_algirithm, organisms):#{
+
+        if blast_algorithm == "megaBlast":
+            blast_algorithm = "megablast"
+        elif blast_algorithm == "discoMegablast":
+            blast_algorithm = "dc-megablast"
+
+        blast_cmd = "blastn -query {} -db {} -outfmt 5 -o {} -task {} -max_target_seqs 5 -use_index true".format(query_path,
+            local_fasta, xml_output_path, blast_algorithm)
+
+        return blast_cmd
+    #}
+
+    def send_localdb_request(request, attempt, attempt_all, filename, tmp_fpath):#{
+
+        rid = "LOCALMACHINE_{}".format(strftime("%H%M%S", localtime( time() )))
+        rtoe = None
+
+        # Save temporary data
+        with open(tmp_fpath, 'a') as tmpfile:
+            tmpfile.write("{}\t{}\n".format(attempt, response["RID"]))
+
+        print("\n{} - Requested data for: '{}' ({}/{})".format(get_work_time(), filename, attempt, attempt_all))
+
+        # request is blastn cmd
+        exit_code = os.system(request)
+        if exit_code != 0:#{
+            print_error("error while aligning a sequence against local database")
+            platf_depend_exit(exit_code)
+        #}
+
+        with open(xml_output_path, 'r') as xml_file:#{
+            align_xml_text = xml_file.read().strip()
+        #}
+
+        return align_xml_text
+    #}
+
+    return configure_localdb_request, send_localdb_request
+#}
 
 
 def configure_request(packet, blast_algorithm, organisms):#{
@@ -803,18 +869,22 @@ def configure_request(packet, blast_algorithm, organisms):#{
 #}
 
     
-def send_request(request):#{
+def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
     """
-    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi".
+    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
+        and then waits for satisfaction of the request and retrieves response text.
 
     :param request: request_data (it is a dict that 'configure_request()' function returns);
     :param request: dict<dict>;
+    :param attempt: current attempt. This information is printed to console;
+    :type attempt: int;
+    :param attempt all: total number of attempts corresponding to current FASTA file.
+        This information is printed to console;
+    :type attempt_all: int;
+    :param filename: basename of current FASTA file;
+    :type filename: str;
 
-    Returns a dict of the following structure:
-    {
-        "RID": Request ID (str),
-        "RTOE", time_to_wait_provided_by_the_NCBI_server (int)
-    }
+    Returns XML text of type 'str' with BLAST response.
     """
     payload = request["payload"]
     headers = request["headers"]
@@ -857,30 +927,18 @@ def send_request(request):#{
         conn.close()
     #}
 
-    return {"RID": rid, "RTOE": rtoe}
+    # Save temporary data
+    with open(tmp_fpath, 'a') as tmpfile:
+        tmpfile.write("{}\t{}\n".format(attempt, response["RID"]))
+
+    # /=== Wait for alignment results ===\
+
+    return( wait_for_align(rid, rtoe, attempt, attempt_all, filename) )
 #}
 
 
-def wait_for_align(rid, rtoe, attempt, attempt_all, filename):#{
-    """
-    Function waits for satisfaction of the request and retrieves response text.
+def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
 
-    :param rid: Reques ID to wait for;
-    :type rid: str;
-    :param rtoe: time in seconds to wait provided by the NCBI server;
-    :type rtoe: int;
-    :param attempt: current attempt. This information is printed to console;
-    :type attempt: int;
-    :param attempt all: total number of attempts corresponding to current FASTA file.
-        This information is printed to console;
-    :type attempt_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
-
-    Returns XML text of type 'str' with BLAST response.
-    """
-    
-    
     print("\n{} - Requested data for: '{}' ({}/{})".format(get_work_time(), filename, attempt, attempt_all))
     if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
         print("{} - The system estimated that the query with Request ID '{}' will be resolved in {} seconds ".format(get_work_time(), rid, rtoe))
@@ -1225,6 +1283,10 @@ for i, path in enumerate(fq_fa_list):#{
 #}
 print('-'*30 + '\n')
 
+switch_to_localmachine = False
+localdb_builded = False
+probing_batch_size = 200
+seqs_processed = 0
 
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
@@ -1318,6 +1380,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                     result_tsv_lines = parse_align_results_xml(align_xml_text,
                         packet["names"]) # get result tsv lines
 
+                    seqs_processed += len( packet["names"] )
+                    if seqs_processed >= probing_batch_size:
+                        switch_to_localmachine = True
+
                     # Write the result to tsv
                     write_result(result_tsv_lines, tsv_res_path)
                 #}
@@ -1326,29 +1392,34 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             if send:#{
             
                 request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
-                response = send_request(request) # send the request
 
-                # Save temporary data
-                with open(tmp_fpath, 'a') as tmpfile:
-                    tmpfile.write("{}\t{}\n".format(attempt, response["RID"]))
+                # Send the request get BLAST XML response
+                align_xml_text = send_request(request,
+                    attempt, attempt_all, fasta_hname+".fasta", tmp_fpath
 
-                align_xml_text = wait_for_align(response["RID"], response["RTOE"],
-                    attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
+                seqs_processed += len( packet["names"] )
+                if seqs_processed >= probing_batch_size:
+                    switch_to_localmachine = True
 
+                # Get result tsv lines
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"]) # get result tsv lines
+                    packet["names"])
 
                 # Write the result to tsv
                 write_result(result_tsv_lines, tsv_res_path)
             #}
 
             attempt += 1
+
+            if not localdb_builded and switch_to_localmachine:#{
+                localdb_name = build_local_db(acc_dict)
+                configure_request, send_request = switch_to_blast_plus(localdb_name)
+                localdb_builded = True
+            #}
         #}
     #}
 
-    # Remove temporary file
-    if os.path.exists(tmp_fpath):
-        os.unlink(tmp_fpath)
+    remove_tmp_files(query_path, xml_output_path, tmp_fpath)
 #}
 
 
