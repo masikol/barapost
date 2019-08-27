@@ -1,8 +1,8 @@
 # barapost toolkit
 **So to speak, "*a posteriori* barcoding"**
 
-Version 1.1
-26.08.2019 edition
+Version 2.0;
+28.08.2019 edition
 
 ## 1. barapost.py
 
@@ -26,11 +26,26 @@ Version 1.1
 
 - all FASTQ and FASTA files in current directory will be processed;
 - packet size (see `-p` option): 100 sequences;
+- probing batch size (see `-b` option): 200 sequences;
 - algorithm (see `-a` option): `megaBlast`;
 - organisms (see `-g` option): full `nt` database, e.i. no slices;
-- output directory (`-o` option): directory named `"barapost_result_<date_and_time_of_run>"`
+- output directory (`-o` option): directory named `"barapost_result"`
   nested in current directory;
 
+Default behavior is to send certain number (see `-b` option) of sequences to BLAST server,
+download records-hits from Genbank according to results of blasting probing batch of sequences,
+build an indexed local database which consists of downloaded sequences,
+and continue aligning with `blast+` toolkit in order to save time.
+
+Obviously, a probing batch cannot cover all variety of data set,
+so some sequences can be recognized as "unknown". But you always can run "barapost.py" again
+on "unknown" sequences.
+
+You can use "barapost.py" without `blast+` tookit by specifying `--remote-only` option.
+In this case all sequences will be sent on BLAST server and aligned there.
+
+`blast+` toolkit (including blastn, makeblastdb and makembindex) can
+be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
 
 ### OPTIONS:
 
@@ -58,6 +73,15 @@ Version 1.1
             See EXAMPLES #2 and #3 below.
             Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
             Default is: full 'nt' database, e.i. no slices.
+
+    -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
+            After that a local database will be builded according to results of probing blasting.
+            More clearly: records-hits will be downloaded from Genbank and will be used
+            as local database. Further blasting against this database will be preformed
+            on local machine with 'blast+' toolkit.
+            Value: positive integer number. Default value is 200;
+
+    --remote-only --- flag option. If specified, all aligning will be performed on BLAST server;
 ```
 
 - More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:
@@ -103,7 +127,7 @@ Version 1.1
 ### Default parameters:
 
 - all FASTQ and FASTA files in current directory will be processed;
-- sorting sensitivity (see `-s` option): `species`;
+- sorting sensitivity (see `-s` option): `"species"`;
 - output directory (`-o` option): directory named `"fastQA_sorter_result_<date_and_time_of_run>"`
   nested in current directory;
 

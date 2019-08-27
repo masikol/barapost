@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.1
-# 26.08.2019 edition
+# Version 2.0
+# 28.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -21,7 +21,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 1.1) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.0) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -59,6 +59,13 @@ DESCRIPTION:\n
  - If -d (--indir) option is specified, all FASTQ and FASTA files in directory specified by this option will be sorted.
  - If no separate FASTQ or FASTA files and not input directory is specified,
        fastQA_sorter will process all FASTQ and FASTA files in current directory.
+--------------------------------
+
+Default parameters:\n
+- all FASTQ and FASTA files in current directory will be processed;
+- sorting sensitivity (see '-s' option): 'species';
+- output directory ('-o' option): directory named '"fastQA_sorter_result_<date_and_time_of_run>"''
+  nested in current directory;
 --------------------------------
 
 OPTIONS (* means mandatory option):\n
