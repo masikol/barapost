@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Version 2.0
+# Version 2.1
 # 28.08.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.0) ===|\n")
+print("\n |=== barapost.py (version 2.1) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -33,13 +33,13 @@ def get_work_time():#{
 import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
-from xml.etree import ElementTree
-import threading
+from xml.etree import ElementTree # for retrieving information from XML BLAST report
 
 import http.client
 import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
+import socket
 
 
 # |===== Function that asks to press ENTER on Windows =====|
@@ -48,8 +48,8 @@ from sys import platform
 
 def platf_depend_exit(exit_code):#{
     """
-    A function that asks to press ENTER press on Windows
-        and exits.
+    Function asks to press ENTER press on Windows
+        and exits after that.
 
     :type exit_code: int;
     """
@@ -60,7 +60,8 @@ def platf_depend_exit(exit_code):#{
 
 
 def print_error(text):#{
-    print("\n\t\a!! - ERROR: " + text + '\n')
+    "Function for printing error messages"
+    print("\n   \a!! - ERROR: " + text + '\n')
 #}
 
 
@@ -104,7 +105,7 @@ OPTIONS:\n
             Input files can be gzipped.\n
     -o (--outdir) --- output directory;\n
     -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
-            Value: integer number [1, 1000]. Default value is 100;\n
+            Value: integer number [1, 500]. Default value is 100;\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
             Available values: 'megaBlast', 'discoMegablast', 'blastn'.
             Default is megaBlast;\n
@@ -124,7 +125,8 @@ OPTIONS:\n
             as local database. Further blasting against this database will be preformed
             on local machine with 'blast+' toolkit.
             Value: positive integer number. Default value is 200;\n
-    --remote-only --- flag option. If specified, all aligning will be performed on BLAST server;
+    --remote-only --- flag option. If specified, all aligning will be performed on BLAST server
+            and 'blast+' toolkit won't be used;
 ----------------------------------------------------------
 
 EXAMPLES:\n
@@ -152,14 +154,23 @@ except getopt.GetoptError as gerr:#{
 
 is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is None else False
 
+# Default values:
 fq_fa_list = list()
 indir_path = None
-outdir_path = "barapost_result" # default
-packet_size = 100 # default
-probing_batch_size = 200 # default
-blast_algorithm = "megaBlast" # default
-organisms = list() # default
-remote_only = False # default
+outdir_path = "barapost_result"
+packet_size = 100
+probing_batch_size = 200
+blast_algorithm = "megaBlast"
+organisms = list() # default is whole 'nt' database
+remote_only = False
+
+if len(args) != 0:#{
+    print_error("barapost.py does not take any positional arguments")
+    print("Here are positional arguments specified by you:")
+    for a in args:
+        print(' ' + a)
+    platf_depend_exit(1)
+#}
 
 for opt, arg in opts:#{
     
@@ -201,11 +212,11 @@ for opt, arg in opts:#{
     if opt in ("-p", "--packet-size"):#{
         try:#{
             packet_size = int(arg)
-            if packet_size < 1 or packet_size > 100:
+            if packet_size < 1 or packet_size > 500:
                 raise ValueError
         #}
         except ValueError:#{
-            print_error("packet_size (-p option) must be integer number from 1 to 1000")
+            print_error("packet_size (-p option) must be integer number from 1 to 500")
             platf_depend_exit(1)
         #}
     #}
@@ -227,7 +238,7 @@ for opt, arg in opts:#{
             org_list = list( map(str.strip, org_list) )
 
             if len(org_list) > max_org:#{
-                raise Exception("\nYou can enter from 1 to {} organisms.\a".format(max_org))
+                raise Exception("\nYou can specify from 1 to {} organisms.\a".format(max_org))
             #}
 
             for org in org_list:#{
@@ -237,10 +248,10 @@ for opt, arg in opts:#{
                     raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
     and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
                 #}
-                # Validate TaxID inteder format: it will raise ValueError if taxid is invalid
+                # Validate TaxID integer format: it will raise ValueError if taxid is invalid
                 tmp_taxid = int(name_and_taxid[1])
                 if tmp_taxid < 1:#{
-                    raise Exception("\nTaxID should be positive integer number\a")
+                    raise ValueError("\nTaxID should be positive integer number\a")
                 #}
                 organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
             #}
@@ -312,8 +323,8 @@ if not remote_only:#{
         #}
 
         if not utility_found:#{
-            print_yellow("\tAttention!\n{} is not found in your system.".format(utility))
-            print_yellow("""If this error still occure although you have installed everything 
+            print("\tAttention!\n'{}' from blast+ toolkit is not found in your system.".format(utility))
+            print("""If this error still occure although you have installed everything 
     -- make sure that this program is added to PATH)""")
             platf_depend_exit(1)
         #}
@@ -392,7 +403,6 @@ Enter the number (1 or 2):>> """)
             #}
             else:#{
                 print("You have chosen number " + str(continuation) + '\n')
-                print('~' * 20 + '\n')
             #}
         #}
         except ValueError:#{
@@ -415,7 +425,7 @@ def get_packet_size(num_reads):#{
 
     packet_size = None
     # You cannot sent more query sequences than you have
-    limit = num_reads if num_reads <= 1000 else 1000
+    limit = num_reads if num_reads <= 500 else 500
 
     while packet_size is None:#{
         
@@ -437,7 +447,6 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
             #}
             else:#{
                 print("You have chosen number " + str(packet_size) + '\n')
-                print('~' * 20 + '\n')
             #}
         #}
         except ValueError:#{
@@ -465,8 +474,10 @@ FORMATTING_FUNCS = (
     lambda line: line.decode("utf-8").strip()  # format gzipped line
 )
 
+
 # |=== Delimiter for result tsv file ===|
 DELIM = '\t'
+
 
 # |=== File format constants ===|
 FASTQ_LINES_PER_READ = 4
@@ -675,7 +686,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
                 global switch_to_localmachine
                 global localdb_builded
                 switch_to_localmachine = True
-                localdb_builded = True
+                localdb_builded = True # If at least one sequence has benn processed locally, database is already builded
             #}
         #}
         except Exception:#{
@@ -764,14 +775,25 @@ def get_packet(fasta_file, packet_size):#{
 #}
 
 
+# If --remote-only is specified -- blast+ won't be used. 
+# Therefore we dod not need these functions.
 if not remote_only:#{
 
+    import threading # There is no need to import this module if '--remote-only' is specified.
+
+    # Variable for counting accessions of records menat to be downloaded from Genbank.
+    # Is used only for printing the list of accessions to console.
     acc_counter = 0
+
+    # It is a dictionary of accessions and record names.
+    # Accessions are keys, record names are values.
+    # This dictionary is filled while processing and at the beginning of continuation.
+    acc_dict = dict()
 
     def get_gi_by_acc(acc):#{
         """
         Function accepts sequence accession and returns it's GI number for further downloading
-            via E-utilities.
+            with E-utilities.
 
         :param acc: sequence accession;
         :type acc: str;
@@ -789,10 +811,12 @@ if not remote_only:#{
                 conn.request("GET", url)
                 response = conn.getresponse()
                 gi_text = str(response.read(), "utf-8")
+                # The only text in this HTML document is GI. It is in <pre> tag.
                 gi = str( re_search(r"<pre>([0-9]+)", gi_text).group(1) )
                 conn.close()
             #}
             except OSError as oserr:#{
+                # If site is unavailable -- try to connect again in 60 seconds
                 print_error("unable to connect to 'www.ncbi.nlm.nih.gov'")
                 print("  barapost will try to connect adaing in 60 seconds")
                 sleep(60)
@@ -803,47 +827,69 @@ if not remote_only:#{
             #}
         #}
 
+        # Print accession and record name to console
         global acc_counter
         acc_counter += 1
         print("  {}. {} - '{}'".format(acc_counter, acc, acc_dict[acc]))
-
 
         return gi
     #}
 
 
     def retrieve_fastas_by_gi(gi_list, db_dir):#{
+        """
+        Function downloads set of records from Genbank according to list of GIs passed to it.
+        Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
 
-        local_fasta = os.path.join(db_dir, "local_seq_set.fasta")
-        gis_del_comma = ','.join(gi_list)
+        :param gi_list: list of GI numbers of sequences meant to be downloaded;
+        :type gi_list: list<str>;
+        :param db_dir: path to directory in which downloaded FASTA file will be placed;
+        :type db_dir: str;
+
+        Returns path to downloaded FASTA file of 'str'.
+        """
+
+        local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
+        gis_del_comma = ','.join(gi_list) # GI numbers must be separated by comma in url
+        # E-utilities provide us with possibility of downloading records from Genbank by GI numbers.
         retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
-        global stop_wait
+        
+        global stop_wait # a flag variable that will signal waiter-function to stop executing
 
         def download_waiter():#{
+            """
+            Function waits untill 'local_fasta' file is downloaded.
+            It prints size of downloaded data to console during downloading.
+            This function just waits -- it won't bring you the menu :).
+            """
+            # Wait untill downloading starts
             while not os.path.exists(local_fasta):
                 if stop_wait:
                     return
                 sleep(1)
             print()
+
             fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
             while not stop_wait:#{
+                # Get size of downloaded data
                 fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
                 print("\r {} MB downloaded".format(fsize), end="")
-                sleep(1)
+                sleep(1) # instant updates are not necessary
             #}
+            # Print total size of downloaded file
             fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
             print("\r {} MB downloaded \n".format(fsize))
         #}
 
-        waiter = threading.Thread(target=download_waiter)
-        stop_wait = False
-        waiter.start()
+        waiter = threading.Thread(target=download_waiter) # create thread
+        stop_wait = False # raise the flag
+        waiter.start() # start waiting
         
         print("Downloading sequences for local database building...")
 
-        urllib.request.urlretrieve(retrieve_url, local_fasta)
-        stop_wait = True
-        waiter.join()
+        urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
+        stop_wait = True # lower the flag
+        waiter.join() # main thread will wait until waiter function ends it's work
 
         print("Downloading is completed\n\n")
 
@@ -851,35 +897,48 @@ if not remote_only:#{
     #}
 
 
-    acc_dict = dict()
-
-
     def build_local_db(acc_dict, new_dpath):#{
+        """
+        Function builds a local indexed database with utilities from 'blast+' toolkit.
+
+        :param acc_dict: a dictionary of accessions and record names
+            Accession are keys, record names are values;
+        :type acc_dict: dict<str, str>;
+        :param new_dpath: path to current result directory (each processed file has it's own result directory);
+        :type new_dpath: str;
+
+        Returns path to builded local indexed database.
+        """
 
         print('\n' + '-'*25)
         print("\nSwitching to aligning on local machine")
 
         print("""\nFollowing sequences will be downloaded from Genbank
-        for further blasting on your local machine with 'blast+' toolkit:""")
+    for further blasting on your local machine with 'blast+' toolkit:\n""")
         
+        # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
         gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
 
         print('~'*20 + '\n')
 
-        db_dir = os.path.join(new_dpath, "local_database")
+        db_dir = os.path.join(new_dpath, "local_database") # path to directory in which database will be placed
         try:#{
             os.makedirs(db_dir)
         #}
         except OSError as err:#{
+            #If this directory exists
 
             while True:#{
 
                 print("Database directory exists.")
                 if len(os.listdir(db_dir)) == 0:#{
+                    # If it is empty -- nothing stops us. break and build a database
                     print("It is empty. Building a database...")
                     break
                 #}
                 else:#{
+                    # If there are some files, the user will decide, whether to use this database
+                    # or to remove it and to build again (e.g. if the database haven't been builded successfully) .
                     print("Here are files located in this directory:")
                     for i, file in enumerate(os.listdir(db_dir)):
                         print("  {}. '{}'".format(i+1, file))
@@ -888,38 +947,47 @@ if not remote_only:#{
                 Enter 'r' to rebuild database:>>""")
 
                     if reply == "":
+                        # Do not build a database, just return path to it.
                         return os.path.join(db_dir, "local_seq_set.fasta")
                     elif reply == 'r':
+                        # Empty this directory and break from the loop in order to build a database.
                         for file in os.listdir(db_dir):
                             os.unlink(file)
                         break
                     else:
+                        # Ask again
                         continue
                 #}
             #}
 
         #}
-        local_fasta = retrieve_fastas_by_gi(gi_list, db_dir)
+        local_fasta = retrieve_fastas_by_gi(gi_list, db_dir) # download FASTA file
 
         print("Creating database...")
+        # Configure command line
         make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
-        exit_code = os.system(make_db_cmd)
+        exit_code = os.system(make_db_cmd) # make a blast-format database
         if exit_code != 0:#{
             print_error("error while making the database")
             platf_depend_exit(exit_code)
         #}
-        print("Database is successfully installed: \
-            '{}'\n".format(local_fasta))
+        print("""Database is successfully installed:
+    '{}'\n""".format(local_fasta))
 
         print("Creating database index...")
+        # Configure command line
         make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
-        exit_code = os.system(make_index_cmd)
+        exit_code = os.system(make_index_cmd) # create an index for the database
         if exit_code != 0:#{
             print_error("error while creating database index")
             platf_depend_exit(exit_code)
         #}
         print("Database index has been successfully created\n")
 
+        # Gzip downloaded FASTA file in order to save space on disk
+        with open(local_fasta, 'r') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:#{
+            fagz_file.write(bytes(local_fasta.readline(), "utf-8"))
+        #}
         os.unlink(local_fasta) # remove source FASTA file, not the database
 
         return local_fasta
@@ -927,31 +995,63 @@ if not remote_only:#{
 
 
     def switch_to_blast_plus(local_fasta):#{
+        """
+        Function replaces functions 'configure_request' and 'send_request' that
+            work with BLAST server with analoguous ones that works with 'blastn' from 'blast+'.
+        This replacement is performed in order not to change interface used in 'kernel loop' while
+            switching to 'blast+'.
+        New functions have the same signature as 'remote-aimed' ones.
 
-        global xml_output_path
-        global query_path
+        :param local_fasta: path to builded database;
+        :type local_fasta: str;
+
+        Returns two functions that are meant to replace 'remote-aimed' functions 'configure_request' and 'send_request'
+            with ones that work with 'blastn' from 'blast+'.
+        """
+
+        global xml_output_path # path to file in which 'blastn will write it's report
+        global query_path # path to file in which a packet of sequences will be written
 
         def configure_localdb_request(packet, blast_algorithm, organisms):#{
+            """
+            Function meant to replace 'configure_request' one that works with BLAST server.
+            'organisms' argument is not used here, but I need to keep i here
+            in order not to change interface used in 'kernel loop'.
+            """
 
+            # Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
             if blast_algorithm == "megaBlast":
                 blast_algorithm = "megablast"
             elif blast_algorithm == "discoMegablast":
                 blast_algorithm = "dc-megablast"
 
-            blast_cmd = "blastn -query {} -db {} -outfmt 5 -out {} -task {} -max_target_seqs 5 -use_index true".format(query_path,
-                local_fasta, xml_output_path, blast_algorithm)
+            # Indexed discontiguous searches are not supported:
+            # https://www.ncbi.nlm.nih.gov/books/NBK279668/#usermanual.Megablast_indexed_searches
+            if blast_algorithm != "dc-megablast":
+            	use_index = "true"
+            else:
+            	use_index = "false"
 
+            # Confirue command line
+            blast_cmd = "blastn -query {} -db {} -outfmt 5 -out {} -task {} -max_target_seqs 5 -use_index {}".format(query_path,
+                local_fasta, xml_output_path, blast_algorithm, use_index)
+
+            # Write packet sequences to query file
             with open(query_path, 'w') as query_file:#{
                 query_file.write(packet)
             #}
 
-            return blast_cmd
+            return blast_cmd # return command line in order to follow the interface used in 'kernel loop'
         #}
 
         def send_localdb_request(request, attempt, attempt_all, filename, tmp_fpath):#{
+            """
+            Function meant to replace 'send_request' one that works with BLAST server.
+            """
 
+            # Request IDs should differ from ones used for aligning on BLAST server.
             rid = "LOCALMACHINE_{}".format(strftime("%H%M%S", localtime( time() )))
-            rtoe = None
+            rtoe = None # 'blastn' from 'blast+' does not estimate time needed to alignment
 
             # Save temporary data
             with open(tmp_fpath, 'a') as tmpfile:
@@ -959,29 +1059,35 @@ if not remote_only:#{
 
             print("\n{} - Alignment for: '{}' ({}/{}) started".format(get_work_time(), filename, attempt, attempt_all))
 
-            # request is blastn cmd
+            # request is blastn cmd returned by 'configure_localdb_request' function
             exit_code = os.system(request)
             if exit_code != 0:#{
                 print_error("error while aligning a sequence against local database")
                 platf_depend_exit(exit_code)
             #}
 
+            # Read response XML text from file
             with open(xml_output_path, 'r') as xml_file:#{
                 align_xml_text = xml_file.read().strip()
             #}
 
-            return align_xml_text
+            return align_xml_text # return it
         #}
 
+        # Return functions
         return configure_localdb_request, send_localdb_request
     #}
 #}
 
 
-query_path = "query.fasta"
-xml_output_path = "xml_output.xml"
+query_path = "query.fasta"  # path to file in which 'blastn will write it's report
+xml_output_path = "xml_output.xml"  # path to file in which a packet of sequences will be written
 
 def remove_tmp_files(*paths):#{
+    """
+    Function removes files passed to it.
+    Actually, passed arguments are paths ('str') to files meant to be removed.
+    """
     for path in paths:#{
         if os.path.exists(path):#{
             os.unlink(path)
@@ -1099,8 +1205,25 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
 
 
 def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
+    """
+    Function waits untill BLAST server accomplishes the request.
+    
+    :param rid: Request ID to wait for;
+    :type rid: str;
+    :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
+    :type rtoe: int;
+    :param attempt: current attempt. This information is printed to console;
+    :type attempt: int;
+    :param attempt all: total number of attempts corresponding to current FASTA file.
+        This information is printed to console;
+    :type attempt_all: int;
+    :param filename: basename of current FASTA file;
+    :type filename: str;
 
-    print("\n{} - Requesting for alignment results for {}: '{}' ({}/{})".format(get_work_time(),
+    Returns XML response ('str').
+    """
+
+    print("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
     rid, filename, attempt, attempt_all))
     if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
         print("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
@@ -1358,7 +1481,7 @@ def write_result(res_tsv_lines, tsv_res_path):#{
     if not os.path.exists(tsv_res_path):#{
         with open(tsv_res_path, 'w') as tsv_res_file:#{
             tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY(%)", "GAPS(%)", "E-VALUE"] ) + '\n')
+                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE"] ) + '\n')
         #}
     #}
     # Write reslut tsv lines to this file
@@ -1429,7 +1552,6 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 
 #                   |===== Kernel loop =====|
 
-
 print("\nChecking Internet connection...")
 check_connection()
 print("OK\n")
@@ -1441,7 +1563,9 @@ for i, path in enumerate(fq_fa_list):#{
 #}
 print('-'*30 + '\n')
 
+# Flag variable. Swithes to True when it is time to build a database and align with 'blast+'
 switch_to_localmachine = False
+# Flag variable. Swithes to True when database is successfuly builded.
 localdb_builded = False
 
 # Iterate through found source FASTQ and FASTA files
@@ -1463,17 +1587,16 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         blast_algorithm)
 
     if previous_data is None:#{ # If there is no data from previous run
+
         num_done_reads = 0 # number of successfully processed sequences
         saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
-
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
-        with open(tmp_fpath, 'w') as tmp_file:
-            tmp_file.write(str(packet_size)+ '\n')
     #}
     else:#{ # if there is data from previous run
+
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
         saved_attempt = previous_data["attmpt"] # get number of last successful attempt
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
@@ -1483,8 +1606,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         contin_rtoe = 0 # we will not sleep at the very beginning of continuation
 
         if switch_to_localmachine:#{
-            localdb_name = build_local_db(acc_dict, new_dpath)
-            configure_request, send_request = switch_to_blast_plus(localdb_name)
+            # If execution has been aborted during aligning with 'blast+'
+            localdb_name = build_local_db(acc_dict, new_dpath) # build a database
+            configure_request, send_request = switch_to_blast_plus(localdb_name) # replace function
         #}
     #}
 
@@ -1512,10 +1636,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         for i in range(attempts_left):#{
 
             if not localdb_builded and switch_to_localmachine and not remote_only:#{
-                localdb_name = build_local_db(acc_dict, new_dpath)
-                configure_request, send_request = switch_to_blast_plus(localdb_name)
+                localdb_name = build_local_db(acc_dict, new_dpath) # build a database
+                configure_request, send_request = switch_to_blast_plus(localdb_name) # replace function
                 localdb_builded = True
             #}
+
+            with open(tmp_fpath, 'w') as tmp_file:
+                tmp_file.write(str(packet_size)+ '\n')
 
             packet = get_packet(fasta_file, packet_size) # form the packet
 
@@ -1573,9 +1700,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             attempt += 1
         #}
     #}
-
-    remove_tmp_files(query_path, xml_output_path, tmp_fpath)
+    remove_tmp_files(tmp_fpath)
 #}
+remove_tmp_files(query_path, xml_output_path)
 
 
 print("\nTask completed successfully!")

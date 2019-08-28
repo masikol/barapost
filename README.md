@@ -1,23 +1,22 @@
 # barapost toolkit
-**So to speak, "*a posteriori* barcoding"**
 
-Version 2.0;
+Version 2.1;
 28.08.2019 edition
 
 ## 1. barapost.py
 
 ### DESCRIPTION:
 
- Script "barapost.py" is designed for determinating the taxonomic position
-    of nucleotide sequences by blasting each of them and regarding the best hit.
+ Script "barapost.py" is designed for determinating the taxonomic position 
+of nucleotide sequences by blasting each of them and regarding the best hit.
 
  Script processes FASTQ and FASTA files (files can be gzipped).
 
  Results of the work of this script are written to TSV file,
-    that can be found in result directory.
+that can be found in result directory.
 
  If no separate input (FASTQ, FASTA) files and not input directory is specified,
-    "barapost.by" will process all FASTQ and FASTA files in current directory.
+"barapost.by" will process all FASTQ and FASTA files in current directory.
 
  FASTQ and/or FASTA files processed by this script are meant to be sorted afterwards by "fastQA_sorter.py".
 
@@ -36,6 +35,7 @@ Default behavior is to send certain number (see `-b` option) of sequences to BLA
 download records-hits from Genbank according to results of blasting probing batch of sequences,
 build an indexed local database which consists of downloaded sequences,
 and continue aligning with `blast+` toolkit in order to save time.
+Downloaded FASTA file is gzipped after database building.
 
 Obviously, a probing batch cannot cover all variety of data set,
 so some sequences can be recognized as "unknown". But you always can run "barapost.py" again
@@ -61,7 +61,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
     -o (--outdir) --- output directory;
 
     -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
-            Value: integer number [1, 1000]. Default value is 20;
+            Value: integer number [1, 500]. Default value is 100;
 
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
             Available values: 'megaBlast', 'discoMegablast', 'blastn'.
@@ -77,7 +77,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
             After that a local database will be builded according to results of probing blasting.
             More clearly: records-hits will be downloaded from Genbank and will be used
-            as local database. Further blasting against this database will be preformed
+            as local database. Further blasting against this database will be performed
             on local machine with 'blast+' toolkit.
             Value: positive integer number. Default value is 200;
 
