@@ -108,7 +108,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost.py
 
-Version 2.1;
+Version 2.2;
 29.08.2019 edition
 
 ### DESCRIPTION:
@@ -192,8 +192,8 @@ Default parameters:
 ## 3. fastQA_sorter.py
 (fast**Q** and fast**A** sorter)
 
-Version 2.1;
-28.08.2019 edition
+Version 1.3;
+29.08.2019 edition
 
 ### DESCRIPTION:
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.1
-# 28.08.2019 edition
+# Version 1.3
+# 29.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -21,7 +21,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 2.1) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 1.3) ===|\n\n")
 # -------------------
 
 from sys import platform
