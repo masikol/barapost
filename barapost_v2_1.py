@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Version 2.1
-# 28.08.2019 edition
+# 29.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -34,6 +34,7 @@ import os
 from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
+from sys import intern
 
 import http.client
 import urllib.request
@@ -69,83 +70,62 @@ def print_error(text):#{
 help_msg = """
 DESCRIPTION:\n
  barapost.py -- script is designed for determinating the taxonomic position
-    of nucleotide sequences by blasting each of them and regarding the best hit.\n
+    of nucleotide sequences by blasting each of them with 'blastn' from 'blast+' toolkit
+    and regarding the best hit.\n
+ 'barapost.py' is meant to be used just after 'prober.py'.
  Script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
  Results of the work of this script are written to TSV file,
-    that can be found in result directry.\n
- FASTQ files processed by this script are meant to be sorted afterwards by 'fastq_sorted.py'.
+    that can be found in result directory.\n
+ FASTQ files processed by this script are meant to be sorted afterwards by 'fastQA_sorted.py'.
 ----------------------------------------------------------
 
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
 - packet size (see '-p' option): 100 sequences;
-- probing batch size (see '-b' option): 200 sequences;
 - algorithm (see '-a' option): 'megaBlast';
-- organisms (see '-g' option): full 'nt' database, e.i. no slices;
-- output directory ('-o' option): directory named "barapost_result"
-  nested in current directory;
 
-  Default behavior is to send certain number (see '-b' option) of sequences to BLAST server,
-download records-hits from Genbank according to results of blasting probing batch of sequences,
-build an indexed local database which consists of downloaded sequences,
-and continue aligning with 'blast+' toolkit in order to save time.
-  Obviously, a probing batch cannot cover all variety of data set,
-so some sequences can be recognized as "unknown". But you always can run 'barapost.py' again
-on "unknown" sequences.
-  You can use 'barapost.py' without 'blast+' tookit by specifying '--remote-only' option.
-In this case all sequences will be sent on BLAST server and aligned there.
+  Default behavior is to download records-hits from Genbank according to results
+of work of 'prober.py' script, build an indexed local database which consists of
+downloaded sequences, and continue aligning with 'blast+' toolkit in order to save time.
 ----------------------------------------------------------
 
-OPTIONS:\n
+OPTIONS (* means mandatory option):\n
     -h (--help) --- show help message;\n
     -f (--infile) --- input FASTQ or FASTA (or '.fastq.gz', '.fasta.gz') file;
-            You can specify multiple input files with this option (see EXAMPLES #2);\n
+        You can specify multiple input files with this option (see EXAMPLES #2);\n
     -d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
-            E.i. all FASTQ and FASTA files in this direcory will be processed;
-            Input files can be gzipped.\n
-    -o (--outdir) --- output directory;\n
+        E.i. all FASTQ and FASTA files in this direcory will be processed;
+        Input files can be gzipped.\n
     -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
-            Value: integer number [1, 500]. Default value is 100;\n
+        Value: integer number [1, 500]. Default value is 100;\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
-            Available values: 'megaBlast', 'discoMegablast', 'blastn'.
-            Default is megaBlast;\n
-    -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
-            More clearly, functionality of this option is totally equal to "Organism" text boxes
-            on this BLASTn page:
-             'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
-            Format of value: 
-              <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
-            See EXAMPLES #2 and #3 below.
-            Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-            Default value is full 'nt' database.
-            You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
-    -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
-            After that a local database will be builded according to results of probing blasting.
-            More clearly: records-hits will be downloaded from Genbank and will be used
-            as local database. Further blasting against this database will be preformed
-            on local machine with 'blast+' toolkit.
-            Value: positive integer number. Default value is 200;\n
-    --remote-only --- flag option. If specified, all aligning will be performed on BLAST server
-            and 'blast+' toolkit won't be used;
+        Available values: 'megaBlast', 'discoMegablast', 'blastn'.
+        Default is megaBlast;\n
+  * -r (--prober-result-dir) --- directory with results of script 'prober.py'
+        This is directory specified to 'prober.py' by '-o' option.
+        Or named 'prober_result' if you've ran 'prober.py' with default options.
 ----------------------------------------------------------
 
 EXAMPLES:\n
-  1) Process one FASTQ file with default settings:\n
-       ./barapost.py -f reads.fastq\n
+  1) Process one FASTQ file with default settings.
+     File 'reads.fastq' has been already processed by 'prober.py'.
+     Results of prober.py work are in directory 'prober_outdir':\n
+       ./barapost.py -f reads.fastq -r prober_outdir\n
   2) Process FASTQ file and FASTA file with discoMegablast, packet size of 5 sequences.
-     Search only among Erwinia sequences:\n
-       ./barapost.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -p 5 -g Erwinia,551\n
+     Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already processed by 'prober.py'.
+     Results of prober.py work are in directory 'prober_outdir':\n
+       ./barapost.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -r prober_outdir\n
   3) Process all FASTQ and FASTA files in directory named "some_dir".
-     Search only among Escherichia and viral sequences:\n
-       ./barapost.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir
+  All these files have been already processed by 'prober.py'.
+  Results of prober.py work are in directory 'prober_outdir':\n
+       ./barapost.py -d some_dir -r prober_outdir
 """
 from sys import argv
 import getopt
 
 try:#{
-    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:g:b:",
-        ["help", "infile=", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size=",
-        "remote-only"])
+    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:r:",
+        ["help", "infile=", "indir=", "packet-size=", "algorithm=", "prober-result-dir="])
 #}
 except getopt.GetoptError as gerr:#{
     print( str(gerr) )
@@ -157,12 +137,9 @@ is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is
 # Default values:
 fq_fa_list = list()
 indir_path = None
-outdir_path = "barapost_result"
 packet_size = 100
-probing_batch_size = 200
 blast_algorithm = "megaBlast"
-organisms = list() # default is whole 'nt' database
-remote_only = False
+prober_res_dir = None
 
 if len(args) != 0:#{
     print_error("barapost.py does not take any positional arguments")
@@ -205,10 +182,6 @@ for opt, arg in opts:#{
         fq_fa_list.extend(list( filter(is_fq_or_fa, os.listdir(indir_path)) ))
     #}
 
-    if opt in ("-o", "--outdir"):#{
-        outdir_path = os.path.abspath(arg)
-    #}
-
     if opt in ("-p", "--packet-size"):#{
         try:#{
             packet_size = int(arg)
@@ -230,60 +203,23 @@ for opt, arg in opts:#{
         blast_algorithm = arg
     #}
 
-    if opt in ("-g", "--organisms"):#{
-        max_org = 5
-
-        try:#{
-            org_list = arg.strip().split('+')
-            org_list = list( map(str.strip, org_list) )
-
-            if len(org_list) > max_org:#{
-                raise Exception("\nYou can specify from 1 to {} organisms.\a".format(max_org))
-            #}
-
-            for org in org_list:#{
-                name_and_taxid = org.strip().split(',')
-                name_and_taxid = list( map(str.strip, name_and_taxid) )
-                if len(name_and_taxid) != 2:#{
-                    raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
-    and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
-                #}
-                # Validate TaxID integer format: it will raise ValueError if taxid is invalid
-                tmp_taxid = int(name_and_taxid[1])
-                if tmp_taxid < 1:#{
-                    raise ValueError("\nTaxID should be positive integer number\a")
-                #}
-                organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
-            #}
-        #}
-        except ValueError:#{
-            print("\n" + "=/"*20 + "\n")
-            print_error("TaxID should be positive integer number\a")
+    if opt in ("-r", "--prober-result-dir"):#{
+        if not os.path.exists(arg):#{
+            print_error("directory '{}' does not exist!".format(arg))
             platf_depend_exit(1)
         #}
-        except Exception as err:#{
-            print("\n" + "=/"*20 + "\n")
-            print_error("ERROR: invalid organisms (-g option) input format")
-            print( str(err) )
+        if not os.path.isdir(arg):#{
+            print_error("'{}' is not a directory!".format(arg))
             platf_depend_exit(1)
         #}
+        prober_res_dir = arg
     #}
+#}
 
-    if opt in ("-b", "--probing-batch-size"):#{
-        try:#{
-            probing_batch_size = int(arg)
-            if probing_batch_size <= 0:
-                raise ValueError
-        #}
-        except ValueError:#{
-            print_error("probing batch size ('-b' option) must be positive integer number!")
-            platf_depend_exit(1)
-        #}
-    #}
-
-    if opt == "--remote-only":#{
-        remote_only = True
-    #}
+# Check if prober.py result directory is specified
+if prober_res_dir is None:#{
+    print("\n\t\a!! - ERROR: '-r' option is mandatory!\n")
+    platf_depend_exit(1)
 #}
 
 # If no FASTQ or FASTA file have been found
@@ -306,52 +242,58 @@ if len(fq_fa_list) == 0:#{
 
 del help_msg # we do not need it any more
 
-if not remote_only:#{
 
-    # Check if 'blast+' tookit is installed
-    pathdirs = os.environ["PATH"].split(os.pathsep)
+# Check if 'blast+' tookit is installed
+pathdirs = os.environ["PATH"].split(os.pathsep)
 
-    for utility in ("blastn", "makeblastdb", "makembindex"):#{
+for utility in ("blastn", "makeblastdb", "makembindex"):#{
 
-        utility_found = False
+    utility_found = False
 
-        for directory in pathdirs:#{
-            if os.path.exists(directory) and utility in os.listdir(directory):#{
-                utility_found = True
-                break
-            #}
-        #}
-
-        if not utility_found:#{
-            print("\tAttention!\n'{}' from blast+ toolkit is not found in your system.".format(utility))
-            print("""If this error still occure although you have installed everything 
-    -- make sure that this program is added to PATH)""")
-            platf_depend_exit(1)
+    for directory in pathdirs:#{
+        if os.path.exists(directory) and utility in os.listdir(directory):#{
+            utility_found = True
+            break
         #}
     #}
+
+    if not utility_found:#{
+        print("\tAttention!\n'{}' from blast+ toolkit is not found in your system.".format(utility))
+        print("""If this error still occure although you have installed everything 
+-- make sure that this program is added to PATH)""")
+        platf_depend_exit(1)
+    #}
+#}
+
+
+acc_fpath = os.path.join(prober_res_dir, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
+
+if not os.path.exists(acc_fpath):#{
+    print_error("accession file '{}' not found!".format(acc_fpath))
+    platf_depend_exit(1)
 #}
 
 
 print( strftime("\n%H:%M:%S", localtime(start_time)) + " - Start working\n")
 
 
-# |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
+# |===== Function for checking if 'https://ncbi.nlm.nih.gov' is available =====|
 
-def check_connection():#{
+def check_connection(address):#{
     """
-    Function checks if 'https://blast.ncbi.nlm.nih.gov' is available.
+    Function checks if 'https://ncbi.nlm.nih.gov' is available.
 
-    :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
+    :return: None if 'https://ncbi.nlm.nih.gov' is available;
     """
 
     try:#{
 
-        ncbi_server = "https://blast.ncbi.nlm.nih.gov"
+        ncbi_server = address
         status_code = urllib.request.urlopen(ncbi_server).getcode()
 
         # Just in case
         if status_code != 200:#{
-            print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print('\n' + get_work_time() + " - Site '{}' is not available.".format(address))
             print("Check your Internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
@@ -360,7 +302,7 @@ def check_connection():#{
     #}
     except OSError as err:#{
 
-        print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print('\n' + get_work_time() + " - Site '{}' is not available.".format(address))
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
         print( str(err) )
@@ -373,92 +315,6 @@ def check_connection():#{
         platf_depend_exit(-2)
     #}
 #}
-
-
-# |===== Question funtions =====|
-
-def is_continued():#{
-    """
-    Function asks the user if he/she wants to continue the previous run.
-
-    :return: True if the decision is to continue, else False;
-    :return type: bool;
-    """
-
-    continuation = None
-
-    while continuation is None:#{
-        continuation = input("""
-Would you like to continue the previous run?
-    1. Continue!
-    2. Start from the beginning.
-
-Enter the number (1 or 2):>> """)
-        # Check if entered value is integer number. If no, give another attempt.
-        try:#{
-            continuation = int(continuation)
-            if continuation != 1 and continuation != 2:#{ Check if input number is 1 or 2
-                print("\n\tNot a VALID number entered!\a\n" + '~'*20)
-                continuation = None
-            #}
-            else:#{
-                print("You have chosen number " + str(continuation) + '\n')
-            #}
-        #}
-        except ValueError:#{
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            continuation = None
-        #}
-    #}
-    return(True if continuation == 1 else False)
-#}
-
-
-def get_packet_size(num_reads):#{
-    """
-    Function asks the user about how many query sequences will be sent 
-        to NCBI BLAST as a particular request.
-
-    :return: the number of query sequences;
-    :return type: int;
-    """
-
-    packet_size = None
-    # You cannot sent more query sequences than you have
-    limit = num_reads if num_reads <= 500 else 500
-
-    while packet_size is None:#{
-        
-        packet_size = input("""
-Please, specify the number of sequences that should be sent to the NCBI server in one request.
-E.g. if you have 10 sequences in your file, you can send 10 sequences as single
-    request -- in this case you should enter number 10. You may send 2 requests containing
-    5 sequences both -- in this case you should enter number 5.
-
-
-There are {} sequences left to process in current file.
-Enter the number (from 1 to {}):>> """.format(num_reads, limit))
-        # Check if entered value is integer number. If no, give another attempt.
-        try:#{
-            packet_size = int(packet_size)
-            if packet_size < 1 or packet_size > limit:#{ Check if input number is in [1, limit]
-                print("\n\tNot a VALID number entered!\a\n" + '~'*20)
-                packet_size = None
-            #}
-            else:#{
-                print("You have chosen number " + str(packet_size) + '\n')
-            #}
-        #}
-        except ValueError:#{
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            packet_size = None
-        #}
-    #}
-    return(packet_size)
-#}
-
-
-# |===== End of question funtions =====|
 
 
 # |===== Functionality for proper processing of gzipped files =====|
@@ -519,9 +375,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
-    if not re_search(fastq_patt, fq_fa_path) is None:#{
-
-        global FASTQ_LINES_PER_READ
+    if not re_search(fastq_patt, fq_fa_path) is None and not os.path.exists(fasta_path):#{
 
         # Get ready to process gzipped files
         how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -555,15 +409,22 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
         print("\tAverage quality of reads in this file: {} (Phred33)".format(file_avg_qual))
     #}
-    # We've got FASTA source file
+    # IF FASTA file is already created
     # We need only number of sequences in it.
-    else:#{ 
-        global FASTA_LINES_PER_SEQ
-
-        num_lines = sum(1 for line in open(fasta_path, 'r')) # get number of lines
+    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
+        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
+    #}
+    # If we've got FASTA source file
+    # We need only number of sequences in it.
+    else:#{
+        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
         num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
+        # If we've got FASTA source file we do not need to copy it
+        fasta_path = fq_fa_path
     #}
 
+    print("\n |========== file: '{}' ===========|".format(os.path.basename(fasta_path)))
     return {"fpath": fasta_path, "nreads": num_reads}
 #}
 
@@ -596,7 +457,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     {
         "pack_size": packet_size (int),
         "attmpt": saved_attempt (int),
-        "RID": saved_RID (str),
         "tsv_respath": path_to_tsv_file_from_previous_run (str),
         "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
         "tmp_fpath": path_to_pemporary_file (str)
@@ -620,121 +480,71 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     # Form path to result file
     tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
 
+    print("\nWriting results to file '{}'\n".format(tsv_res_fpath))
+
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
-    print("\n |========== file: '{}' ===========|".format(os.path.basename(fasta_path)))
-    continuation = False
-    # Check if there are results from previous run.
-    if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):#{
-        print('\n' + get_work_time() + " - The previous result file is found in the directory:")
-        print("\t'{}'".format(new_dpath))
-        continuation = is_continued() # Allow politely to continue from last successful attempt.
-        if not continuation:
-            rename_file_verbosely(tsv_res_fpath, new_dpath)
-            rename_file_verbosely(tmp_fpath, new_dpath)
-    #}
+    if os.path.exists(tsv_res_fpath):#{
+        with open(tsv_res_fpath, 'r') as res_file:#{
+            try:#{ There can be invalid information in result file
+                lines = res_file.readlines()
+                num_done_reads = len(lines) - 1 # the first line is a head
+                last_line = lines[-1]
+                last_seq_id = last_line.split(DELIM)[0]
 
-    if continuation:#{   Find the name of last successfull processed sequence
-        print("Let's try to continue...")
-        if os.path.exists(tsv_res_fpath):#{
-            with open(tsv_res_fpath, 'r') as res_file:#{
-                try:#{ There can be invalid information in result file
-                    lines = res_file.readlines()
-                    num_done_reads = len(lines) - 1 # the first line is a head
-                    last_line = lines[-1]
-                    last_seq_id = last_line.split(DELIM)[0]
-
-                    if not remote_only:#{
-                        # Get accessions from previous run
-                        global acc_dict
-                        for line in lines[1:]:#{ omit table head
-                            acc = line.strip().split(DELIM)[2]
-                            acc_dict[acc] = line.strip().split(DELIM)[1]
-                        #}
-                    #}
-                #}
-                except Exception as err:#{
-                    print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
-                    print( str(err) )
-                    print("Start from the beginning.")
-                    rename_file_verbosely(tsv_res_fpath, new_dpath)
-                    rename_file_verbosely(tmp_fpath, new_dpath)
-                    return None
-                #}
-                else:#{
-                    print("Last successful attempt: " + last_seq_id)
-                #}
+                # # Get accessions from previous run
+                # global acc_dict
+                # for line in lines[1:]:#{ omit table head
+                #     acc = line.strip().split(DELIM)[2]
+                #     acc_dict[acc] = line.strip().split(DELIM)[1]
+                # #}
+            #}
+            except Exception as err:#{
+                print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
+                print( str(err) )
+                print("Start from the beginning.")
+                rename_file_verbosely(tsv_res_fpath, new_dpath)
+                rename_file_verbosely(tmp_fpath, new_dpath)
+                return None
+            #}
+            else:#{
+                print("Last processed sequence: " + last_seq_id)
             #}
         #}
+    #}
 
-        # If we start from the beginning, we have no sequences processed
-        if num_done_reads is None:
-            num_done_reads = 0
+    # If we start from the beginning, we have no sequences processed
+    if num_done_reads is None:
+        num_done_reads = 0
 
-        # Get packet size, number of the last attempt and RID
+    if os.path.exists(tmp_fpath):#{
         try:#{ There can be invalid information in tmp file of tmp file may not exist
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             packet_size = int(temp_lines[0])
+            print("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
             attempt_save = int(temp_lines[1].split(DELIM)[0])
-            RID_save = temp_lines[1].split(DELIM)[1].strip()
-            # If aligning is performed on local machine, there is no reason for requesting results.
-            # Therefore this packet will be aligned once again.
-
-            if not re_search(r"LOCALMACHINE_.*", RID_save) is None:#{
-                RID_save = None
-                global switch_to_localmachine
-                global localdb_builded
-                switch_to_localmachine = True
-                localdb_builded = True # If at least one sequence has benn processed locally, database is already builded
-            #}
         #}
-        except Exception:#{
-            total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_SEQ )
-            print("\n    Attention! Temporary file not found or broken!")
-            print("{} sequences have been already processed.".format(num_done_reads))
-            print("There are {} sequences in file '{}'.".format(total_num_seqs, os.path.basename(fasta_path)))
-            print("Maybe you've already processed this file with 'barapost' and have forgotten about it?\n")
-
-            reply = "BULLSHIT"
-            while True:#{
-                reply = input("Press ENTER to continue processing this file. Press 'q' to quite:>>")
-                if reply == "":
-                    break
-                elif reply == 'q':
-                    platf_depend_exit(0)
-                else:
-                    print_error("invalid reply")
-            #}
-
-
-            print("{} reads have been already processed".format(num_done_reads))
-            print("{} reads left".format(total_num_seqs - num_done_reads))
-            packet_size = get_packet_size(total_num_seqs - num_done_reads)
-            return {
-                "pack_size": packet_size,
-                "attmpt": int(num_done_reads / packet_size),
-                "RID": None,
-                "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath
-            }
+        except Exception as err:#{
+            print("\nData in temporary file '{}' is broken.".format(tmp_fpath))
+            print( str(err) )
+            print("Start from the beginning.")
+            rename_file_verbosely(tsv_res_fpath, new_dpath)
+            rename_file_verbosely(tmp_fpath, new_dpath)
+            return None
         else:#{
             # Return data from previous run
             return {
                 "pack_size": packet_size,
                 "attmpt": attempt_save,
-                "RID": RID_save,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_reads,
                 "tmp_fpath": tmp_fpath
             }
         #}
-        #}
-
-    # Remove files from previous run if we've desided to start from the beginning
+    #}
     else:#{
-        return None
+        return
     #}
 #}
 
@@ -774,309 +584,274 @@ def get_packet(fasta_file, packet_size):#{
     return {"fasta": packet.strip(), "names": names}  # remove the last '\n' character
 #}
 
+# Variable for counting accessions of records menat to be downloaded from Genbank.
+# Is used only for printing the list of accessions to console.
+acc_counter = 0
 
-# If --remote-only is specified -- blast+ won't be used. 
-# Therefore we dod not need these functions.
-if not remote_only:#{
+import threading # There is no need to import this module if '--remote-only' is specified.
 
-    import threading # There is no need to import this module if '--remote-only' is specified.
+def get_gi_by_acc(acc):#{
+    """
+    Function accepts sequence accession and returns it's GI number for further downloading
+        with E-utilities.
 
-    # Variable for counting accessions of records menat to be downloaded from Genbank.
-    # Is used only for printing the list of accessions to console.
-    acc_counter = 0
+    :param acc: sequence accession;
+    :type acc: str;
 
-    # It is a dictionary of accessions and record names.
-    # Accessions are keys, record names are values.
-    # This dictionary is filled while processing and at the beginning of continuation.
-    acc_dict = dict()
+    Returns sequence's GI number of 'str'.
+    """
+    
+    server = "www.ncbi.nlm.nih.gov"
+    url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
 
-    def get_gi_by_acc(acc):#{
+    error = True
+    while error:#{
+        try:#{
+            conn = http.client.HTTPSConnection(server)
+            conn.request("GET", url)
+            response = conn.getresponse()
+            gi_text = str(response.read(), "utf-8")
+            # The only text in this HTML document is GI. It is in <pre> tag.
+            gi = str( re_search(r"<pre>([0-9]+)", gi_text).group(1) )
+            conn.close()
+        #}
+        except OSError as oserr:#{
+            # If site is unavailable -- try to connect again in 60 seconds
+            print_error("unable to connect to 'www.ncbi.nlm.nih.gov'")
+            print("  barapost will try to connect adaing in 60 seconds")
+            sleep(60)
+            continue
+        #}
+        else:#{
+            error = False
+        #}
+    #}
+
+    # Print accession and record name to console
+    global acc_counter
+    acc_counter += 1
+    print("\r {}/{} GI numbers are got".format( acc_counter, len(acc_dict.keys()) ), end="")
+
+    return gi
+#}
+
+
+def retrieve_fastas_by_gi(gi_list, db_dir):#{
+    """
+    Function downloads set of records from Genbank according to list of GIs passed to it.
+    Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
+
+    :param gi_list: list of GI numbers of sequences meant to be downloaded;
+    :type gi_list: list<str>;
+    :param db_dir: path to directory in which downloaded FASTA file will be placed;
+    :type db_dir: str;
+
+    Returns path to downloaded FASTA file of 'str'.
+    """
+
+    local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
+    gis_del_comma = ','.join(gi_list) # GI numbers must be separated by comma in url
+    # E-utilities provide us with possibility of downloading records from Genbank by GI numbers.
+    retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
+    
+    global stop_wait # a flag variable that will signal waiter-function to stop executing
+
+    def download_waiter():#{
         """
-        Function accepts sequence accession and returns it's GI number for further downloading
-            with E-utilities.
-
-        :param acc: sequence accession;
-        :type acc: str;
-
-        Returns sequence's GI number of 'str'.
+        Function waits untill 'local_fasta' file is downloaded.
+        It prints size of downloaded data to console during downloading.
+        This function just waits -- it won't bring you the menu :).
         """
-        
-        server = "www.ncbi.nlm.nih.gov"
-        url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
+        # Wait untill downloading starts
+        while not os.path.exists(local_fasta):
+            if stop_wait:
+                return
+            sleep(1)
+        print()
 
-        error = True
-        while error:#{
-            try:#{
-                conn = http.client.HTTPSConnection(server)
-                conn.request("GET", url)
-                response = conn.getresponse()
-                gi_text = str(response.read(), "utf-8")
-                # The only text in this HTML document is GI. It is in <pre> tag.
-                gi = str( re_search(r"<pre>([0-9]+)", gi_text).group(1) )
-                conn.close()
-            #}
-            except OSError as oserr:#{
-                # If site is unavailable -- try to connect again in 60 seconds
-                print_error("unable to connect to 'www.ncbi.nlm.nih.gov'")
-                print("  barapost will try to connect adaing in 60 seconds")
-                sleep(60)
-                continue
+        fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
+        while not stop_wait:#{
+            # Get size of downloaded data
+            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
+            print("\r {} MB downloaded".format(fsize), end="")
+            sleep(1) # instant updates are not necessary
+        #}
+        # Print total size of downloaded file
+        fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
+        print("\r {} MB downloaded \n".format(fsize))
+    #}
+
+    waiter = threading.Thread(target=download_waiter) # create thread
+    stop_wait = False # raise the flag
+    waiter.start() # start waiting
+    
+    print("Downloading sequences for local database building...")
+
+    urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
+    stop_wait = True # lower the flag
+    waiter.join() # main thread will wait until waiter function ends it's work
+
+    print("Downloading is completed\n\n")
+
+    return local_fasta
+#}
+
+
+def build_local_db(acc_dict, prober_res_dir):#{
+    """
+    Function builds a local indexed database with utilities from 'blast+' toolkit.
+
+    :param acc_dict: a dictionary of accessions and record names
+        Accession are keys, record names are values;
+    :type acc_dict: dict<str, str>;
+    :param prober_res_dir: path to current result directory (each processed file has it's own result directory);
+    :type prober_res_dir: str;
+
+    Returns path to builded local indexed database.
+    """
+
+    print("""\nFollowing sequences will be downloaded from Genbank
+for further blasting on your local machine with 'blast+' toolkit:\n""")
+    for i, acc in enumerate(acc_dict.keys()):#{
+        print(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
+    #}
+    print() # just print blank line
+    
+    print('~'*20 + '\n')
+
+    db_dir = os.path.join(prober_res_dir, "local_database") # path to directory in which database will be placed
+    try:#{
+        os.makedirs(db_dir)
+    #}
+    except OSError as err:#{
+        #If this directory exists
+
+        while True:#{
+
+            print("Database directory exists.")
+            if len(os.listdir(db_dir)) == 0:#{
+                # If it is empty -- nothing stops us. break and build a database
+                print("It is empty. Building a database...")
+                break
             #}
             else:#{
-                error = False
-            #}
-        #}
+                # If there are some files, the user will decide, whether to use this database
+                # or to remove it and to build again (e.g. if the database haven't been builded successfully) .
+                print("Here are files located in this directory:")
+                for i, file in enumerate(os.listdir(db_dir)):
+                    print("  {}. '{}'".format(i+1, file))
 
-        # Print accession and record name to console
-        global acc_counter
-        acc_counter += 1
-        print("  {}. {} - '{}'".format(acc_counter, acc, acc_dict[acc]))
+                reply = input("""\nPress ENTER to continue aligning using this database.
+            Enter 'r' to rebuild database:>>""")
 
-        return gi
-    #}
-
-
-    def retrieve_fastas_by_gi(gi_list, db_dir):#{
-        """
-        Function downloads set of records from Genbank according to list of GIs passed to it.
-        Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
-
-        :param gi_list: list of GI numbers of sequences meant to be downloaded;
-        :type gi_list: list<str>;
-        :param db_dir: path to directory in which downloaded FASTA file will be placed;
-        :type db_dir: str;
-
-        Returns path to downloaded FASTA file of 'str'.
-        """
-
-        local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
-        gis_del_comma = ','.join(gi_list) # GI numbers must be separated by comma in url
-        # E-utilities provide us with possibility of downloading records from Genbank by GI numbers.
-        retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
-        
-        global stop_wait # a flag variable that will signal waiter-function to stop executing
-
-        def download_waiter():#{
-            """
-            Function waits untill 'local_fasta' file is downloaded.
-            It prints size of downloaded data to console during downloading.
-            This function just waits -- it won't bring you the menu :).
-            """
-            # Wait untill downloading starts
-            while not os.path.exists(local_fasta):
-                if stop_wait:
-                    return
-                sleep(1)
-            print()
-
-            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
-            while not stop_wait:#{
-                # Get size of downloaded data
-                fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
-                print("\r {} MB downloaded".format(fsize), end="")
-                sleep(1) # instant updates are not necessary
-            #}
-            # Print total size of downloaded file
-            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
-            print("\r {} MB downloaded \n".format(fsize))
-        #}
-
-        waiter = threading.Thread(target=download_waiter) # create thread
-        stop_wait = False # raise the flag
-        waiter.start() # start waiting
-        
-        print("Downloading sequences for local database building...")
-
-        urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
-        stop_wait = True # lower the flag
-        waiter.join() # main thread will wait until waiter function ends it's work
-
-        print("Downloading is completed\n\n")
-
-        return local_fasta
-    #}
-
-
-    def build_local_db(acc_dict, new_dpath):#{
-        """
-        Function builds a local indexed database with utilities from 'blast+' toolkit.
-
-        :param acc_dict: a dictionary of accessions and record names
-            Accession are keys, record names are values;
-        :type acc_dict: dict<str, str>;
-        :param new_dpath: path to current result directory (each processed file has it's own result directory);
-        :type new_dpath: str;
-
-        Returns path to builded local indexed database.
-        """
-
-        print('\n' + '-'*25)
-        print("\nSwitching to aligning on local machine")
-
-        print("""\nFollowing sequences will be downloaded from Genbank
-    for further blasting on your local machine with 'blast+' toolkit:\n""")
-        
-        # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
-        gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
-
-        print('~'*20 + '\n')
-
-        db_dir = os.path.join(new_dpath, "local_database") # path to directory in which database will be placed
-        try:#{
-            os.makedirs(db_dir)
-        #}
-        except OSError as err:#{
-            #If this directory exists
-
-            while True:#{
-
-                print("Database directory exists.")
-                if len(os.listdir(db_dir)) == 0:#{
-                    # If it is empty -- nothing stops us. break and build a database
-                    print("It is empty. Building a database...")
+                if reply == "":
+                    # Do not build a database, just return path to it.
+                    return os.path.join(db_dir, "local_seq_set.fasta")
+                elif reply == 'r':
+                    # Empty this directory and break from the loop in order to build a database.
+                    for file in os.listdir(db_dir):
+                        os.unlink(file)
                     break
-                #}
-                else:#{
-                    # If there are some files, the user will decide, whether to use this database
-                    # or to remove it and to build again (e.g. if the database haven't been builded successfully) .
-                    print("Here are files located in this directory:")
-                    for i, file in enumerate(os.listdir(db_dir)):
-                        print("  {}. '{}'".format(i+1, file))
-
-                    reply = input("""\nPress ENTER to continue aligning using this database.
-                Enter 'r' to rebuild database:>>""")
-
-                    if reply == "":
-                        # Do not build a database, just return path to it.
-                        return os.path.join(db_dir, "local_seq_set.fasta")
-                    elif reply == 'r':
-                        # Empty this directory and break from the loop in order to build a database.
-                        for file in os.listdir(db_dir):
-                            os.unlink(file)
-                        break
-                    else:
-                        # Ask again
-                        continue
-                #}
+                else:
+                    # Ask again
+                    continue
             #}
-
         #}
-        local_fasta = retrieve_fastas_by_gi(gi_list, db_dir) # download FASTA file
 
-        print("Creating database...")
-        # Configure command line
-        make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
-        exit_code = os.system(make_db_cmd) # make a blast-format database
-        if exit_code != 0:#{
-            print_error("error while making the database")
-            platf_depend_exit(exit_code)
-        #}
-        print("""Database is successfully installed:
-    '{}'\n""".format(local_fasta))
-
-        print("Creating database index...")
-        # Configure command line
-        make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
-        exit_code = os.system(make_index_cmd) # create an index for the database
-        if exit_code != 0:#{
-            print_error("error while creating database index")
-            platf_depend_exit(exit_code)
-        #}
-        print("Database index has been successfully created\n")
-
-        # Gzip downloaded FASTA file in order to save space on disk
-        with open(local_fasta, 'r') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:#{
-            fagz_file.write(bytes(local_fasta.readline(), "utf-8"))
-        #}
-        os.unlink(local_fasta) # remove source FASTA file, not the database
-
-        return local_fasta
     #}
 
+    # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
+    print("Getting GI numbers necessary for downloading sequences from Genbank...")
+    gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
+    print()
 
-    def switch_to_blast_plus(local_fasta):#{
-        """
-        Function replaces functions 'configure_request' and 'send_request' that
-            work with BLAST server with analoguous ones that works with 'blastn' from 'blast+'.
-        This replacement is performed in order not to change interface used in 'kernel loop' while
-            switching to 'blast+'.
-        New functions have the same signature as 'remote-aimed' ones.
+    local_fasta = retrieve_fastas_by_gi(gi_list, db_dir) # download FASTA file
 
-        :param local_fasta: path to builded database;
-        :type local_fasta: str;
-
-        Returns two functions that are meant to replace 'remote-aimed' functions 'configure_request' and 'send_request'
-            with ones that work with 'blastn' from 'blast+'.
-        """
-
-        global xml_output_path # path to file in which 'blastn will write it's report
-        global query_path # path to file in which a packet of sequences will be written
-
-        def configure_localdb_request(packet, blast_algorithm, organisms):#{
-            """
-            Function meant to replace 'configure_request' one that works with BLAST server.
-            'organisms' argument is not used here, but I need to keep i here
-            in order not to change interface used in 'kernel loop'.
-            """
-
-            # Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
-            if blast_algorithm == "megaBlast":
-                blast_algorithm = "megablast"
-            elif blast_algorithm == "discoMegablast":
-                blast_algorithm = "dc-megablast"
-
-            # Indexed discontiguous searches are not supported:
-            # https://www.ncbi.nlm.nih.gov/books/NBK279668/#usermanual.Megablast_indexed_searches
-            if blast_algorithm != "dc-megablast":
-            	use_index = "true"
-            else:
-            	use_index = "false"
-
-            # Confirue command line
-            blast_cmd = "blastn -query {} -db {} -outfmt 5 -out {} -task {} -max_target_seqs 5 -use_index {}".format(query_path,
-                local_fasta, xml_output_path, blast_algorithm, use_index)
-
-            # Write packet sequences to query file
-            with open(query_path, 'w') as query_file:#{
-                query_file.write(packet)
-            #}
-
-            return blast_cmd # return command line in order to follow the interface used in 'kernel loop'
-        #}
-
-        def send_localdb_request(request, attempt, attempt_all, filename, tmp_fpath):#{
-            """
-            Function meant to replace 'send_request' one that works with BLAST server.
-            """
-
-            # Request IDs should differ from ones used for aligning on BLAST server.
-            rid = "LOCALMACHINE_{}".format(strftime("%H%M%S", localtime( time() )))
-            rtoe = None # 'blastn' from 'blast+' does not estimate time needed to alignment
-
-            # Save temporary data
-            with open(tmp_fpath, 'a') as tmpfile:
-                tmpfile.write("{}\t{}\n".format(attempt, rid))
-
-            print("\n{} - Alignment for: '{}' ({}/{}) started".format(get_work_time(), filename, attempt, attempt_all))
-
-            # request is blastn cmd returned by 'configure_localdb_request' function
-            exit_code = os.system(request)
-            if exit_code != 0:#{
-                print_error("error while aligning a sequence against local database")
-                platf_depend_exit(exit_code)
-            #}
-
-            # Read response XML text from file
-            with open(xml_output_path, 'r') as xml_file:#{
-                align_xml_text = xml_file.read().strip()
-            #}
-
-            return align_xml_text # return it
-        #}
-
-        # Return functions
-        return configure_localdb_request, send_localdb_request
+    print("Creating database...")
+    # Configure command line
+    make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
+    exit_code = os.system(make_db_cmd) # make a blast-format database
+    if exit_code != 0:#{
+        print_error("error while making the database")
+        platf_depend_exit(exit_code)
     #}
+    print("""Database is successfully installed:
+'{}'\n""".format(local_fasta))
+
+    print("Creating database index...")
+    # Configure command line
+    make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
+    exit_code = os.system(make_index_cmd) # create an index for the database
+    if exit_code != 0:#{
+        print_error("error while creating database index")
+        platf_depend_exit(exit_code)
+    #}
+    print("Database index has been successfully created\n")
+
+    # Gzip downloaded FASTA file in order to save space on disk
+    with open(local_fasta, 'r') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:#{
+        fagz_file.write(bytes(fasta_file.readline(), "utf-8"))
+    #}
+    os.unlink(local_fasta) # remove source FASTA file, not the database
+
+    return local_fasta
+#}
+
+
+def configure_request(packet, blast_algorithm):#{
+    """
+    Function meant to replace 'configure_request' one that works with BLAST server.
+    """
+
+    # Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
+    if blast_algorithm == "megaBlast":
+        blast_algorithm = "megablast"
+    elif blast_algorithm == "discoMegablast":
+        blast_algorithm = "dc-megablast"
+
+    # Indexed discontiguous searches are not supported:
+    # https://www.ncbi.nlm.nih.gov/books/NBK279668/#usermanual.Megablast_indexed_searches
+    if blast_algorithm != "dc-megablast":
+    	use_index = "true"
+    else:
+    	use_index = "false"
+
+    # Confirue command line
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -out {} -task {} -max_target_seqs 5 -use_index {}".format(query_path,
+        local_fasta, xml_output_path, blast_algorithm, use_index)
+
+    # Write packet sequences to query file
+    with open(query_path, 'w') as query_file:#{
+        query_file.write(packet)
+    #}
+
+    return blast_cmd # return command line in order to follow the interface used in 'kernel loop'
+#}
+
+def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
+    """
+    Function meant to replace 'send_request' one that works with BLAST server.
+    """
+
+    # Save temporary data
+    with open(tmp_fpath, 'a') as tmpfile:
+        tmpfile.write("{}\n".format(attempt))
+
+    print("\n{} - Alignment for: '{}' ({}/{}) started".format(get_work_time(), filename, attempt, attempt_all))
+
+    # request is blastn cmd returned by 'configure_localdb_request' function
+    exit_code = os.system(request)
+    if exit_code != 0:#{
+        print_error("error while aligning a sequence against local database")
+        platf_depend_exit(exit_code)
+    #}
+
+    # Read response XML text from file
+    with open(xml_output_path, 'r') as xml_file:#{
+        align_xml_text = xml_file.read().strip()
+    #}
+
+    return align_xml_text # return it
 #}
 
 
@@ -1093,261 +868,6 @@ def remove_tmp_files(*paths):#{
             os.unlink(path)
         #}
     #}
-#}
-
-
-def configure_request(packet, blast_algorithm, organisms):#{
-    """
-    Function configures the request to BLAST server.
-
-    :param packet: FASTA_data_containing_query_sequences;
-    :type packet: str;
-    :param blast_algorithm: BLASTn algorithm to use;
-    :type blast_algorithm: str;
-    :param organisms: list of strings performing 'nt' database slices;
-    :type organisms: list<str>;
-
-    Returns a dict of the following structure:
-    {
-        "payload": the_payload_of_the_request (dict),
-        "headers": headers of thee request (dict)
-    }
-    """
-
-    payload = dict()
-    payload["CMD"] = "PUT" # method
-    payload["PROGRAM"] = "blastn" # program
-    payload["MEGABLAST"] = "on" if "megablast" in blast_algorithm.lower() else "" # if megablast
-    payload["BLAST_PROGRAMS"] = blast_algorithm # blastn algoeithm
-    payload["DATABASE"] = "nt" # db
-    payload["QUERY"] = packet # FASTA data
-    payload["HITLIST_SIZE"] = 1 # we need only the best hit
-
-    # 'nt' database slices:
-    for i, org in enumerate(organisms):#{
-        payload["EQ_MENU{}".format(i if i > 0 else "")] = org
-    #}
-    payload["NUM_ORG"] = str( len(organisms) )
-
-    payload = urllib.parse.urlencode(payload)
-    headers = { "Content-Type" : "application/x-www-form-urlencoded" }
-
-    return {"payload":payload, "headers": headers}
-#}
-
-    
-def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
-    """
-    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
-        and then waits for satisfaction of the request and retrieves response text.
-
-    :param request: request_data (it is a dict that 'configure_request()' function returns);
-    :param request: dict<dict>;
-    :param attempt: current attempt. This information is printed to console;
-    :type attempt: int;
-    :param attempt all: total number of attempts corresponding to current FASTA file.
-        This information is printed to console;
-    :type attempt_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
-
-    Returns XML text of type 'str' with BLAST response.
-    """
-    payload = request["payload"]
-    headers = request["headers"]
-
-    server = "blast.ncbi.nlm.nih.gov"
-    url = "/blast/Blast.cgi"
-    error = True
-
-    while error:#{
-        try:#{
-            conn = http.client.HTTPSConnection(server) # create a connection
-            conn.request("POST", url, payload, headers) # send the request
-            response = conn.getresponse() # get the response
-            response_text = str(response.read(), "utf-8") # get response text
-        #}
-        except OSError as oserr:#{
-            print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            print( repr(err) )
-            print("barapost will try to connect again in 30 seconds...\n")
-            sleep(30)
-        #}
-        else:#{ if no exception occured
-            error = False
-        #}
-    #}
-
-    try:#{
-        rid = re_search("RID = (.*)", response_text).group(1) # get Request ID
-        rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
-    #}
-    except AttributeError:#{
-        print_error("seems, ncbi has denied your request.")
-        print("Response is in file 'request_denial_response.html'")
-        with open("request_denial_response.html", 'w') as den_file:#{
-            den_file.write(response_text)
-        #}
-        exit(1)
-    #}
-    finally:#{
-        conn.close()
-    #}
-
-    # Save temporary data
-    with open(tmp_fpath, 'a') as tmpfile:
-        tmpfile.write("{}\t{}\n".format(attempt, rid))
-
-    # /=== Wait for alignment results ===\
-
-    return( wait_for_align(rid, rtoe, attempt, attempt_all, filename) )
-#}
-
-
-def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
-    """
-    Function waits untill BLAST server accomplishes the request.
-    
-    :param rid: Request ID to wait for;
-    :type rid: str;
-    :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
-    :type rtoe: int;
-    :param attempt: current attempt. This information is printed to console;
-    :type attempt: int;
-    :param attempt all: total number of attempts corresponding to current FASTA file.
-        This information is printed to console;
-    :type attempt_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
-
-    Returns XML response ('str').
-    """
-
-    print("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
-    rid, filename, attempt, attempt_all))
-    if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
-        print("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
-        print("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
-        # Server migth be wrong -- we will give it 3 extra seconds
-        sleep(rtoe + 3)
-        print("{} - {} seconds have passed. Checking if alignment is accomplished...".format(get_work_time(), rtoe+3))
-    #}
-
-    server = "blast.ncbi.nlm.nih.gov"
-    wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
-    there_are_hits = False
-
-    while True:#{
-        error = True
-        while error:#{
-            try:
-                conn = http.client.HTTPSConnection(server) # create connection
-                conn.request("GET", wait_url) # ask for if there areresults
-            except TimeoutError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            except http.client.RemoteDisconnected as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            except socket.gaierror as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            except ConnectionResetError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            except FileNotFoundError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            except http.client.CannotSendRequest as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
-                error = True
-                sleep(30)
-            else:
-                error = False # if no exception ocured
-        #}
-
-        response = conn.getresponse() # get the resonse
-        resp_content = str(response.read(), "utf-8") # get response text
-        conn.close()
-
-        if re_search("Status=WAITING", resp_content) is not None:#{ if server asks to wait
-            print("{} - The request is still processing. Waiting for 60 seconds...".format(get_work_time()))
-            sleep(60)
-            continue
-        #}
-        if re_search("Status=FAILED", resp_content) is not None:#{ if job failed
-            print('\n' + get_work_time() + " - Job failed\a\n")
-            response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
-    Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, attempt, attemp_all, rid)
-            return None
-        #}
-        if re_search("Status=UNKNOWN", resp_content) is not None:#{ if job expired
-            print('\n' + get_work_time() + " - Job expired\a\n")
-            respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
-    Try to start it again\n""".format(get_work_time(), filename, attempt, attempt_all, rid)
-            return "expired"
-        #}
-        if re_search("Status=READY", resp_content) is not None:#{ if results are ready
-            there_are_hits = True
-            print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, attempt, attempt_all))
-            if re_search("ThereAreHits=yes", resp_content) is not None:#{ if there are hits
-                for i in range(45, 0, -5):
-                    print('-' * i)
-                break
-            #}
-            else:#{ if there are no hits
-                print(get_work_time() + " - There are no hits. It happens.\n")
-                break
-            #}
-        #}
-        # Execution should not reach here
-        print('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
-        platf_depend_exit(1)
-    #}
-
-    # Retrieve XML result
-    retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
-    conn = http.client.HTTPSConnection(server)
-    conn.request("GET", retrieve_xml_url)
-    response = conn.getresponse()
-
-    respond_text = str(response.read(), "utf-8")
-    conn.close()
-
-    # Retrieve human-readable text and put it into result directory
-    if there_are_hits:#{
-        save_txt_align_result(server, filename, attempt, rid)
-    #}
-
-    return respond_text
-#}
-
-
-def save_txt_align_result(server, filename, attempt, rid):#{
-
-    global outdir_path
-
-    retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-    conn = http.client.HTTPSConnection(server)
-    conn.request("GET", retrieve_text_url)
-    response = conn.getresponse()
-
-    txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(attempt))
-    # Write text result for a human to read
-    with open(txt_hpath, 'w') as txt_file:
-        txt_file.write(str(response.read(), "utf-8") + '\n')
-    conn.close()
 #}
 
 
@@ -1406,8 +926,6 @@ def parse_align_results_xml(xml_text, seq_names):#{
     # /=== Parse BLAST XML response ===/
 
     root = ElementTree.fromstring(xml_text) # get tree instance
-    if not remote_only:
-        global acc_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
@@ -1442,8 +960,6 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
             evalue = hsp.find("Hsp_evalue").text # get e-value
             # If E-value is low enough -- add this subject sequence to 'acc_dict' to further downloading
-            if not remote_only and float(evalue) < 0.01:
-                acc_dict[hit_acc] = hit_name
 
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
@@ -1489,31 +1005,40 @@ def write_result(res_tsv_lines, tsv_res_path):#{
         for line in res_tsv_lines:
             tsv_res_file.write(line + '\n')
     #}
-
 #}
 
-
-def create_result_directory(fq_fa_path, outdir_path):#{
-    """
-    Function creates a result directory named according 
-        to how source FASTQor FASTA file is named.
-
-    :param fq_fa_path: path to source FASTQ or FASTA file;
-    :type fq_fa_path: str;
-
-    Returns 'str' path to the recently created result directory.
-    """
-
+def get_curr_res_dir(fq_fa_path, prober_res_dir):#{
+    
     # dpath means "directory path"
-    new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
+    new_dpath = os.path.join(prober_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
     new_dpath = new_dpath[: new_dpath.rfind(".fast")] # get rid of extention
-    if not os.path.exists(new_dpath):#{
-        os.makedirs(new_dpath)
-    #}
 
     return new_dpath
 #}
 
+def configure_acc_dict(acc_fpath):#{
+
+    acc_dict = dict()
+
+    with open(acc_fpath, 'r') as acc_file:#{
+        lines = acc_file.readlines()
+
+        for line in lines:#{
+            if line.strip() != "" and not line.strip().startswith('#') and not line.startswith("ACCESSION"):#{
+                acc = intern(line.strip().split(DELIM)[0])
+                name = line.strip().split(DELIM)[1]
+                acc_dict[acc] = name
+            #}
+        #}
+    #}
+
+    if len(acc_dict) == 0:#{
+        print_error("no accession information found in file '{}".format(acc_fpath))
+        platf_depend_exit(1)
+    #}
+
+    return acc_dict
+#}
 
 
 # =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
@@ -1532,7 +1057,6 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 #    {
 #        "pack_size": packet_size (int),
 #        "attmpt": saved_attempt (int),
-#        "RID": saved_RID (str),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
 #        "tmp_fpath": path_to_pemporary_file (str)
@@ -1543,19 +1067,12 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 #        "fasta": FASTA_data_containing_query_sequences (str),
 #        "names": list_of_sequence_ids_from_FASTA_file (list<str>)
 #    }
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 4. 'response' is a dict of the following structure:
-#    {
-#        "RID": Request ID (str),
-#        "RTOE", time_to_wait_provided_by_the_NCBI_server (int)
-#    }
 
 #                   |===== Kernel loop =====|
 
 print("\nChecking Internet connection...")
-check_connection()
+check_connection("https://ncbi.nlm.nih.gov")
 print("OK\n")
-
 
 print(" Following files will be processed:")
 for i, path in enumerate(fq_fa_list):#{
@@ -1563,16 +1080,19 @@ for i, path in enumerate(fq_fa_list):#{
 #}
 print('-'*30 + '\n')
 
-# Flag variable. Swithes to True when it is time to build a database and align with 'blast+'
-switch_to_localmachine = False
-# Flag variable. Swithes to True when database is successfuly builded.
-localdb_builded = False
+# It is a dictionary of accessions and record names.
+# Accessions are keys, record names are values.
+# This dictionary is filled while processing and at the beginning of continuation.
+acc_dict = configure_acc_dict(acc_fpath)
+
+# Build a database
+local_fasta = build_local_db(acc_dict, prober_res_dir)
 
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
     
     # Create the result directory with the name of FASTQ of FASTA file being processed:
-    new_dpath = create_result_directory(fq_fa_path, outdir_path)
+    new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
 
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
@@ -1602,19 +1122,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
-        saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
-        contin_rtoe = 0 # we will not sleep at the very beginning of continuation
-
-        if switch_to_localmachine:#{
-            # If execution has been aborted during aligning with 'blast+'
-            localdb_name = build_local_db(acc_dict, new_dpath) # build a database
-            configure_request, send_request = switch_to_blast_plus(localdb_name) # replace function
-        #}
     #}
-
-    seqs_processed = num_done_reads
-    if seqs_processed >= probing_batch_size:
-        switch_to_localmachine = True
 
     attempt_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
     if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
@@ -1635,12 +1143,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         # Iterate througth packets left to send
         for i in range(attempts_left):#{
 
-            if not localdb_builded and switch_to_localmachine and not remote_only:#{
-                localdb_name = build_local_db(acc_dict, new_dpath) # build a database
-                configure_request, send_request = switch_to_blast_plus(localdb_name) # replace function
-                localdb_builded = True
-            #}
-
             with open(tmp_fpath, 'w') as tmp_file:
                 tmp_file.write(str(packet_size)+ '\n')
 
@@ -1653,50 +1155,20 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
             print("\nGo to BLAST (" + blast_algorithm + ")!")
             print("Request number {} out of {}.".format(attempt, attempt_all))
-
-            send = True
-
-            # If current packet has been already send, we can try to get it and not to send it again
-            if attempt == saved_attempt and saved_RID is not None:#{
-
-                align_xml_text = wait_for_align(saved_RID, contin_rtoe,
-                    attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
-
-                # If request is not expired get he result and not send it again
-                if align_xml_text != "expired":#{
-                    send = False
-
-                    result_tsv_lines = parse_align_results_xml(align_xml_text,
-                        packet["names"]) # get result tsv lines
-
-                    seqs_processed += len( packet["names"] )
-                    if seqs_processed >= probing_batch_size:
-                        switch_to_localmachine = True
-
-                    # Write the result to tsv
-                    write_result(result_tsv_lines, tsv_res_path)
-                #}
-            #}
-
-            if send:#{
             
-                request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
+            request = configure_request(packet["fasta"], blast_algorithm) # get the request
 
-                # Send the request get BLAST XML response
-                align_xml_text = send_request(request,
-                    attempt, attempt_all, fasta_hname+".fasta", tmp_fpath)
+            # Send the request get BLAST XML response
+            align_xml_text = send_request(request,
+                attempt, attempt_all, fasta_hname+".fasta", tmp_fpath)
 
-                # Get result tsv lines
-                result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"])
+            # Get result tsv lines
+            result_tsv_lines = parse_align_results_xml(align_xml_text,
+                packet["names"])
 
-                seqs_processed += len( packet["names"] )
-                if seqs_processed >= probing_batch_size:
-                    switch_to_localmachine = True
+            # Write the result to tsv
+            write_result(result_tsv_lines, tsv_res_path)
 
-                # Write the result to tsv
-                write_result(result_tsv_lines, tsv_res_path)
-            #}
             attempt += 1
         #}
     #}

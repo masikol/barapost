@@ -45,6 +45,7 @@ from re import search as re_search
 import os
 import getopt
 from sys import argv
+from sys import intern
 # -------------------
 
 
@@ -123,7 +124,7 @@ for opt, arg in opts:#{
             print(" !! - Warning: file '{}' is not '.fastq' and not '.fasta'!".format(arg))
             platf_depend_exit(1)
         #}
-        fq_fa_paths.append(arg)
+        fq_fa_paths.append(os.path.abspath(arg))
     #}
 
     if opt in ("-d", "--indir"):#{
@@ -205,7 +206,7 @@ with open(barapost_res_path, 'r') as brpst_resfile:#{
     line = brpst_resfile.readline().strip() # get the first informative line
 
     while line is not "":#{
-        read_name = line.split('\t')[0]
+        read_name = intern(line.split('\t')[0])
         hit_name = line.split('\t')[1]
         resfile_lines[read_name] = hit_name
 
@@ -269,6 +270,10 @@ def format_taxonomy_name(hit_name, sens):#{
     :type sens: str;
     Returns formatted hit name of 'str' type;
     """
+
+    if hit_name == "No significant similarity found":#{
+        return "unknown"
+    #}
 
     # If structure of hit name is strange
     if re_search(hit_name_pattern, hit_name.strip()) is None:#{
@@ -452,6 +457,8 @@ is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else
 num_files = len(fq_fa_paths)
 
 for j, fq_fa_path in enumerate(fq_fa_paths):#{
+
+    print("\n '{}' is sorting ...".format(os.path.basename(fq_fa_path)))
     
     # Prune name of source FASTQ or FASTA file
     source_path_pruned = os.path.basename(fq_fa_path) # get rid of absolute path
@@ -468,10 +475,10 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     
     with how_to_open(fq_fa_path) as source_fastq_file:#{
 
-        for _ in range(num_reads):#{
+        for i in range(num_reads):#{
 
             fastq_rec = read_fun(source_fastq_file) # get FASTQ or FASTA record
-            read_name = fastq_rec["seq_id"].partition(' ')[0][1:] # get ID of the sequence
+            read_name = intern(fastq_rec["seq_id"].partition(' ')[0][1:]) # get ID of the sequence
 
             try:#{
                 hit_name = resfile_lines[read_name] # find hit corresponding to this sequence
@@ -488,12 +495,15 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
                     'q' if is_fastq(fq_fa_path) else 'a'))
                 write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
             #}
+
+            print("\r {}/{} reads are sorted  ".format(i+1, num_reads), end="")
         #}
+        print('\n' + '-'*20 + '\n')
     #}
 
-    print("\n File {}/{} '{}' is sorted".format(j+1, num_files, fq_fa_path))
+    print("\n File {}/{} '{}' is sorted".format(j+1, num_files, os.path.basename(fq_fa_path)))
     print('~'*20+'\n')
 #}
 
-print("Task has been successfully completed!")
+print("Sorting has been successfully completed!")
 platf_depend_exit(0)

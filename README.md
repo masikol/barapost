@@ -109,49 +109,38 @@ Search only among Escherichia and viral sequences:
 ## 2. barapost.py
 
 Version 2.1;
-28.08.2019 edition
+29.08.2019 edition
 
 ### DESCRIPTION:
 
- Script "barapost.py" is designed for determinating the taxonomic position 
-of nucleotide sequences by blasting each of them and regarding the best hit.
+barapost.py -- script is designed for determinating the taxonomic position
+of nucleotide sequences by blasting each of them with 'blastn' from 'blast+' toolkit
+and regarding the best hit.
 
- Script processes FASTQ and FASTA files (files can be gzipped).
+'barapost.py' is meant to be used just after 'prober.py'.
 
- Results of the work of this script are written to TSV file,
-that can be found in result directory.
+'barapost.py' downloads records-hits from Genbank according to results
+of work of 'prober.py' script, builds an indexed local database which consists of
+downloaded sequences, and continues aligning with 'blast+' toolkit in order to save time.
 
- If no separate input (FASTQ, FASTA) files and not input directory is specified,
-"barapost.by" will process all FASTQ and FASTA files in current directory.
+Script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
- FASTQ and/or FASTA files processed by this script are meant to be sorted afterwards by "fastQA_sorter.py".
+'barapost.py' writes it's results in the same TSV file as 'prober.py' does.
+
+FASTQ files processed by this script are meant to be sorted afterwards by 'fastQA_sorted.py'.
+
+`blast+` toolkit (including blastn, makeblastdb and makembindex) can
+be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
 
 
 ### Default parameters:
 
+Default parameters:
+
 - all FASTQ and FASTA files in current directory will be processed;
-- packet size (see `-p` option): 100 sequences;
-- probing batch size (see `-b` option): 200 sequences;
-- algorithm (see `-a` option): `megaBlast`;
-- organisms (see `-g` option): full `nt` database, e.i. no slices;
-- output directory (`-o` option): directory named `"barapost_result"`
-  nested in current directory;
+- packet size (see '-p' option): 100 sequences;
+- algorithm (see '-a' option): 'megaBlast';
 
-Default behavior is to send certain number (see `-b` option) of sequences to BLAST server,
-download records-hits from Genbank according to results of blasting probing batch of sequences,
-build an indexed local database which consists of downloaded sequences,
-and continue aligning with `blast+` toolkit in order to save time.
-Downloaded FASTA file is gzipped after database building.
-
-Obviously, a probing batch cannot cover all variety of data set,
-so some sequences can be recognized as "unknown". But you always can run "barapost.py" again
-on "unknown" sequences.
-
-You can use "barapost.py" without `blast+` tookit by specifying `--remote-only` option.
-In this case all sequences will be sent on BLAST server and aligned there.
-
-`blast+` toolkit (including blastn, makeblastdb and makembindex) can
-be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
 
 ### OPTIONS:
 
@@ -172,44 +161,28 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
             Available values: 'megaBlast', 'discoMegablast', 'blastn'.
             Default is megaBlast;
-
-    -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
-            Format of value: 
-              <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
-            See EXAMPLES #2 and #3 below.
-            Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-            Default is: full 'nt' database, e.i. no slices.
-
-    -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
-            After that a local database will be builded according to results of probing blasting.
-            More clearly: records-hits will be downloaded from Genbank and will be used
-            as local database. Further blasting against this database will be performed
-            on local machine with 'blast+' toolkit.
-            Value: positive integer number. Default value is 200;
-
-    --remote-only --- flag option. If specified, all aligning will be performed on BLAST server;
 ```
-
-- More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:
-    'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
-- You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.
 
 
 ### EXAMPLES:
 
-  1) Process one file with default settings:
+1) Process one FASTQ file with default settings.
+     File `reads.fastq` has been already processed by "prober.py".
+     Results of "prober.py" work are in directory `prober_outdir`:
 
-`./barapost.py -f reads.fastq`
+`./barapost.py -f reads.fastq -r prober_outdir`
 
-  2) Process a FASTQ file and a FASTA file with discoMegablast, packet size of 5 sequences.
-       Search only among Erwinia sequences:
+2) Process FASTQ file and FASTA file with discoMegablast, packet size of 5 sequences.
+     Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "prober.py".
+     Results of "prober.py" work are in directory `prober_outdir`:
 
-`./barapost.py -f reads_1.fastq.gz -f some_sequences.fasta -a discoMegablast -p 5 -g Erwinia,551`
+`./barapost.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -r prober_outdir`
 
-  3) Process all FASTQ and FASTA files in directory named `some_dir`.
-     Search only among Escherichia and viral sequences:
+3) Process all FASTQ and FASTA files in directory named `some_dir`.
+    All these files have been already processed by "prober.py".
+    Results of "prober.py" work are in directory `prober_outdir`:
 
-`./barapost.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir`
+`/barapost.py -d some_dir -r prober_outdir`
 
 
 ## 3. fastQA_sorter.py
@@ -221,6 +194,8 @@ Version 2.1;
 ### DESCRIPTION:
 
  Script "fastQA_forter.py" is designed for sorting FASTQ and/or FASTA files processed by "barapost.py".
+
+ 'fastQA_sorter.py' is meant to be used just after 'barapost.py'.
 
  Requires result TSV file generated by "barapost.py" and FASTQ or FASTA files processed by it.
  Therefore `-b` option is mandatory.
@@ -278,6 +253,8 @@ Version 2.1;
 
 You can try this scripts on test dataset named `some_reads.fastq` (there are 4 reads):
 
-`./barapost.py -f some_reads.fastq -o ./ -g Escherichia,561+viruses,10239`
+`./prober.py -f some_reads.fastq -o some_outdir -g Escherichia,561+viruses,10239`
 
-`./fastQA_sorter.py -f some_reads.fastq -b some_reads/some_reads_megaBlast_result.tsv -o some_sorted_reads`
+`./barapost.py -f some_reads.fastq -r some_outdir`
+
+`./fastQA_sorter.py -f some_reads.fastq -b some_outdir/some_reads/some_reads_megaBlast_result.tsv -o some_sorted_reads`

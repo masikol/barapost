@@ -76,7 +76,7 @@ DESCRIPTION:\n
     on your local machine by 'barapost.py'.\n
  This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
  Results of the work of this script are written to TSV files, that can be found in result directory:\n
-  1. There is a file named "...acc_list.tsv". It contains accessions and names of Genbank records that
+  1. There is a file named "...probe_acc_list.tsv". It contains accessions and names of Genbank records that
     can be used for further processing on your local machine by 'barapost.py'.\n
   2. There is a file named "...result.tsv". It contains full result of blasting.
     Results of barapost.py's work will be appended to this file.\n
@@ -106,32 +106,32 @@ But you always can run 'prober.py' again on "unknown" sequences.
 OPTIONS:\n
     -h (--help) --- show help message;\n
     -f (--infile) --- input FASTQ or FASTA (or '.fastq.gz', '.fasta.gz') file;
-            You can specify multiple input files with this option (see EXAMPLES #2);\n
+        You can specify multiple input files with this option (see EXAMPLES #2);\n
     -d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
-            E.i. all FASTQ and FASTA files in this direcory will be processed;
-            Input files can be gzipped.\n
+        E.i. all FASTQ and FASTA files in this direcory will be processed;
+        Input files can be gzipped.\n
     -o (--outdir) --- output directory;\n
     -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
-            Value: integer number [1, 500]. Default value is 100;\n
+        Value: integer number [1, 500]. Default value is 100;\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
-            Available values: 'megaBlast', 'discoMegablast', 'blastn'.
-            Default is megaBlast;\n
+        Available values: 'megaBlast', 'discoMegablast', 'blastn'.
+        Default is megaBlast;\n
     -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
-            More clearly, functionality of this option is totally equal to "Organism" text boxes
-            on this BLASTn page:
-             'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
-            Format of value: 
-              <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
-            See EXAMPLES #2 and #3 below.
-            Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-            Default value is full 'nt' database.
-            You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
+        More clearly, functionality of this option is totally equal to "Organism" text boxes
+        on this BLASTn page:
+         'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
+        Format of value: 
+          <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
+        See EXAMPLES #2 and #3 below.
+        Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
+        Default value is full 'nt' database.
+        You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
-            After that a local database will be builded according to results of probing blasting.
-            More clearly: records-hits will be downloaded from Genbank and will be used
-            as local database. Further blasting against this database will be preformed
-            on local machine with 'blast+' toolkit.
-            Value: positive integer number. Default value is 200;\n
+        After that a local database will be builded according to results of probing blasting.
+        More clearly: records-hits will be downloaded from Genbank and will be used
+        as local database. Further blasting against this database will be preformed
+        on local machine with 'blast+' toolkit.
+        Value: positive integer number. Default value is 200;\n
 ----------------------------------------------------------
 
 EXAMPLES:\n
@@ -559,6 +559,12 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
         print("\tAverage quality of reads in this file: {} (Phred33)".format(file_avg_qual))
     #}
+    # IF FASTA file is already created
+    # We need only number of sequences in it.
+    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
+        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
+    #}
     # We've got FASTA source file
     # We need only number of sequences in it.
     else:#{ 
@@ -593,7 +599,7 @@ def rename_file_verbosely(file, directory):#{
 #}
 
 
-def look_around(new_dpath, fasta_path, blast_algorithm):#{
+def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     """
     Function looks around in order to ckeck if there are results from previous runs of this script.
 
@@ -626,7 +632,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     # Form path to result file
     tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
     # Form path to accession file
-    acc_fpath = "{}_{}_acc_list.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
+    acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
 
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
@@ -1198,7 +1204,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
 #}
 
 
-def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname):#{
+def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir_path):#{
     """
     Function writes result of blasting to result tsv file.
 
@@ -1228,7 +1234,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname):#{
     global acc_list
     global new_acc_dict
     global blast_algorithm
-    acc_file_path = os.path.join(new_dpath, "probe_acc_list_{}.tsv".format(blast_algorithm))
+    acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
 
     # If there is no accession file -- create it and write a head of the table.
     if not os.path.exists(acc_file_path):#{
@@ -1325,6 +1331,8 @@ for i, path in enumerate(fq_fa_list):#{
 #}
 print('-'*30 + '\n')
 
+print("Probing batch size: {} sequences".format(probing_batch_size))
+
 # Variable for counting accessions of records menat to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
 acc_counter = 0
@@ -1357,7 +1365,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     # Look around and ckeck if there are results of previous runs of this script
     # If 'look_around' is None -- there is no data from previous run
-    previous_data = look_around(new_dpath, curr_fasta["fpath"],
+    previous_data = look_around(outdir_path, new_dpath, curr_fasta["fpath"],
         blast_algorithm)
 
     if omit_file:#{
@@ -1373,8 +1381,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
-        acc_fpath = "{}_{}_acc_list.tsv".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm) # form path to accession file
+        acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
     #}
     else:#{ # if there is data from previous run
 
@@ -1438,7 +1445,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                     seqs_processed += len( packet["names"] )
 
                     # Write the result to tsv
-                    write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname)
+                    write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
                 #}
             #}
 
@@ -1457,7 +1464,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 seqs_processed += len( packet["names"] )
 
                 # Write the result to tsv
-                write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname)
+                write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
             #}
             attempt += 1
 
