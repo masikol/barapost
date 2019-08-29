@@ -101,7 +101,7 @@ OPTIONS (* means mandatory option):\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
         Available values: 'megaBlast', 'discoMegablast', 'blastn'.
         Default is megaBlast;\n
-  * -r (--prober-result-dir) --- directory with results of script 'prober.py'
+  * -r (--prober-result-dir) --- result directory genearted by script 'prober.py'
         This is directory specified to 'prober.py' by '-o' option.
         Or named 'prober_result' if you've ran 'prober.py' with default options.
 ----------------------------------------------------------
