@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.3
-# 29.08.2019 edition
+# Version 2.0
+# 30.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,12 +16,22 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
+# |===== Stuff for dealing with time =====|
+
+from time import time, strftime, localtime, sleep
+start_time = time()
+
+
+def get_work_time():#{
+    return strftime("%H:%M:%S", localtime( time() ))
+#}
+
 # Get start time
 from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 1.3) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.0) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -201,7 +211,7 @@ del help_msg # we do not need this large string any more
 
 print("\n Following files will be processed:")
 for i, path in enumerate(fq_fa_paths):#{
-    print("\t{}. {}".format(i+1, path))
+    print("  {}. {}".format(i+1, path))
 #}
 print('-'*20 + '\n')
 
@@ -268,7 +278,15 @@ def format_taxonomy_name(hit_name, sens):#{
 #}
 
 
-def read_fastq_record(read_file):#{
+# Data from plain text and gzipped should be parsed in different way,
+#   because data from .gz is read as 'bytes', not 'str'.
+FORMATTING_FUNCS = (
+    lambda line: line,   # format text line
+    lambda line: line.decode("utf-8")  # format gzipped line
+)
+
+
+def read_fastq_record(read_file, fmt_func):#{
     """
     :param read_file: file instance of FASTQ file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
@@ -286,10 +304,10 @@ def read_fastq_record(read_file):#{
 
     try:#{
         fastq_rec = {                    #read all 4 lines of fastq-record
-            "seq_id": read_file.readline(),
-            "seq": read_file.readline(),
-            "opt_id": read_file.readline(),
-            "qual_line": read_file.readline()
+            "seq_id": fmt_func(read_file.readline()),
+            "seq": fmt_func(read_file.readline()),
+            "opt_id": fmt_func(read_file.readline()),
+            "qual_line": fmt_func(read_file.readline())
         }
     #}
     except Exception as err:#{
@@ -302,7 +320,7 @@ def read_fastq_record(read_file):#{
 #}
 
 
-def read_fasta_record(read_file):#{
+def read_fasta_record(read_file, fmt_func):#{
     """
     :param read_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
@@ -318,8 +336,8 @@ def read_fasta_record(read_file):#{
 
     try:#{
         fasta_rec = {                    #read all 2 lines of FASTA-record
-            "seq_id": read_file.readline(),
-            "seq": read_file.readline()
+            "seq_id": fmt_func(read_file.readline()),
+            "seq": fmt_func(read_file.readline())
         }
     #}
     except Exception as err:#{
@@ -446,6 +464,7 @@ def configure_resfile_lines(tsv_res_fpath):#{
     return resfile_lines
 #}
 
+print("{} - Start working".format(get_work_time()))
 
 LINES_PER_READ_FASTQ = 4
 LINES_PER_SEQ_FASTA = 2
@@ -454,15 +473,15 @@ num_files = len(fq_fa_paths)
 
 for j, fq_fa_path in enumerate(fq_fa_paths):#{
 
-    print("\n '{}' is sorting ...".format(os.path.basename(fq_fa_path)))
+    print("\n{} - '{}' is sorting ...".format(get_work_time(), os.path.basename(fq_fa_path)))
 
     new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
     # Prune name of source FASTQ or FASTA file
-    source_path_pruned = os.path.basename(fq_fa_path) # get rid of absolute path
-    source_path_pruned = source_path_pruned.partition(".fast")[0] # get rid of extention
+    # source_path_pruned = os.path.basename(fq_fa_path) # get rid of absolute path
+    # source_path_pruned = source_path_pruned.partition(".fast")[0] # get rid of extention
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ] # get ready to open gzipped files
     lines_format = LINES_PER_READ_FASTQ if is_fastq(fq_fa_path) else LINES_PER_SEQ_FASTA
@@ -475,9 +494,11 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     
     with how_to_open(fq_fa_path) as source_fastq_file:#{
 
+        fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
+
         for i in range(num_reads):#{
 
-            fastq_rec = read_fun(source_fastq_file) # get FASTQ or FASTA record
+            fastq_rec = read_fun(source_fastq_file, fmt_func) # get FASTQ or FASTA record
             read_name = intern(fastq_rec["seq_id"].partition(' ')[0][1:]) # get ID of the sequence
 
             try:#{
@@ -491,19 +512,16 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
             # If read is found in TSV file:
             else:#{
                 # Get name of resilt FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}_{}.fast{}.gz".format(hit_name, source_path_pruned,
+                sorted_file_path = os.path.join(outdir_path, "{}.fast{}.gz".format(hit_name,
                     'q' if is_fastq(fq_fa_path) else 'a'))
                 write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
             #}
 
-            print("\r {}/{} reads are sorted  ".format(i+1, num_reads), end="")
+            print("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads), end="")
         #}
-        print('\n' + '-'*20 + '\n')
+        print('\n' + '-'*20)
     #}
-
-    print("\n File {}/{} '{}' is sorted".format(j+1, num_files, os.path.basename(fq_fa_path)))
-    print('~'*20+'\n')
 #}
 
-print("Sorting has been successfully completed!")
+print("\n{} - Sorting has been successfully completed!".format(get_work_time()))
 platf_depend_exit(0)

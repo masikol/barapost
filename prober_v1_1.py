@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.0
-# 29.08.2019 edition
+# Version 1.1
+# 30.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.0) ===|\n")
+print("\n |=== prober.py (version 1.1) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -490,11 +490,37 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
 
 get_phred33 = lambda q_symb: ord(q_symb) - 33
 
-def get_read_sum_qual(qual_str):#{
+def get_read_avg_qual(qual_str):#{
 
     phred33 = map(get_phred33, list(qual_str))
-    sum_qual = sum(phred33)
-    return sum_qual
+    read_qual = round( sum(phred33) / len(qual_str), 2 )
+    return read_qual
+#}
+
+def configure_qual_dict(fastq_path):#{
+
+    qual_dict = dict()
+    how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
+    fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
+
+    with how_to_open(fastq_path) as fastq_file:#{
+        counter = 1
+        line = fmt_func(fastq_file.readline())
+        while line != "":#{
+            if counter == 1:#{
+                seq_id = intern( (line.partition(' ')[0])[1:] )
+            #}
+            counter += 1
+            line = fmt_func(fastq_file.readline())
+            if counter == 4:#{
+                qual_dict[seq_id] = get_read_avg_qual(line)
+                counter = 0
+            #}
+        #}
+    #}
+
+    print(qual_dict.keys())
+    return qual_dict
 #}
 
 
@@ -520,6 +546,8 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
+    how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
@@ -533,9 +561,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
 
         with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
 
-            sum_qual = 0
-            total_len = 0
-
             counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
             for line in fastq_file:#{
                 line = fmt_func(line)
@@ -546,23 +571,19 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
                 #}
                 # reset the counter if the 4-th (quality) line has been encountered
                 elif counter == 4:
-                    sum_qual += get_read_sum_qual(line.strip())
-                    total_len += len(line.strip())
                     counter = 0
                 counter += 1
                 num_lines += 1
             #}
         #}
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
-        file_avg_qual = round(sum_qual / total_len, 2)
 
         print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
-        print("\tAverage quality of reads in this file: {} (Phred33)".format(file_avg_qual))
     #}
     # IF FASTA file is already created
     # We need only number of sequences in it.
     elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
-        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
     #}
     # We've got FASTA source file
@@ -570,7 +591,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     else:#{ 
         global FASTA_LINES_PER_SEQ
 
-        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
         fasta_path = fq_fa_path
     #}
@@ -678,7 +699,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
         global acc_dict
         if os.path.exists(acc_fpath):#{
             try:#{  There can be invalid information in this file
-                with open(acc_file, 'r') as acc_file:#{
+                with open(acc_fpath, 'r') as acc_file:#{
                     lines = acc_file.readlines()[5:] # omit description and head of the table
                     for vals in lines.split(DELIM):#{
                         acc = intern(vals[0].strip())
@@ -1149,11 +1170,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
     root = ElementTree.fromstring(xml_text) # get tree instance
     global new_acc_dict
 
+    global qual_dict
+
     # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
     
         # "Iteration" node contains query name information
-        query_name = iter_elem.find("Iteration_query-def").text
+        query_name = intern(iter_elem.find("Iteration_query-def").text)
 
         query_len = iter_elem.find("Iteration_query-len").text
 
@@ -1197,8 +1220,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
         #}
         else:
             # If there is no hit for current sequence
-            print("\n {} -- No significant similarity found.\n Query length - {}.".format(query_name, query_len))
+            print("\n '{}' -- No significant similarity found.\n Query length - {}.".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len, ] ))
+
+        if not qual_dict is None:#{
+            print("    Average quality of this read is {}, e.i. mistake propability is {}".format(qual_dict[query_name],
+                round(10**( qual_dict[query_name]/-10 ), 3)))
+        #}
     #}
     return result_tsv_lines
 #}
@@ -1352,6 +1380,8 @@ omit_file= False
 
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
+
+    qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
     
     # Create the result directory with the name of FASTQ of FASTA file being processed:
     new_dpath = create_result_directory(fq_fa_path, outdir_path)

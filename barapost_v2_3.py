@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.2
-# 29.08.2019 edition
+# Version 2.3
+# 30.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.2) ===|\n")
+print("\n |=== barapost.py (version 2.3) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -233,6 +233,7 @@ if len(fq_fa_list) == 0:#{
     # If input directory was not specified -- look for FASTQ files in current directory
     else:#{
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
+        fq_fa_list - list( filter(lambda f: True if f == "query.fasta" else False, fq_fa_list) )
         if len(fq_fa_list) == 0:#{
             print_error("there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
@@ -246,7 +247,15 @@ del help_msg # we do not need it any more
 # Check if 'blast+' tookit is installed
 pathdirs = os.environ["PATH"].split(os.pathsep)
 
-for utility in ("blastn", "makeblastdb", "makembindex"):#{
+# Add '.exe' extention on order to find executables on Windows
+if platform.startswith("win"):#{
+	exe_ext = ".exe"
+#}
+else:#{
+	exe_ext = ""
+#}
+
+for utility in ("blastn"+exe_ext, "makeblastdb"+exe_ext, "makembindex"+exe_ext):#{
 
     utility_found = False
 
@@ -259,7 +268,7 @@ for utility in ("blastn", "makeblastdb", "makembindex"):#{
 
     if not utility_found:#{
         print("\tAttention!\n'{}' from blast+ toolkit is not found in your system.".format(utility))
-        print("""If this error still occure although you have installed everything 
+        print("""If this error still occures although you have installed everything 
 -- make sure that this program is added to PATH)""")
         platf_depend_exit(1)
     #}
@@ -340,16 +349,6 @@ FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
 
 
-get_phred33 = lambda q_symb: ord(q_symb) - 33
-
-def get_read_sum_qual(qual_str):#{
-
-    phred33 = map(get_phred33, list(qual_str))
-    sum_qual = sum(phred33)
-    return sum_qual
-#}
-
-
 def fastq2fasta(fq_fa_path, i, new_dpath):#{
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
@@ -368,9 +367,22 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         "nreads": number_of_reads_in_this_FASTA_file (int)
     }
     """
+
+    if not os.path.exists(new_dpath):#{
+        try:#{
+            os.makedirs(new_dpath)
+        #}
+        except OSError as err:#{
+            print_error("error while creating directory '{}'".format(new_dpath))
+            print( str(err) )
+            platf_depend_exit(1)
+        #}
+    #}
     
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
+
+    how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
 
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
@@ -383,9 +395,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
 
         with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
 
-            sum_qual = 0
-            total_len = 0
-
             counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
             for line in fastq_file:#{
                 line = fmt_func(line)
@@ -396,29 +405,25 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
                 #}
                 # reset the counter if the 4-th (quality) line has been encountered
                 elif counter == 4:
-                    sum_qual += get_read_sum_qual(line.strip())
-                    total_len += len(line.strip())
                     counter = 0
                 counter += 1
                 num_lines += 1
             #}
         #}
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
-        file_avg_qual = round(sum_qual / total_len, 2)
 
         print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
-        print("\tAverage quality of reads in this file: {} (Phred33)".format(file_avg_qual))
     #}
     # IF FASTA file is already created
     # We need only number of sequences in it.
     elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
-        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
     #}
     # If we've got FASTA source file
     # We need only number of sequences in it.
     else:#{
-        num_lines = sum(1 for line in open(fq_fa_path, 'r')) # get number of lines
+        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
         # If we've got FASTA source file we do not need to copy it
         fasta_path = fq_fa_path
@@ -837,11 +842,9 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
     with open(tmp_fpath, 'a') as tmpfile:
         tmpfile.write("{}\n".format(attempt))
 
-    print("\n{} - Alignment for: '{}' ({}/{}) started".format(get_work_time(), filename, attempt, attempt_all))
-
     # request is blastn cmd returned by 'configure_localdb_request' function
     exit_code = os.system(request)
-    if exit_code != 0:#{
+    if exit_code != 0:#{`
         print_error("error while aligning a sequence against local database")
         platf_depend_exit(exit_code)
     #}
@@ -964,10 +967,10 @@ def parse_align_results_xml(xml_text, seq_names):#{
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
 
-            print("""\n '{}' -- '{}'
-    Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%)""".format(query_name, hit_taxa_name,
-                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
+    #         print("""\n '{}' -- '{}'
+    # Query length - {} nt;
+    # Identity - {}/{} ({}%); Gaps - {}/{} ({}%)""".format(query_name, hit_taxa_name,
+    #                 query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
@@ -975,7 +978,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
         #}
         else:
             # If there is no hit for current sequence
-            print("\n {} -- No significant similarity found.\n Query length - {}.".format(query_name, query_len))
+            # print("\n '{}' -- No significant similarity found.\n Query length - {}.".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len, ] ))
     #}
     return result_tsv_lines
@@ -1076,7 +1079,7 @@ print("OK\n")
 
 print(" Following files will be processed:")
 for i, path in enumerate(fq_fa_list):#{
-    print("    {}. '{}'".format(i+1, path))
+    print("   {}. '{}'".format(i+1, path))
 #}
 print('-'*30 + '\n')
 
@@ -1131,6 +1134,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     with open(curr_fasta["fpath"], 'r') as fasta_file:#{
 
+        print("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), attempt_all),
+                end="")
+
         # Go untill the last processed sequence
         for _ in range( int(num_done_reads * 2) ):#{
             fasta_file.readline()
@@ -1152,10 +1158,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 print("Recent packet is empty")
                 break
             #}
-
-            print("\nGo to BLAST (" + blast_algorithm + ")!")
-            print("Request number {} out of {}.".format(attempt, attempt_all))
-            
             request = configure_request(packet["fasta"], blast_algorithm) # get the request
 
             # Send the request get BLAST XML response
@@ -1169,8 +1171,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path)
 
+            print("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), attempt, attempt_all),
+                end="")
+
             attempt += 1
         #}
+        print('\n') # just print 2 blank lines
     #}
     remove_tmp_files(tmp_fpath)
 #}
