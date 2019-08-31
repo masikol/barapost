@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.3
-# 30.08.2019 edition
+# Version 2.4
+# 31.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.3) ===|\n")
+print("\n |=== barapost.py (version 2.4) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -423,8 +423,9 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     # If we've got FASTA source file
     # We need only number of sequences in it.
     else:#{
-        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
-        num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
+        # num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
+        # num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
+        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
         # If we've got FASTA source file we do not need to copy it
         fasta_path = fq_fa_path
     #}
@@ -554,7 +555,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 #}
 
 
-def get_packet(fasta_file, packet_size):#{
+def get_packet(fasta_file, packet_size, fmt_func):#{
     """
     Function collects the packet of query sequences to send to BLAST server.
 
@@ -570,23 +571,44 @@ def get_packet(fasta_file, packet_size):#{
     }
     """
 
+    global next_id_line
+    line = fmt_func(fasta_file.readline())
+    if line.startswith('>') and ' ' in line:#{:
+        line = line.partition(' ')[0]+'\n'
+    #}
     packet = ""
-    names = list()
 
-    for i in range(packet_size):#{
+    i = 0
+    if not next_id_line is None:
+        packet += next_id_line
+    packet += line
 
-        seq_id = fasta_file.readline().strip().partition(' ')[0] # prune the seq id a little bit
-        seq = fasta_file.readline().strip() # get the sequence
+    while i < packet_size:#{
 
-        # if 'seq_d is an empty string -- 'seq' is as well
-        if seq_id == "":  # if previous sequence was last in current file
+        line = fmt_func(fasta_file.readline())
+        if line.startswith('>'):#{
+            if ' ' in line:
+                line = line.partition(' ')[0]+'\n'
+            i += 1
+        #}
+        if line == "":
             break
-        else:
-            names.append(seq_id)
-            packet += "{}\n{}\n".format(seq_id, seq)
+        packet += line
     #}
 
-    return {"fasta": packet.strip(), "names": names}  # remove the last '\n' character
+    if line != "":#{
+        next_id_line = packet.splitlines()[-1]+'\n'
+        packet = '\n'.join(packet.splitlines()[:-1])
+    #}
+    else:#{
+        next_id_line = None
+        packet = packet.strip()
+    #}
+
+    names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
+    names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+
+    return {"fasta": packet.strip(), "names": names}
 #}
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
@@ -692,9 +714,25 @@ def retrieve_fastas_by_gi(gi_list, db_dir):#{
     
     print("Downloading sequences for local database building...")
 
-    urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
-    stop_wait = True # lower the flag
-    waiter.join() # main thread will wait until waiter function ends it's work
+    error = True
+    while error:#{
+        try:#{
+            urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
+        #}
+        except OSError as err:#{
+            print_error("error while downloading FASTA files")
+            print( str(err) )
+            print("Script will try agein in 30 seconds")
+            sleep(30)
+        #}
+        else:#{
+            error = False
+        #}
+        finally:#{
+            stop_wait = True # lower the flag
+            waiter.join() # main thread will wait until waiter function ends it's work
+        #}
+    #}
 
     print("Downloading is completed\n\n")
 
@@ -1091,6 +1129,11 @@ acc_dict = configure_acc_dict(acc_fpath)
 # Build a database
 local_fasta = build_local_db(acc_dict, prober_res_dir)
 
+# Variable that contains id of next sequence in current FASTA file.
+# If no or all sequences in current FASTA file have been already processed, this variable is None
+# Function 'get_packet' changes this variable
+next_id_line = None
+
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
     
@@ -1132,15 +1175,23 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         attempt_all += 1
     attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
+    if is_gzipped(curr_fasta["fpath"]):#{
+        fmt_func = lambda l: l.decode("utf-8")
+    #}
+    else:#{
+        fmt_func = lambda l: l
+    #}
+
     with open(curr_fasta["fpath"], 'r') as fasta_file:#{
 
         print("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), attempt_all),
                 end="")
 
         # Go untill the last processed sequence
-        for _ in range( int(num_done_reads * 2) ):#{
-            fasta_file.readline()
-        #}
+        # for _ in range( int(num_done_reads * 2) ):#{
+        #     fasta_file.readline()
+        # #}
+        packet = get_packet(fasta_file, num_done_reads, fmt_func)
 
         reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
         attempts_left = attempt_all - attempts_done # number of packets left to send
@@ -1152,7 +1203,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             with open(tmp_fpath, 'w') as tmp_file:
                 tmp_file.write(str(packet_size)+ '\n')
 
-            packet = get_packet(fasta_file, packet_size) # form the packet
+            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 
             if packet["fasta"] is "":#{   Just in case
                 print("Recent packet is empty")

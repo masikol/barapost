@@ -2,7 +2,7 @@
 
 ## 1. prober.py
 
-Version 1.1; 30.08.2019 edition
+Version 1.2; 31.08.2019 edition
 
 ### DESCRIPTION:
 
@@ -107,7 +107,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost.py
 
-Version 2.3; 30.08.2019 edition
+Version 2.4; 31.08.2019 edition
 
 ### DESCRIPTION:
 
@@ -190,7 +190,7 @@ Default parameters:
 ## 3. fastQA_sorter.py
 (fast**Q** and fast**A** sorter)
 
-Version 2.0; 30.08.2019 edition
+Version 2.1; 31.08.2019 edition
 
 ### DESCRIPTION:
 

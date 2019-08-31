@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.1
-# 30.08.2019 edition
+# Version 1.2
+# 31.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.1) ===|\n")
+print("\n |=== prober.py (version 1.2) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -320,7 +320,6 @@ FORMATTING_FUNCS = (
     lambda line: line.decode("utf-8").strip()  # format gzipped line
 )
 
-
 # |=== Delimiter for result tsv file ===|
 DELIM = '\t'
 
@@ -333,9 +332,11 @@ FASTA_LINES_PER_SEQ = 2
 seqs_at_all = 0
 print() # just print new line
 for file in fq_fa_list:#{
-    ln_per_seq = FASTQ_LINES_PER_READ if is_fastq(file) else FASTA_LINES_PER_SEQ
     how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
-    n_seqs = int( sum(1 for line in how_to_open(file, 'r')) / ln_per_seq )
+    if is_fastq(file):
+        n_seqs = int( sum(1 for line in how_to_open(file, 'r')) / FASTQ_LINES_PER_READ )
+    else:
+        n_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(file, 'r'))
     print(" file '{}' - {} sequences".format(os.path.basename(file), n_seqs))
     seqs_at_all += n_seqs
 #}
@@ -519,7 +520,6 @@ def configure_qual_dict(fastq_path):#{
         #}
     #}
 
-    print(qual_dict.keys())
     return qual_dict
 #}
 
@@ -556,7 +556,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         global FASTQ_LINES_PER_READ
 
         # Get ready to process gzipped files
-        how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+        # how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
         fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
         with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
@@ -591,12 +591,13 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     else:#{ 
         global FASTA_LINES_PER_SEQ
 
-        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
-        num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
+        # num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
+        # num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
+        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
         fasta_path = fq_fa_path
     #}
 
-    print("\n |========== file: '{}' ({} sequences)===========|".format(os.path.basename(fasta_path), num_reads))
+    print("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(fasta_path), num_reads))
     return {"fpath": fasta_path, "nreads": num_reads}
 #}
 
@@ -657,7 +658,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
-    continuation = False
+    continuation = None
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):#{
         print('\n' + get_work_time() + " - The previous result file is found in the directory:")
@@ -669,7 +670,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             rename_file_verbosely(acc_fpath, new_dpath)
     #}
 
-    if continuation:#{   Find the name of last successfull processed sequence
+    if continuation == True:#{   Find the name of last successfull processed sequence
         print("Let's try to continue...")
 
         # Collect information from result file
@@ -740,7 +741,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             # Therefore this packet will be aligned once again.
         #}
         except Exception as exc:#{
-            total_num_seqs = int( sum(1 for line in open(fasta_path, 'r')) / FASTA_LINES_PER_SEQ )
+            total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path, 'r'))
             print("\n    Attention! Temporary file not found or broken!")
             print( str(exc) )
             print("{} sequences have been already processed.".format(num_done_reads))
@@ -794,17 +795,17 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 "tmp_fpath": tmp_fpath
             }
         #}
-    else:#{
+    elif continuation == False:#{
         # If we've decided to start from the beginnning - rename old files
         rename_file_verbosely(tsv_res_fpath, new_dpath)
         rename_file_verbosely(tmp_fpath, new_dpath)
         rename_file_verbosely(acc_fpath, new_dpath)
-        return None
     #}
+    return None
 #}
 
 
-def get_packet(fasta_file, packet_size):#{
+def get_packet(fasta_file, packet_size, fmt_func):#{
     """
     Function collects the packet of query sequences to send to BLAST server.
 
@@ -820,23 +821,44 @@ def get_packet(fasta_file, packet_size):#{
     }
     """
 
+    global next_id_line
+    line = fmt_func(fasta_file.readline())
+    if line.startswith('>') and ' ' in line:#{:
+        line = line.partition(' ')[0]+'\n'
+    #}
     packet = ""
-    names = list()
 
-    for i in range(packet_size):#{
+    i = 0
+    if not next_id_line is None:
+        packet += next_id_line
+    packet += line
 
-        seq_id = fasta_file.readline().strip().partition(' ')[0] # prune the seq id a little bit
-        seq = fasta_file.readline().strip() # get the sequence
+    while i < packet_size:#{
 
-        # if 'seq_d is an empty string -- 'seq' is as well
-        if seq_id == "":  # if previous sequence was last in current file
+        line = fmt_func(fasta_file.readline())
+        if line.startswith('>'):#{
+            if ' ' in line:
+                line = line.partition(' ')[0]+'\n'
+            i += 1
+        #}
+        if line == "":
             break
-        else:
-            names.append(seq_id)
-            packet += "{}\n{}\n".format(seq_id, seq)
+        packet += line
     #}
 
-    return {"fasta": packet.strip(), "names": names}  # remove the last '\n' character
+    if line != "":#{
+        next_id_line = packet.splitlines()[-1]+'\n'
+        packet = '\n'.join(packet.splitlines()[:-1])
+    #}
+    else:#{
+        next_id_line = None
+        packet = packet.strip()
+    #}
+
+    names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
+    names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+
+    return {"fasta": packet.strip(), "names": names}
 #}
 
 
@@ -1375,6 +1397,11 @@ new_acc_dict = dict()
 # Counter of processed sequences
 seqs_processed = 0
 
+# Variable that contains id of next sequence in current FASTA file.
+# If no or all sequences in current FASTA file have been already processed, this variable is None
+# Function 'get_packet' changes this variable
+next_id_line = None
+
 stop = False
 omit_file= False
 
@@ -1433,12 +1460,20 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         attempt_all += 1
     attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
+    if is_gzipped(curr_fasta["fpath"]):#{
+        fmt_func = lambda l: l.decode("utf-8")
+    #}
+    else:#{
+        fmt_func = lambda l: l
+    #}
+
     with open(curr_fasta["fpath"], 'r') as fasta_file:#{
 
         # Go untill the last processed sequence
-        for _ in range( int(num_done_reads * 2) ):#{
-            fasta_file.readline()
-        #}
+        # for _ in range( int(num_done_reads * 2) ):#{
+        #     fasta_file.readline()
+        # #}
+        get_packet(fasta_file, num_done_reads, fmt_func)
 
         reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
         attempts_left = attempt_all - attempts_done # number of packets left to send
@@ -1447,7 +1482,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         # Iterate througth packets left to send
         for i in range(attempts_left):#{
 
-            packet = get_packet(fasta_file, packet_size) # form the packet
+            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 
             if packet["fasta"] is "":#{   Just in case
                 print("Recent packet is empty")

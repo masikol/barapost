@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.0
-# 30.08.2019 edition
+# Version 2.1
+# 31.08.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -31,7 +31,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 2.0) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.1) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -311,7 +311,7 @@ def read_fastq_record(read_file, fmt_func):#{
         }
     #}
     except Exception as err:#{
-        print_red("\nAn error occured while reading from infile")
+        print("\nAn error occured while reading from infile")
         print( str(err) )
         platf_depend_exit(1)
     #}
@@ -320,9 +320,9 @@ def read_fastq_record(read_file, fmt_func):#{
 #}
 
 
-def read_fasta_record(read_file, fmt_func):#{
+def read_fasta_record(fasta_file, fmt_func):#{
     """
-    :param read_file: file instance of FASTA file to retrieve sequences from;
+    :param fasta_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
 
     Returns dictionary of the following structure:
@@ -335,13 +335,43 @@ def read_fasta_record(read_file, fmt_func):#{
     fasta_rec = dict()
 
     try:#{
+
+        global next_id_line
+        line = fmt_func(fasta_file.readline())
+        packet = ""
+
+        stop = False
+        if not next_id_line is None:
+            packet += next_id_line
+        packet += line
+
+        while not stop:#{
+
+            line = fmt_func(fasta_file.readline())
+            if line.startswith('>'):#{
+                stop = True
+            #}
+            if line == "":
+                break
+            packet += line
+        #}
+
+        if line != "":#{
+            next_id_line = packet.splitlines()[-1]+'\n'
+            packet = '\n'.join(packet.splitlines()[:-1])
+        #}
+        else:#{
+            next_id_line = None
+            packet = packet.strip()
+        #}
+
         fasta_rec = {                    #read all 2 lines of FASTA-record
-            "seq_id": fmt_func(read_file.readline()),
-            "seq": fmt_func(read_file.readline())
+            "seq_id": packet.splitlines()[0],
+            "seq": '\n'.join( packet.splitlines()[1:] )+'\n'
         }
     #}
     except Exception as err:#{
-        print_red("\nAn error occured while reading from infile")
+        print("\nAn error occured while reading from infile")
         print( str(err) )
         platf_depend_exit(1)
     #}
@@ -367,7 +397,7 @@ def write_fastq_record(outfile_path, fastq_record):#{
             sorted_file.write(bytes(fastq_record["qual_line"], "utf-8"))
     #}
     except Exception as exc:#{
-        print_red("\nAn error occured while writing to outfile")
+        print("\nAn error occured while writing to outfile")
         print( str(exc) )
         platf_depend_exit(1)
     #}
@@ -385,11 +415,11 @@ def write_fasta_record(outfile_path, fasta_record):#{
     """
     try:#{
         with open_as_gzip(outfile_path, 'ab') as sorted_file:
-            sorted_file.write(bytes(fasta_record["seq_id"], "utf-8"))
+            sorted_file.write(bytes(fasta_record["seq_id"]+'\n', "utf-8"))
             sorted_file.write(bytes(fasta_record["seq"], "utf-8"))
     #}
     except Exception as exc:#{
-        print_red("\nAn error occured while writing to outfile")
+        print("\nAn error occured while writing to outfile")
         print( str(exc) )
         platf_depend_exit(1)
     #}
@@ -470,6 +500,7 @@ LINES_PER_READ_FASTQ = 4
 LINES_PER_SEQ_FASTA = 2
 is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
 num_files = len(fq_fa_paths)
+next_id_line = None
 
 for j, fq_fa_path in enumerate(fq_fa_paths):#{
 
@@ -484,8 +515,12 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     # source_path_pruned = source_path_pruned.partition(".fast")[0] # get rid of extention
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ] # get ready to open gzipped files
-    lines_format = LINES_PER_READ_FASTQ if is_fastq(fq_fa_path) else LINES_PER_SEQ_FASTA
-    num_reads = int (sum(1 for line in how_to_open(fq_fa_path)) / lines_format) # count number of reads in file
+    if is_fastq(fq_fa_path):#{
+        num_reads = int (sum(1 for line in how_to_open(fq_fa_path)) / LINES_PER_READ_FASTQ) # count number of reads in file
+    #}
+    else:#{
+        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
+    #}
 
     # Get function that will read one record -- FASTQ of FASTA, in dependence of your file
     read_fun = read_fastq_record if is_fastq(fq_fa_path) else read_fasta_record
