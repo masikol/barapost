@@ -88,7 +88,7 @@ Default parameters:\n
 - packet size (see '-p' option): 100 sequences;
 - probing batch size (see '-b' option): 200 sequences;
 - algorithm (see '-a' option): 'megaBlast';
-- organisms (see '-g' option): full 'nt' database, e.i. no slices;
+- organisms (see '-g' option): full 'nt' database, i.e. no slices;
 - output directory ('-o' option): directory named "barapost_result"
   nested in current directory;
 
@@ -108,15 +108,15 @@ OPTIONS:\n
     -f (--infile) --- input FASTQ or FASTA (or '.fastq.gz', '.fasta.gz') file;
         You can specify multiple input files with this option (see EXAMPLES #2);\n
     -d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
-        E.i. all FASTQ and FASTA files in this direcory will be processed;
+        I.e. all FASTQ and FASTA files in this direcory will be processed;
         Input files can be gzipped.\n
     -o (--outdir) --- output directory;\n
-    -p (--packet-size) --- size of the packet, e.i. number of sequence to blast in one request.
+    -p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
         Value: integer number [1, 500]. Default value is 100;\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
         Available values: 'megaBlast', 'discoMegablast', 'blastn'.
         Default is megaBlast;\n
-    -g (--organisms) --- 'nt' database slices, e.i. organisms that you expect to see in result files.
+    -g (--organisms) --- 'nt' database slices, i.e. organisms that you expect to see in result files.
         More clearly, functionality of this option is totally equal to "Organism" text boxes
         on this BLASTn page:
          'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
@@ -305,6 +305,8 @@ if len(fq_fa_list) == 0:#{
 
 del help_msg # we do not need it any more
 
+print( strftime("\n%H:%M:%S", localtime(start_time)) + " - Start working")
+
 
 # |===== Functionality for proper processing of gzipped files =====|
 
@@ -337,8 +339,9 @@ for file in fq_fa_list:#{
         n_seqs = int( sum(1 for line in how_to_open(file, 'r')) / FASTQ_LINES_PER_READ )
     else:
         n_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(file, 'r'))
-    print(" file '{}' - {} sequences".format(os.path.basename(file), n_seqs))
     seqs_at_all += n_seqs
+    if seqs_at_all >= probing_batch_size:
+        break
 #}
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all
@@ -351,6 +354,7 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
     while True:#{
         reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
         if reply == "":
+            probing_batch_size = seqs_at_all
             break
         elif reply == 'q':
             platf_depend_exit(0)
@@ -360,8 +364,9 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
     #}
 #}
 
-
-print( strftime("\n%H:%M:%S", localtime(start_time)) + " - Start working\n")
+if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):#{
+    probing_batch_size = seqs_at_all
+#}
 
 
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
@@ -544,6 +549,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     """
     
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
+    fasta_path = fasta_path.replace(".gz", "") # get rid of ".gz" extention
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -645,7 +651,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     :type blast_algorithm: str;
     """
 
-    # "hname" means human readable name (e.i. without file path and extention)
+    # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
     fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of '.fasta' extention
 
@@ -1202,6 +1208,18 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
         query_len = iter_elem.find("Iteration_query-len").text
 
+        if not qual_dict is None:#{
+            ph33_qual = round(10**(qual_dict[query_name]/-10), 3)
+            accuracy = round( 100*(1 - ph33_qual), 2 ) # expected percent of correctly called bases
+            print("    Average quality of this read is {}, i.e. accuracy is {}%;".format(ph33_qual,
+                accuracy))
+        #}
+        else:#{
+            # If FASTA file is processing, print dashed in quality columns
+            ph33_qual = "-"
+            accuracy = "-" # expected percent of correctly called bases
+        #}
+
         # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
         hit = iter_hit.find("Hit")
         if hit is not None:#{
@@ -1231,24 +1249,20 @@ def parse_align_results_xml(xml_text, seq_names):#{
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
 
-            print("""\n '{}' -- '{}'
+            print("""\n '{}' -- '{}';
     Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%)""".format(query_name, hit_taxa_name,
+    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, hit_taxa_name,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue] ))
+                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)] ))
         #}
         else:
             # If there is no hit for current sequence
-            print("\n '{}' -- No significant similarity found.\n Query length - {}.".format(query_name, query_len))
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len, ] ))
-
-        if not qual_dict is None:#{
-            print("    Average quality of this read is {}, e.i. mistake propability is {}".format(qual_dict[query_name],
-                round(10**( qual_dict[query_name]/-10 ), 3)))
-        #}
+            print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len,
+                str(ph33_qual), str(accuracy)] ))
     #}
     return result_tsv_lines
 #}
@@ -1270,7 +1284,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     if not os.path.exists(tsv_res_path):#{
         with open(tsv_res_path, 'w') as tsv_res_file:#{
             tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE"] ) + '\n')
+                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "PHRED33", "READ_ACCURACY(%)"] ) + '\n')
         #}
     #}
     # Write reslut tsv lines to this file
@@ -1370,18 +1384,26 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 
 #                   |===== Kernel loop =====|
 
-print("\nChecking Internet connection...")
+print("Checking Internet connection...")
 check_connection()
-print("OK\n")
+print("OK\n\n")
 
+
+print(" - Probing batch size: {} sequences;".format(probing_batch_size))
+print(" - Packet size: {} sequences;".format(packet_size))
+print(" - BLAST algorithm: {};".format(blast_algorithm))
+print(" - Database: nt;")
+if len(organisms) > 0:#{
+    for db_slice in organisms:
+        print("   {};".format(db_slice))
+#}
+print()
 
 print(" Following files will be processed:")
 for i, path in enumerate(fq_fa_list):#{
     print("    {}. '{}'".format(i+1, path))
 #}
 print('-'*30 + '\n')
-
-print("Probing batch size: {} sequences".format(probing_batch_size))
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
@@ -1408,6 +1430,7 @@ omit_file= False
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
 
+    # Configure quality dictionary
     qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
     
     # Create the result directory with the name of FASTQ of FASTA file being processed:
@@ -1416,7 +1439,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
 
-    # "hname" means human readable name (e.i. without file path and extention)
+    # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
     fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of file extention
 
@@ -1455,19 +1478,21 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if num_done_reads != 0:
         seqs_processed = num_done_reads
 
-    attempt_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
-    if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
+    attempt_all = probing_batch_size // packet_size # Calculate total number of packets sent from current FASTA file
+    if probing_batch_size % packet_size > 0: # And this is ceiling (in order not to import 'math')
         attempt_all += 1
     attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
     if is_gzipped(curr_fasta["fpath"]):#{
         fmt_func = lambda l: l.decode("utf-8")
+        how_to_open = open_as_gzip
     #}
     else:#{
         fmt_func = lambda l: l
+        how_to_open = open
     #}
 
-    with open(curr_fasta["fpath"], 'r') as fasta_file:#{
+    with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
 
         # Go untill the last processed sequence
         # for _ in range( int(num_done_reads * 2) ):#{
@@ -1489,7 +1514,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 break
             #}
 
-            print("\n\nGo to BLAST (" + blast_algorithm + ")!")
+            print("\nGo to BLAST (" + blast_algorithm + ")!")
             print("Request number {} out of {}.".format(attempt, attempt_all))
 
             send = True
@@ -1553,5 +1578,8 @@ for i, acc in enumerate(acc_dict.keys()):#{
 #}
 print("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))
+print("""\nYou can edit this file before running 'barapost.py' in order to
+  modify list of sequences that will be downloaded from Genbank
+  and used as local (on your local computer) database used by 'barapost.py'.""")
 print("\nProbing task is completed successfully!")
 platf_depend_exit(0)
