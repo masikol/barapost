@@ -2,7 +2,7 @@
 
 ## 1. prober.py
 
-Version 1.2; 02.09.2019 edition;
+Version 1.3; 03.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -24,6 +24,8 @@ Results of the work of this script are written to TSV files, that can be found i
     Results of barapost.py's work will be appended to this file.
 
 FASTQ files processed by this script are meant to be processed afterwards by "barapost.py".
+
+If you have your own FASTA files that can be used as database to blast against, you can omit "prober.py" step and go to "barapost.py" instead (see `-l` option in "barapost.py" description).
 
 
 ### Default parameters:
@@ -107,7 +109,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost.py
 
-Version 2.4; 02.09.2019 edition;
+Version 2.5; 03.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -164,6 +166,9 @@ Default parameters:
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
         Available values: 'megaBlast', 'discoMegablast', 'blastn'.
         Default is megaBlast;
+
+    -l (--local-fasta-to-db) --- your own FASTA file that will be added to downloaded database
+        or used instead of it if you omit 'prober.py' step;
 ```
 
 
@@ -191,7 +196,7 @@ Default parameters:
 ## 3. fastQA_sorter.py
 (fast**Q** and fast**A** sorter)
 
-Version 2.1; 02.09.2019 edition;
+Version 2.2; 03.09.2019 edition;
 
 ### DESCRIPTION:
 

@@ -156,7 +156,7 @@ except getopt.GetoptError as gerr:#{
     platf_depend_exit(2)
 #}
 
-is_fq_or_fa = lambda f: True if not re_search(r".*\.f(ast)?(a|q)(\.gz)?$", f) is None else False
+is_fq_or_fa = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
 
 # Default values:
 fq_fa_list = list()
@@ -707,8 +707,9 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
         if os.path.exists(acc_fpath):#{
             try:#{  There can be invalid information in this file
                 with open(acc_fpath, 'r') as acc_file:#{
-                    lines = acc_file.readlines()[5:] # omit description and head of the table
-                    for vals in lines.split(DELIM):#{
+                    lines = acc_file.readlines()[9:] # omit description and head of the table
+                    local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines.split(DELIM)) )
+                    for vals in local_files_filtered:#{
                         acc = intern(vals[0].strip())
                         acc_dict[acc] = vals[1].strip()
                     #}
@@ -1196,8 +1197,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
     # /=== Parse BLAST XML response ===/
 
     root = ElementTree.fromstring(xml_text) # get tree instance
-    global new_acc_dict
 
+    global new_acc_dict
     global qual_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
@@ -1211,13 +1212,14 @@ def parse_align_results_xml(xml_text, seq_names):#{
         if not qual_dict is None:#{
             ph33_qual = round(10**(qual_dict[query_name]/-10), 3)
             accuracy = round( 100*(1 - ph33_qual), 2 ) # expected percent of correctly called bases
-            print("    Average quality of this read is {}, i.e. accuracy is {}%;".format(ph33_qual,
-                accuracy))
+            qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
+                accuracy)
         #}
         else:#{
             # If FASTA file is processing, print dashed in quality columns
             ph33_qual = "-"
             accuracy = "-" # expected percent of correctly called bases
+            qual_info_to_print = ""
         #}
 
         # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
@@ -1233,6 +1235,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
 
             hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
+            gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
+            hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
             new_acc_dict[hit_acc] = hit_name
 
             # Find the first HSP (we need only the first one)
@@ -1258,11 +1262,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
             result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
                 align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)] ))
         #}
-        else:
+        else:#{
             # If there is no hit for current sequence
             print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len,
                 str(ph33_qual), str(accuracy)] ))
+        #}
+        print(qual_info_to_print, end="")
     #}
     return result_tsv_lines
 #}
@@ -1284,7 +1290,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     if not os.path.exists(tsv_res_path):#{
         with open(tsv_res_path, 'w') as tsv_res_file:#{
             tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "PHRED33", "READ_ACCURACY(%)"] ) + '\n')
+                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "AVG_PHRED33", "ACCURACY(%)"] ) + '\n')
         #}
     #}
     # Write reslut tsv lines to this file
@@ -1304,8 +1310,12 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     if not os.path.exists(acc_file_path):#{
         with open(acc_file_path, 'w') as acc_file:#{
             acc_file.write("# Here are accessions and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
-            acc_file.write("# You are welcome to edit this file by adding, removing or commenting lines (with '#' symbol, just like this description).\n")
-            acc_file.write("# Lines commented with '#' won't be noticed by 'barapost.py'.\n\n")
+            acc_file.write("# Values in this file are delimited by tabs.\n")
+            acc_file.write("# You are welcome to edit this file by adding,\n")
+            acc_file.write("#   removing or commenting lines (with '#' symbol, just like this description).\n")
+            acc_file.write("# Lines commented with '#' won't be noticed by 'barapost.py'.\n")
+            acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
+            acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
             acc_file.write(DELIM.join( ["ACCESSION", "RECORD_NAME"] ) + '\n')
         #}
     #}
