@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.2
-# 31.08.2019 edition
+# Version 1.3
+# 04.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.2) ===|\n")
+print("\n |=== prober.py (version 1.3) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -1210,8 +1210,9 @@ def parse_align_results_xml(xml_text, seq_names):#{
         query_len = iter_elem.find("Iteration_query-len").text
 
         if not qual_dict is None:#{
-            ph33_qual = round(10**(qual_dict[query_name]/-10), 3)
-            accuracy = round( 100*(1 - ph33_qual), 2 ) # expected percent of correctly called bases
+            ph33_qual = qual_dict[query_name]
+            miscall_prop = round(10**(ph33_qual/-10), 3)
+            accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
             qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
                 accuracy)
         #}
@@ -1265,8 +1266,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
         else:#{
             # If there is no hit for current sequence
             print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len,
-                str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "-", query_len,
+                "-", "-", "-", "-", str(ph33_qual), str(accuracy)] ))
         #}
         print(qual_info_to_print, end="")
     #}

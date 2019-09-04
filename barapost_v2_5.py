@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.4
-# 31.08.2019 edition
+# Version 2.5
+# 04.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.4) ===|\n")
+print("\n |=== barapost.py (version 2.5) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -469,9 +469,10 @@ def rename_file_verbosely(file, directory):#{
         print("\t'{}' --> '{}'".format(os.path.basename(file), new_name))
         os.rename(file, new_name)
     #}
-    except:#{
+    except Exception as err:#{
         # Anything (and not only strings) can be passed to the function
-        print("\nFile '{}' cannot be renamed".format( str(file)) )
+        print("\nFile '{}' cannot be renamed:".format( str(file)) )
+        print( str(err) + '\n')
     #}
 #}
 
@@ -517,13 +518,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
                 num_done_reads = len(lines) - 1 # the first line is a head
                 last_line = lines[-1]
                 last_seq_id = last_line.split(DELIM)[0]
-
-                # # Get accessions from previous run
-                # global acc_dict
-                # for line in lines[1:]:#{ omit table head
-                #     acc = line.strip().split(DELIM)[2]
-                #     acc_dict[acc] = line.strip().split(DELIM)[1]
-                # #}
             #}
             except Exception as err:#{
                 print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
@@ -543,34 +537,27 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     if num_done_reads is None:
         num_done_reads = 0
 
-    if os.path.exists(tmp_fpath):#{
-        try:#{ There can be invalid information in tmp file of tmp file may not exist
-            with open(tmp_fpath, 'r') as tmp_file:
-                temp_lines = tmp_file.readlines()
-            packet_size = int(temp_lines[0])
-            print("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
-            attempt_save = int(temp_lines[1].split(DELIM)[0])
-        #}
-        except Exception as err:#{
-            print("\nData in temporary file '{}' is broken.".format(tmp_fpath))
-            print( str(err) )
-            print("Start from the beginning.")
-            rename_file_verbosely(tsv_res_fpath, new_dpath)
-            rename_file_verbosely(tmp_fpath, new_dpath)
-            return None
-        else:#{
-            # Return data from previous run
-            return {
-                "pack_size": packet_size,
-                "attmpt": attempt_save,
-                "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath
-            }
-        #}
+    global packet_size # use default value at first
+
+    try:#{ There can be invalid information in tmp file of tmp file may not exist
+        with open(tmp_fpath, 'r') as tmp_file:
+            temp_lines = tmp_file.readlines()
+        packet_size = int(temp_lines[0])
+        print("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
+        # attempt_save = int(temp_lines[1].split(DELIM)[0])
     #}
-    else:#{
-        return
+    except Exception as err:#{
+        pass
+    #}
+    finally:#{
+        # Return data from previous run
+        return {
+            "pack_size": packet_size,
+            # "attmpt": attempt_save,
+            "tsv_respath": tsv_res_fpath,
+            "n_done_reads": num_done_reads,
+            "tmp_fpath": tmp_fpath
+        }
     #}
 #}
 
@@ -775,8 +762,6 @@ def build_local_db(acc_dict, prober_res_dir):#{
     Returns path to builded local indexed database.
     """
 
-    print('~'*20 + '\n')
-
     db_dir = os.path.join(prober_res_dir, "local_database") # path to directory in which database will be placed
     try:#{
         os.makedirs(db_dir)
@@ -819,6 +804,10 @@ def build_local_db(acc_dict, prober_res_dir):#{
             #}
         #}
     #}
+
+    print("\nChecking Internet connection...")
+    check_connection("https://ncbi.nlm.nih.gov")
+    print("OK\n\n")
 
     print("""\nFollowing sequences will be downloaded from Genbank
     for further blasting on your local machine with 'blast+' toolkit:\n""")
@@ -910,14 +899,14 @@ def configure_request(packet, blast_algorithm):#{
     return blast_cmd # return command line in order to follow the interface used in 'kernel loop'
 #}
 
-def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
+def send_request(request, filename):#{
     """
     Function meant to replace 'send_request' one that works with BLAST server.
     """
 
     # Save temporary data
-    with open(tmp_fpath, 'a') as tmpfile:
-        tmpfile.write("{}\n".format(attempt))
+    # with open(tmp_fpath, 'a') as tmpfile:
+    #     tmpfile.write("{}\n".format(attempt))
 
     # request is blastn cmd returned by 'configure_localdb_request' function
     exit_code = os.system(request)
@@ -1051,8 +1040,9 @@ def parse_align_results_xml(xml_text, seq_names):#{
         query_len = iter_elem.find("Iteration_query-len").text
 
         if not qual_dict is None:#{
-            ph33_qual = round(10**(qual_dict[query_name]/-10), 3)
-            accuracy = round( 100*(1 - ph33_qual), 2 ) # expected percent of correctly called bases
+            ph33_qual = qual_dict[query_name]
+            miscall_prop = round(10**(ph33_qual/-10), 3)
+            accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
         #}
         else:#{
             # If FASTA file is processing, print dashed in quality columns
@@ -1095,8 +1085,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
         #}
         else:
             # If there is no hit for current sequence
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "", query_len,
-                str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "-", query_len,
+                "-", "-", "-", "-", str(ph33_qual), str(accuracy)] ))
     #}
     return result_tsv_lines
 #}
@@ -1212,10 +1202,6 @@ def configure_acc_dict(acc_fpath):#{
 
 #                   |===== Kernel loop =====|
 
-print("\nChecking Internet connection...")
-check_connection("https://ncbi.nlm.nih.gov")
-print("OK\n\n")
-
 print(" - Packet size: {} sequences;".format(packet_size))
 print(" - BLAST algorithm: {};\n".format(blast_algorithm))
 
@@ -1268,7 +1254,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if previous_data is None:#{ # If there is no data from previous run
 
         num_done_reads = 0 # number of successfully processed sequences
-        saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
+        # saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
@@ -1277,7 +1263,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     else:#{ # if there is data from previous run
 
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        saved_attempt = previous_data["attmpt"] # get number of last successful attempt
+        # saved_attempt = previous_data["attmpt"] # get number of last successful attempt
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
@@ -1329,8 +1315,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             request = configure_request(packet["fasta"], blast_algorithm) # get the request
 
             # Send the request get BLAST XML response
-            align_xml_text = send_request(request,
-                attempt, attempt_all, fasta_hname+".fasta", tmp_fpath)
+            align_xml_text = send_request(request, fasta_hname+".fasta")
 
             # Get result tsv lines
             result_tsv_lines = parse_align_results_xml(align_xml_text,

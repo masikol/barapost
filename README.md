@@ -2,7 +2,7 @@
 
 ## 1. prober.py
 
-Version 1.3; 03.09.2019 edition;
+Version 1.3; 04.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -109,7 +109,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost.py
 
-Version 2.5; 03.09.2019 edition;
+Version 2.5; 04.09.2019 edition;
 
 ### DESCRIPTION:
 
