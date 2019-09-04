@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Version 1.3
+# Version 1.4
 # 04.09.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -16,16 +16,16 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.3) ===|\n")
+print("\n |=== prober.py (version 1.4) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
-from time import time, strftime, localtime, sleep
+from time import time, strftime, localtime, sleep, gmtime
 start_time = time()
 
 
 def get_work_time():#{
-    return strftime("%H:%M:%S", localtime( time() ))
+    return strftime("%H:%M:%S", gmtime( time() - start_time))
 #}
 
 # |===========================================|
@@ -35,6 +35,9 @@ from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
+
+from collections import Counter
+import heapq
 
 import http.client
 import urllib.request
@@ -70,7 +73,7 @@ def print_error(text):#{
 help_msg = """
 DESCRIPTION:\n
  prober.py -- script is designed for determinating the taxonomic position
-    of nucleotide sequences by blasting each of them and regarding the best hit.\n
+    of nucleotide sequences by aligning each of them and regarding the best hit.\n
  The main goal of this script is to send a probing batch of sequences to BLAST server
     and discover, what Genbank records can be downloaded and used for further processing
     on your local machine by 'barapost.py'.\n
@@ -78,7 +81,7 @@ DESCRIPTION:\n
  Results of the work of this script are written to TSV files, that can be found in result directory:\n
   1. There is a file named "...probe_acc_list.tsv". It contains accessions and names of Genbank records that
     can be used for further processing on your local machine by 'barapost.py'.\n
-  2. There is a file named "...result.tsv". It contains full result of blasting.
+  2. There is a file named "...result.tsv". It contains full result of aligning.
     Results of barapost.py's work will be appended to this file.\n
  FASTQ files processed by this script are meant to be processed afterwards by 'barapost.py'.
 ----------------------------------------------------------
@@ -127,9 +130,9 @@ OPTIONS:\n
         Default value is full 'nt' database.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server.
-        After that a local database will be builded according to results of probing blasting.
+        After that a local database will be builded according to results of probing aligning.
         More clearly: records-hits will be downloaded from Genbank and will be used
-        as local database. Further blasting against this database will be preformed
+        as local database. Further aligning against this database will be preformed
         on local machine with 'blast+' toolkit.
         Value: positive integer number. Default value is 200;\n
 ----------------------------------------------------------
@@ -305,7 +308,7 @@ if len(fq_fa_list) == 0:#{
 
 del help_msg # we do not need it any more
 
-print( strftime("\n%H:%M:%S", localtime(start_time)) + " - Start working")
+print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # |===== Functionality for proper processing of gzipped files =====|
@@ -612,7 +615,7 @@ def rename_file_verbosely(file, directory):#{
 
     if os.path.exists(file):#{
 
-        is_analog = lambda f: file[file.rfind('.')] in f
+        is_analog = lambda f: file[:os.path.basename(file).rfind('.')] in f
         num_analog_files = len( list(filter(is_analog, os.listdir(directory))) )
 
         print('\n' + get_work_time() + " - Renaming old file:")
@@ -703,15 +706,18 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
 
         # Collect information from accession file
-        global acc_dict
+        global acc_set
+        global full_acc_dict
         if os.path.exists(acc_fpath):#{
             try:#{  There can be invalid information in this file
                 with open(acc_fpath, 'r') as acc_file:#{
                     lines = acc_file.readlines()[9:] # omit description and head of the table
-                    local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines.split(DELIM)) )
-                    for vals in local_files_filtered:#{
+                    local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines) ) # omit file paths
+                    for line in local_files_filtered:#{
+                        vals = line.split(DELIM)
                         acc = intern(vals[0].strip())
-                        acc_dict[acc] = vals[1].strip()
+                        full_acc_dict[acc] = (vals[1].strip(), vals[2].strip())
+                        acc_set.subtract({acc: int(vals[3])})
                     #}
                 #}
             #}
@@ -725,9 +731,10 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 return None
             #}
             else:#{
-                print("Here are Genbank records encountered during previous run:")
-                for i, acc in enumerate(acc_dict.keys()):#{
-                    print(" {}. {} - {}".format(i+1, acc, acc_dict[acc]))
+                print("\nHere are Genbank records encountered during previous run:")
+                for acc in full_acc_dict.keys():#{
+                    s_letter = "s" if -acc_set[acc] > 1 else ""
+                    print(" {} sequence{} - {}, '{}'".format(-acc_set[acc], s_letter, acc, full_acc_dict[acc][1]))
                 #}
                 print()
             #}
@@ -1198,7 +1205,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
     root = ElementTree.fromstring(xml_text) # get tree instance
 
-    global new_acc_dict
+    global new_acc_set
+    global full_acc_dict
     global qual_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
@@ -1238,7 +1246,8 @@ def parse_align_results_xml(xml_text, seq_names):#{
             hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
             gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
             hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-            new_acc_dict[hit_acc] = hit_name
+            full_acc_dict[hit_acc] = (hit_gi, hit_name)
+            new_acc_set.subtract({hit_acc: 1})
 
             # Find the first HSP (we need only the first one)
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
@@ -1302,36 +1311,40 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
 
     # === Write accession information ===
 
-    global acc_list
-    global new_acc_dict
+    global acc_set
+    global new_acc_set
     global blast_algorithm
+    global acc_prior_queue
     acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
 
-    # If there is no accession file -- create it and write a head of the table.
-    if not os.path.exists(acc_file_path):#{
-        with open(acc_file_path, 'w') as acc_file:#{
-            acc_file.write("# Here are accessions and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
-            acc_file.write("# Values in this file are delimited by tabs.\n")
-            acc_file.write("# You are welcome to edit this file by adding,\n")
-            acc_file.write("#   removing or commenting lines (with '#' symbol, just like this description).\n")
-            acc_file.write("# Lines commented with '#' won't be noticed by 'barapost.py'.\n")
-            acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
-            acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
-            acc_file.write(DELIM.join( ["ACCESSION", "RECORD_NAME"] ) + '\n')
-        #}
+    acc_set.update(new_acc_set)
+    new_acc_set = Counter() # reset new_acc_set
+
+    acc_prior_queue = list()
+    for acc in acc_set:#{
+        heapq.heappush(acc_prior_queue, (acc_set[acc], acc))
+    #}
+
+    with open(acc_file_path, 'w') as acc_file:#{
+        acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
+        acc_file.write("# Values in this file are delimited by tabs.\n")
+        acc_file.write("# You are welcome to edit this file by adding,\n")
+        acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")
+        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost.py'.\n")
+        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
+        acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
+        acc_file.write(DELIM.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
     #}
 
     # Write accessions and record names
     with open(acc_file_path, 'a') as acc_file:#{
-        for acc in new_acc_dict.keys():#{
-            # Write accessions that have not been encountered before
-            if not acc in acc_dict.keys():#{
-                acc_file.write(DELIM.join( [acc, new_acc_dict[acc]] ) + '\n')
-                acc_dict[acc] = new_acc_dict[acc]
-            #}
+        while len(acc_prior_queue) > 0:
+            next_item = heapq.heappop(acc_prior_queue)
+            occurence = -next_item[0] # because of descending order
+            acc = next_item[1]
+            acc_file.write(DELIM.join( [acc, full_acc_dict[acc][0], full_acc_dict[acc][1], str(occurence)]) + '\n')
         #}
     #}
-    new_acc_dict = dict() # reset new_acc_dict
 #}
 
 
@@ -1422,10 +1435,13 @@ acc_counter = 0
 # Dictionary of accessions and record names.
 # Accessions are keys, record names are values.
 # This dictionary is filled while processing and at the beginning of continuation.
-acc_dict = dict()
+acc_set = Counter()
 # Dictionary of accessions and record names encountered while sending of the current packet.
 # Accessions are keys, record names are values.
-new_acc_dict = dict()
+new_acc_set = Counter()
+
+full_acc_dict = dict()
+acc_prior_queue = list()
 
 # Counter of processed sequences
 seqs_processed = 0
@@ -1583,10 +1599,24 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
 print("\n {} sequences have been processed\n".format(seqs_processed))
 
-print("Here are Genbank records that can be used for further sorting by 'barapost.py':")
-for i, acc in enumerate(acc_dict.keys()):#{
-    print(" {}. {} - {}".format(i+1, acc, acc_dict[acc]))
+print("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
+print("They are sorted by their occurence in probing batch:")
+
+acc_prior_queue = list()
+for acc in acc_set:#{
+    heapq.heappush(acc_prior_queue, (acc_set[acc], acc))
 #}
+
+# Print accessions and record names
+while len(acc_prior_queue) > 0:
+    next_item = heapq.heappop(acc_prior_queue)
+    occurence = -next_item[0] # minus because of descending order of the queue
+    acc = next_item[1]
+    s_letter = "s" if occurence > 1 else ""
+    print(" {} sequence{} - {}, '{}'".format(occurence, s_letter, acc, full_acc_dict[acc][1]))
+#}
+
+
 print("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))
 print("""\nYou can edit this file before running 'barapost.py' in order to

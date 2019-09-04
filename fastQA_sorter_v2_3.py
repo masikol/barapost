@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.1
-# 31.08.2019 edition
+# Version 2.3
+# 04.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -23,12 +23,12 @@ def print_error(text):#{
 
 # |===== Stuff for dealing with time =====|
 
-from time import time, strftime, localtime, sleep
+from time import time, strftime, localtime, sleep, gmtime
 start_time = time()
 
 
 def get_work_time():#{
-    return strftime("%H:%M:%S", localtime( time() ))
+    return strftime("%H:%M:%S", gmtime( time() - start_time))
 #}
 
 # Get start time
@@ -36,7 +36,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 2.1) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.3) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -502,7 +502,7 @@ def configure_resfile_lines(tsv_res_fpath):#{
     return resfile_lines
 #}
 
-print("{} - Start working\n".format(get_work_time()))
+print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 print(" - Sorting sensitivity: '{}';\n".format(sens))
 
