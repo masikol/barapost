@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.3
-# 04.09.2019 edition
+# Version 2.4
+# 06.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -36,7 +36,7 @@ from datetime import datetime
 now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 # -------------------
 
-print("\n |=== fastQA_sorter.py (version 2.3) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.4) ===|\n\n")
 # -------------------
 
 from sys import platform
@@ -225,7 +225,12 @@ print('-'*20 + '\n')
 
 
 #                      Genus    species                   strain name and anything after it
-hit_name_pattern = r"^[A-Z][a-z]+_[a-z]*(sp\.)?(phage)?_(strain_)?.+$"
+hit_name_patt = r"[A-Z][a-z]+_[a-z]*(sp\.)?(phage)?_(strain_)?.+$"
+# There is an accession number in the beginning of local FASTA file
+local_name_hit_patt = r"OWN_SEQ_[0-9]+_"
+
+spades_patt = r"(NODE)_([0-9]+)"
+a5_patt = r"(scaffold)_([0-9]+)"
 
 
 def format_taxonomy_name(hit_name, sens):#{
@@ -239,22 +244,82 @@ def format_taxonomy_name(hit_name, sens):#{
     Returns formatted hit name of 'str' type;
     """
 
-    if hit_name == "No significant similarity found":#{
+    modif_hit_name = hit_name.strip()
+
+    if modif_hit_name == "No significant similarity found":#{
         return "unknown"
     #}
 
-    # If structure of hit name is strange
-    if re_search(hit_name_pattern, hit_name.strip()) is None:#{
-        print("\n\tAttention!")
-        print("Hit name '{}' has structure that hasn't been anticipated by the developer.".format(hit_name))
-        print("This name migth be formatted incorrectly.")
-        print("Therefore, full name ({}) will be used.".format(hit_name.strip()))
-        print("Contact the developer -- send this name to him.")
-
-        return hit_name.strip().replace(' ', '_')   # return full name
+    if not re_search(local_name_hit_patt, modif_hit_name) is None:#{
+        modif_hit_name = modif_hit_name[re_search(local_name_hit_patt, modif_hit_name).end() :]
     #}
 
-    taxa_name = hit_name.partition(',')[0]
+    spades_match_obj = re_search(spades_patt, modif_hit_name)
+    a5_match_obj = re_search(a5_patt, modif_hit_name)
+
+    for match_obj in (spades_match_obj, a5_match_obj):#{
+
+        if not match_obj is None:#{
+
+            # Find path to file with assembly:
+            split_undersc = modif_hit_name.split('_')
+            num_el = len(split_undersc)
+            assm_path = None
+            for i in range(num_el):#{
+                putative_path = '_'.join(split_undersc[:num_el-i])
+                if os.path.exists(putative_path):#{
+                    assm_path = putative_path
+                    break
+                #]
+            #}
+
+            node_or_scaff = match_obj.group(1)
+            node_scaff_num = match_obj.group(2)
+
+            if node_or_scaff == "NODE":#{
+                assmblr_name = "SPAdes"
+            #}
+            elif node_or_scaff == "scaffold":#{
+                assmblr_name = "a5"
+            #}
+            else:#{
+                print_error("signature of seq id from assembly not recognized: '{}'".format(hit_name))
+                platf_depend_exit(1)
+            #}
+
+            # Include file path to sorted file name
+            # Replace path separetor with underscore in order not to held a bacchanalia in file system.
+            if assm_path is not None:#{
+                if sens == "genus":#{
+                    # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
+                    return '_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff) )
+                #}
+                else:#{
+                    # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
+                    return '_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff,
+                        node_scaff_num) )
+                #}
+            #}
+            else:#{
+
+                if sens == "genus":#{
+                    # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
+                    return assmblr_name + "_assembly_" + node_or_scaff
+                #}
+                else:#{
+                    # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
+                    return '_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num ))
+                #}
+            #}
+        #}
+    #}
+
+    # If structure of hit name is strange
+    if re_search(hit_name_patt, modif_hit_name) is None:#{
+        return modif_hit_name.strip().replace(' ', '_')   # return full name
+    #}
+
+    taxa_name = modif_hit_name.partition(',')[0]
     taxa_splitnames = taxa_name.strip().split('_')
 
     # If hit is a phage sequence
@@ -455,7 +520,7 @@ def get_curr_res_dir(fq_fa_path, prober_res_dir):#{
     
     # dpath means "directory path"
     new_dpath = os.path.join(prober_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = new_dpath[: new_dpath.rfind(".fast")] # get rid of extention
+    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
 
     return new_dpath
 #}
@@ -468,6 +533,15 @@ def get_res_tsv_fpath(new_dpath):#{
     brpst_resfile_patt = r".+_result\.tsv$"
 
     is_similar_to_tsv_res = lambda f: True if not re_search(brpst_resfile_patt, f) is None else False
+
+    if not os.path.exists(new_dpath):#{
+        print_error("directory '{}' does not exist!".format(new_dpath))
+        print(""" Please make sure you have 'prober_result' directory and
+    file '{}...' have been processed by 'barapost.py'""".format(os.path.basename(new_dpath)))
+        print("""Also this error might occur if you forget to specify result directory
+    generated by 'prober.py' with '-r' option.""")
+        platf_depend_exit(0)
+    #}
 
     # Recent file will be the first in sorted list
     tsv_res_fpath = list( filter(is_similar_to_tsv_res, sorted(os.listdir(new_dpath))) )[0]

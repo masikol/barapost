@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 2.6
-# 04.09.2019 edition
+# Version 2.7
+# 06.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.6) ===|\n")
+print("\n |=== barapost.py (version 2.7) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -516,7 +516,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
-    fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of '.fasta' extention
+    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
 
     # Form path to temporary file
     tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
@@ -555,10 +555,9 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 
     try:#{ There can be invalid information in tmp file of tmp file may not exist
         with open(tmp_fpath, 'r') as tmp_file:
-            temp_lines = tmp_file.readlines()
-        packet_size = int(temp_lines[0])
+            temp_line = tmp_file.readline()
+        packet_size = int(re_search(r"packet_size: {}", temp_line).group(1).strip())
         print("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
-        # attempt_save = int(temp_lines[1].split(DELIM)[0])
     #}
     except Exception as err:#{
         pass
@@ -834,11 +833,11 @@ def build_local_db(acc_dict, prober_res_dir):#{
         #}
     #}
 
-    print("\nChecking Internet connection...")
-    check_connection("https://ncbi.nlm.nih.gov")
-    print("OK\n\n")
-
     if os.path.exists(acc_fpath):#{
+        print("\nChecking Internet connection...")
+        check_connection("https://ncbi.nlm.nih.gov")
+        print("OK\n\n")
+
         print("""\nFollowing sequences will be downloaded from Genbank
         for further aligning on your local machine with 'blast+' toolkit:\n""")
         for i, acc in enumerate(acc_dict.keys()):#{
@@ -858,6 +857,63 @@ def build_local_db(acc_dict, prober_res_dir):#{
     if not len(your_own_fasta_lst) == 0:#{
 
         own_seq_counter = 0
+
+        # Check if these files are SPAdes of a5 assembly
+        spades_patt = r"NODE_[0-9]+"
+        spades_counter = 0
+        spades_assms = list()
+        a5_patt = r"scaffold_[0-9]+"
+        a5_counter = 0
+        a5_assms = list()
+
+        for own_fasta_path in your_own_fasta_lst:#{
+
+            how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
+            with how_to_open(own_fasta_path) as fasta_file:
+                first_seq_id = fasta_file.readline().strip()
+
+            if not re_search(spades_patt, first_seq_id) is None:#{
+                spades_counter += 1
+                spades_assms.append(own_fasta_path)
+                continue
+            #}
+            if not re_search(a5_patt, first_seq_id) is None:#{
+                a5_counter += 1
+                a5_assms.append(own_fasta_path)
+                continue
+            #}
+        #}
+
+        for counter, assm_lst in zip((spades_counter, a5_counter), (spades_assms, a5_assms)):#{
+
+            if counter > 1:#{
+                for file in assm_lst:#{
+                    your_own_fasta_lst.remove(file)
+                #}
+
+                with open(local_fasta, 'a') as fasta_db:#{
+                    for assm_path in assm_lst:#{
+                        print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
+
+                        how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
+                        with how_to_open(assm_path) as fasta_file:#{
+                            for line in fasta_file:#{
+                                line = line.strip()
+                                # 'makeblastdb' considers first word (sep. is space) as sequence ID
+                                #   and throws an error if there are duplicate IDs.
+                                # In order not to allow this duplication we'll create our own sequence IDs:
+                                #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
+                                if line.startswith('>'):#{
+                                    own_seq_counter += 1
+                                    line = ">" + "OWN_SEQ_{} {}_".format(own_seq_counter, os.path.abspath(assm_path)) + line[1:]
+                                #}
+                                fasta_db.write(line + '\n')
+                            #}
+                        #}
+                    #}
+                #}
+            #}
+        #}
 
         with open(local_fasta, 'a') as fasta_db:#{
             for own_fasta_path in your_own_fasta_lst:#{
@@ -964,10 +1020,6 @@ def send_request(request, filename):#{
     """
     Function meant to replace 'send_request' one that works with BLAST server.
     """
-
-    # Save temporary data
-    # with open(tmp_fpath, 'a') as tmpfile:
-    #     tmpfile.write("{}\n".format(attempt))
 
     # request is blastn cmd returned by 'configure_localdb_request' function
     exit_code = os.system(request)
@@ -1182,7 +1234,7 @@ def get_curr_res_dir(fq_fa_path, prober_res_dir):#{
     
     # dpath means "directory path"
     new_dpath = os.path.join(prober_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = new_dpath[: new_dpath.rfind(".fast")] # get rid of extention
+    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
 
     return new_dpath
 #}
@@ -1274,7 +1326,7 @@ for i, path in enumerate(fq_fa_list):#{
 #}
 if not len(your_own_fasta_lst) == 0:#{
     preposition = "besides" if os.path.exists(acc_fpath) else "instead of"
-    print("\nFollowing FASTA files will be added to database {} downloaded ones:".format(preposition))
+    print("\n Following FASTA files will be added to database {} downloaded ones:".format(preposition))
     for i, path in enumerate(your_own_fasta_lst):
         print("   {}. '{}'".format(i+1, path))
 #}
@@ -1307,7 +1359,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
-    fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of file extention
+    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of file extention
 
     # Look around and ckeck if there are results of previous runs of this script
     # If 'look_around' is None -- there is no data from previous run
@@ -1367,7 +1419,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         for i in range(attempts_left):#{
 
             with open(tmp_fpath, 'w') as tmp_file:
-                tmp_file.write(str(packet_size)+ '\n')
+                tmp_file.write("packet_size: {}".format(packet_size))
 
             packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Version 1.4
-# 04.09.2019 edition
+# Version 1.5
+# 06.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +16,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.4) ===|\n")
+print("\n |=== prober.py (version 1.5) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -638,7 +638,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     If there are results from previous run, returns a dict of the following structure:
     {
         "pack_size": packet_size (int),
-        "attmpt": saved_attempt (int),
+        "sv_npck": saved_number_of_sent_packet (int),
         "RID": saved_RID (str),
         "tsv_respath": path_to_tsv_file_from_previous_run (str),
         "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
@@ -656,7 +656,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
-    fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of '.fasta' extention
+    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
+    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_file) ]
 
     # Form path to temporary file
     tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
@@ -672,7 +673,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):#{
         print('\n' + get_work_time() + " - The previous result file is found in the directory:")
         print("\t'{}'".format(new_dpath))
-        continuation = is_continued() # Allow politely to continue from last successful attempt.
+        # Allow politely to continue from last successfully sent packet.
+        continuation = is_continued()
         if not continuation:
             rename_file_verbosely(tsv_res_fpath, new_dpath)
             rename_file_verbosely(tmp_fpath, new_dpath)
@@ -701,7 +703,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 return None
             #}
             else:#{
-                print("Last successful attempt: " + last_seq_id)
+                print("Last sent sequence: " + last_seq_id)
         #}
 
 
@@ -744,18 +746,18 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
         if num_done_reads is None:
             num_done_reads = 0
 
-        # Get packet size, number of the last attempt and RID
+        # Get packet size, number of the last sent packet and RID
         try:#{ There can be invalid information in tmp file of tmp file may not exist
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
-            packet_size = int(temp_lines[0])
-            attempt_save = int(temp_lines[1].split(DELIM)[0])
-            RID_save = temp_lines[1].split(DELIM)[1].strip()
+            packet_size = int(re_search(r"packet_size: ([0-9]+)", temp_lines[0]).group(1).strip())
+            saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[1]).group(1).strip())
+            RID_save = re_search(r"Request_ID: (.+)", temp_lines[2]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
         #}
         except Exception as exc:#{
-            total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path, 'r'))
+            total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path))
             print("\n    Attention! Temporary file not found or broken!")
             print( str(exc) )
             print("{} sequences have been already processed.".format(num_done_reads))
@@ -790,7 +792,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
                 "pack_size": packet_size,
-                "attmpt": int(num_done_reads / packet_size),
+                "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -801,7 +803,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             # Return data from previous run
             return {
                 "pack_size": packet_size,
-                "attmpt": attempt_save,
+                "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -929,18 +931,18 @@ def configure_request(packet, blast_algorithm, organisms):#{
 #}
 
     
-def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
+def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):#{
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
         and then waits for satisfaction of the request and retrieves response text.
 
     :param request: request_data (it is a dict that 'configure_request()' function returns);
     :param request: dict<dict>;
-    :param attempt: current attempt. This information is printed to console;
-    :type attempt: int;
-    :param attempt all: total number of attempts corresponding to current FASTA file.
+    :param pack_to_send: current number (like id) of packet meant to be sent now.
+    :type pack_to_send: int;
+    :param packs_at all: total number of packets corresponding to current FASTA file.
         This information is printed to console;
-    :type attempt_all: int;
+    :type packs_at_all: int;
     :param filename: basename of current FASTA file;
     :type filename: str;
 
@@ -955,7 +957,7 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
 
     # Save packet size
     with open(tmp_fpath, 'w') as tmp_file:
-        tmp_file.write(str(packet_size)+ '\n')
+        tmp_file.write("packet_size: {}\n".format(packet_size))
 
     while error:#{
         try:#{
@@ -976,8 +978,8 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
     #}
 
     try:#{
-        rid = re_search("RID = (.*)", response_text).group(1) # get Request ID
-        rtoe = int(re_search("RTOE = (.*)", response_text).group(1)) # get time to wait provided by the NCBI server
+        rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
+        rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
     #}
     except AttributeError:#{
         print_error("seems, ncbi has denied your request.")
@@ -993,15 +995,16 @@ def send_request(request, attempt, attempt_all, filename, tmp_fpath):#{
 
     # Save temporary data
     with open(tmp_fpath, 'a') as tmpfile:
-        tmpfile.write("{}\t{}\n".format(attempt, rid))
+        tmpfile.write("sent_packet_num: {}\n".format(pack_to_send))
+        tmpfile.write("Request_ID: {}".format(rid))
 
     # /=== Wait for alignment results ===\
 
-    return( wait_for_align(rid, rtoe, attempt, attempt_all, filename) )
+    return( wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename) )
 #}
 
 
-def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
+def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     """
     Function waits untill BLAST server accomplishes the request.
     
@@ -1009,11 +1012,11 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
     :type rid: str;
     :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
     :type rtoe: int;
-    :param attempt: current attempt. This information is printed to console;
-    :type attempt: int;
-    :param attempt all: total number of attempts corresponding to current FASTA file.
+    :param pack_to_send: current packet (id) number to send;
+    :type pack_to_send: int;
+    :param packs_at_all: total number of packets corresponding to current FASTA file.
         This information is printed to console;
-    :type attempt_all: int;
+    :type packs_at_all: int;
     :param filename: basename of current FASTA file;
     :type filename: str;
 
@@ -1021,7 +1024,7 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
     """
 
     print("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
-    rid, filename, attempt, attempt_all))
+    rid, filename, pack_to_send, packs_at_all))
     if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
         print("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
         print("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
@@ -1086,18 +1089,18 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
         if re_search("Status=FAILED", resp_content) is not None:#{ if job failed
             print('\n' + get_work_time() + " - Job failed\a\n")
             response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
-    Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, attempt, attemp_all, rid)
+    Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return None
         #}
         if re_search("Status=UNKNOWN", resp_content) is not None:#{ if job expired
             print('\n' + get_work_time() + " - Job expired\a\n")
             respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
-    Try to start it again\n""".format(get_work_time(), filename, attempt, attempt_all, rid)
+    Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
         #}
         if re_search("Status=READY", resp_content) is not None:#{ if results are ready
             there_are_hits = True
-            print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, attempt, attempt_all))
+            print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
             if re_search("ThereAreHits=yes", resp_content) is not None:#{ if there are hits
                 for i in range(45, 0, -5):
                     print('-' * i)
@@ -1125,14 +1128,14 @@ def wait_for_align(rid, rtoe, attempt, attempt_all, filename):
 
     # Retrieve human-readable text and put it into result directory
     if there_are_hits:#{
-        save_txt_align_result(server, filename, attempt, rid)
+        save_txt_align_result(server, filename, pack_to_send, rid)
     #}
 
     return respond_text
 #}
 
 
-def save_txt_align_result(server, filename, attempt, rid):#{
+def save_txt_align_result(server, filename, pack_to_send, rid):#{
 
     global outdir_path
 
@@ -1141,7 +1144,7 @@ def save_txt_align_result(server, filename, attempt, rid):#{
     conn.request("GET", retrieve_text_url)
     response = conn.getresponse()
 
-    txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(attempt))
+    txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(pack_to_send))
     # Write text result for a human to read
     with open(txt_hpath, 'w') as txt_file:
         txt_file.write(str(response.read(), "utf-8") + '\n')
@@ -1361,7 +1364,7 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 
     # dpath means "directory path"
     new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = new_dpath[: new_dpath.rfind(".fast")] # get rid of extention
+    new_dpath =re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
     if not os.path.exists(new_dpath):#{
         os.makedirs(new_dpath)
     #}
@@ -1386,7 +1389,7 @@ def create_result_directory(fq_fa_path, outdir_path):#{
 # 2. 'previous_data' is a dict of the following structure:
 #    {
 #        "pack_size": packet_size (int),
-#        "attmpt": saved_attempt (int),
+#        "sv_npck": saved_number_of_sent_packet (int),
 #        "RID": saved_RID (str),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
@@ -1468,7 +1471,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
-    fasta_hname = fasta_hname[: fasta_hname.rfind(".fasta")] # get rid of file extention
+    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of file extention
 
     # Look around and ckeck if there are results of previous runs of this script
     # If 'look_around' is None -- there is no data from previous run
@@ -1483,7 +1486,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if previous_data is None:#{ # If there is no data from previous run
 
         num_done_reads = 0 # number of successfully processed sequences
-        saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
+        saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
@@ -1493,7 +1496,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     else:#{ # if there is data from previous run
 
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        saved_attempt = previous_data["attmpt"] # get number of last successful attempt
+        saved_npack = previous_data["sv_npck"] # get number of last sent packet
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
@@ -1505,10 +1508,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if num_done_reads != 0:
         seqs_processed = num_done_reads
 
-    attempt_all = probing_batch_size // packet_size # Calculate total number of packets sent from current FASTA file
+    packs_at_all = probing_batch_size // packet_size # Calculate total number of packets sent from current FASTA file
     if probing_batch_size % packet_size > 0: # And this is ceiling (in order not to import 'math')
-        attempt_all += 1
-    attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
+        packs_at_all += 1
+    packs_received = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
     if is_gzipped(curr_fasta["fpath"]):#{
         fmt_func = lambda l: l.decode("utf-8")
@@ -1528,11 +1531,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         get_packet(fasta_file, num_done_reads, fmt_func)
 
         reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
-        attempts_left = attempt_all - attempts_done # number of packets left to send
-        attempt = attempts_done+1 if attempts_done > 0 else 1 # current attempt
+        packs_left = packs_at_all - packs_received # number of packets left to send
+        pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
         # Iterate througth packets left to send
-        for i in range(attempts_left):#{
+        for i in range(packs_left):#{
 
             packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 
@@ -1542,15 +1545,15 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             #}
 
             print("\nGo to BLAST (" + blast_algorithm + ")!")
-            print("Request number {} out of {}.".format(attempt, attempt_all))
+            print("Request number {} out of {}.".format(pack_to_send, packs_at_all))
 
             send = True
 
             # If current packet has been already send, we can try to get it and not to send it again
-            if attempt == saved_attempt and saved_RID is not None:#{
+            if pack_to_send == saved_npack and saved_RID is not None:#{
 
                 align_xml_text = wait_for_align(saved_RID, contin_rtoe,
-                    attempt, attempt_all, fasta_hname+".fasta") # get BLAST XML response
+                    pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
 
                 # If request is not expired get he result and not send it again
                 if align_xml_text != "expired":#{
@@ -1572,7 +1575,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
                 # Send the request get BLAST XML response
                 align_xml_text = send_request(request,
-                    attempt, attempt_all, fasta_hname+".fasta", tmp_fpath)
+                    pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
 
                 # Get result tsv lines
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
@@ -1583,7 +1586,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 # Write the result to tsv
                 write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
             #}
-            attempt += 1
+            pack_to_send += 1
 
             if seqs_processed >= probing_batch_size:#{
                 remove_tmp_files(tmp_fpath)
@@ -1615,6 +1618,9 @@ while len(acc_prior_queue) > 0:
     s_letter = "s" if occurence > 1 else ""
     print(" {} sequence{} - {}, '{}'".format(occurence, s_letter, acc, full_acc_dict[acc][1]))
 #}
+unkn_num = probing_batch_size - sum(acc_set)
+s_letter = "s" if unkn_num > 1 else ""
+print(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 
 
 print("""\nThey are saved in following file:
