@@ -2,7 +2,7 @@
 
 ## 1. prober.py
 
-Version 1.5; 06.09.2019 edition;
+Version 1.6; 08.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -109,7 +109,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost.py
 
-Version 2.7; 06.09.2019 edition;
+Version 2.8; 08.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -212,7 +212,7 @@ Default parameters:
 ## 3. fastQA_sorter.py
 (fast**Q** and fast**A** sorter)
 
-Version 2.4; 06.09.2019 edition;
+Version 2.5; 08.09.2019 edition;
 
 ### DESCRIPTION:
 
@@ -229,7 +229,7 @@ fastQA_sorter will process all FASTQ and FASTA files in current directory.
 ### Default parameters:
 
 - all FASTQ and FASTA files in current directory will be processed;
-- sorting sensitivity (see `-s` option): `"species"`;
+- sorting sensitivity (see `-s` option): `"genus"`;
 - output directory (`-o` option): directory named `"fastQA_sorter_result_<date_and_time_of_run>"`
   nested in current directory;
 
@@ -252,7 +252,8 @@ fastQA_sorter will process all FASTQ and FASTA files in current directory.
 
     -s (--sorting-sensitivity) --- sorting sensitivity;
         I.e. the lowest taxonomy rank that will be used in names of resut files;
-        Available values: 'genus', 'species', 'strain';
+        Available values: "genus", "species", "strain".
+        Default value is "genus";
 ```
 
 ### Notes about sorting:

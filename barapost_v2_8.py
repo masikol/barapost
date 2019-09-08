@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-# Version 2.7
-# 06.09.2019 edition
+# Version 2.8
+# 08.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -16,7 +17,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== barapost.py (version 2.7) ===|\n")
+print("\n |=== barapost.py (version 2.8) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -35,6 +36,7 @@ from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
+from subprocess import Popen, PIPE
 
 import http.client
 import urllib.request
@@ -637,50 +639,6 @@ acc_counter = 0
 
 import threading # There is no need to import this module if '--remote-only' is specified.
 
-# def get_gi_by_acc(acc):#{
-#     """
-#     Function accepts sequence accession and returns it's GI number for further downloading
-#         with E-utilities.
-
-#     :param acc: sequence accession;
-#     :type acc: str;
-
-#     Returns sequence's GI number of 'str'.
-#     """
-    
-#     server = "www.ncbi.nlm.nih.gov"
-#     url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(acc)
-
-#     error = True
-#     while error:#{
-#         try:#{
-#             conn = http.client.HTTPSConnection(server)
-#             conn.request("GET", url)
-#             response = conn.getresponse()
-#             gi_text = str(response.read(), "utf-8")
-#             # The only text in this HTML document is GI. It is in <pre> tag.
-#             gi = str( re_search(r"<pre>([0-9]+)", gi_text).group(1) )
-#             conn.close()
-#         #}
-#         except OSError as oserr:#{
-#             # If site is unavailable -- try to connect again in 60 seconds
-#             print_error("unable to connect to 'www.ncbi.nlm.nih.gov'")
-#             print("  barapost will try to connect adaing in 60 seconds")
-#             sleep(60)
-#             continue
-#         #}
-#         else:#{
-#             error = False
-#         #}
-#     #}
-
-#     # Print accession and record name to console
-#     global acc_counter
-#     acc_counter += 1
-#     print("\r {}/{} GI numbers are got".format( acc_counter, len(acc_dict.keys()) ), end="")
-
-#     return gi
-# #}
 
 def get_gi_by_acc(acc):#{
 
@@ -732,16 +690,15 @@ def retrieve_fastas_by_gi(gi_list, db_dir):#{
                 return
             sleep(1)
 
-        fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
         while not stop_wait:#{
             # Get size of downloaded data
-            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
-            print("\r {} MB downloaded".format(fsize), end="")
+            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
+            print("\r{} - {} MB downloaded ".format(get_work_time(), fsize), end="")
             sleep(1) # instant updates are not necessary
         #}
         # Print total size of downloaded file
         fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
-        print("\r {} MB downloaded \n".format(fsize))
+        print("\r{} - {} MB downloaded \n".format(get_work_time(), fsize))
     #}
 
     error = True
@@ -813,7 +770,7 @@ def build_local_db(acc_dict, prober_res_dir):#{
                     print("  {}. '{}'".format(i+1, file))
 
                 reply = input("""\nPress ENTER to continue aligning using this database.
-            Enter 'r' to build the database again:>>""")
+Enter 'r' to remove all files in this directory and build the database from the beginning:>>""")
 
                 if reply == "":
                     # Do not build a database, just return path to it.
@@ -847,37 +804,38 @@ def build_local_db(acc_dict, prober_res_dir):#{
     #}
     
     # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
-    # print("Getting GI numbers necessary for downloading sequences from Genbank...")
     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
-    # print()
 
     local_fasta = retrieve_fastas_by_gi(gi_list, db_dir) # download FASTA file
 
     # Add 'your own' FASTA files to database
     if not len(your_own_fasta_lst) == 0:#{
 
+        # This variable counts sequences from local files.
+        # It is necessary for accession deduplication.
         own_seq_counter = 0
 
         # Check if these files are SPAdes of a5 assembly
-        spades_patt = r"NODE_[0-9]+"
-        spades_counter = 0
-        spades_assms = list()
-        a5_patt = r"scaffold_[0-9]+"
-        a5_counter = 0
-        a5_assms = list()
+        spades_patt = r"NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
+        spades_counter = 0 # variable counts number of SPAdes assembly files
+        spades_assms = list() # this list will contain paths to SPAdes assembly files
+        a5_patt = r"scaffold_[0-9]+" # this pattern will match sequence IDs generated y a5
+        a5_counter = 0 # variable counts number of a5 assembly files
+        a5_assms = list() # this list will contain paths to a5 assembly files
 
         for own_fasta_path in your_own_fasta_lst:#{
 
             how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
-            with how_to_open(own_fasta_path) as fasta_file:
-                first_seq_id = fasta_file.readline().strip()
 
-            if not re_search(spades_patt, first_seq_id) is None:#{
+            with how_to_open(own_fasta_path) as fasta_file:
+                first_seq_id = fasta_file.readline().strip() # get the first line in file (the first seq ID)
+
+            if not re_search(spades_patt, first_seq_id) is None:#{ if we've got SPAdes assembly
                 spades_counter += 1
                 spades_assms.append(own_fasta_path)
                 continue
             #}
-            if not re_search(a5_patt, first_seq_id) is None:#{
+            if not re_search(a5_patt, first_seq_id) is None:#{  if we've got SPAdes assembly
                 a5_counter += 1
                 a5_assms.append(own_fasta_path)
                 continue
@@ -886,56 +844,77 @@ def build_local_db(acc_dict, prober_res_dir):#{
 
         for counter, assm_lst in zip((spades_counter, a5_counter), (spades_assms, a5_assms)):#{
 
+            # If there are more than one file with assembly of one assembler,
+            #    we need to distinguish these files (i.e. these assemblies).
             if counter > 1:#{
+
+                # Remove this files from list -- they will be processed in a specific way
                 for file in assm_lst:#{
                     your_own_fasta_lst.remove(file)
                 #}
 
-                with open(local_fasta, 'a') as fasta_db:#{
-                    for assm_path in assm_lst:#{
-                        print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
+                # If there are any equal basenames of files, absolute paths to these files will be used in seq IDs:
+                assm_basenames = list( map(os.path.basename, assm_lst) ) # get basenames
 
-                        how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
-                        with how_to_open(assm_path) as fasta_file:#{
-                            for line in fasta_file:#{
-                                line = line.strip()
-                                # 'makeblastdb' considers first word (sep. is space) as sequence ID
-                                #   and throws an error if there are duplicate IDs.
-                                # In order not to allow this duplication we'll create our own sequence IDs:
-                                #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
-                                if line.startswith('>'):#{
-                                    own_seq_counter += 1
-                                    line = ">" + "OWN_SEQ_{} {}_".format(own_seq_counter, os.path.abspath(assm_path)) + line[1:]
-                                #}
-                                fasta_db.write(line + '\n')
+                # If this sum is equal to length of 'assm_basenames' -- there are no duplicated basenames.
+                # So, there is no need to use absolute paths.# Absolute path will be used otherwise.
+                dedpul_sum = sum( map(assm_basenames.count, assm_basenames) )
+
+                # Path conversion according to 'deduplication sum':
+                if dedpul_sum == len(assm_basenames):#{
+                    assm_lst = list( map(os.path.basename, assm_lst) )
+                #}
+                else:#{
+                    assm_lst = list( map(os.path.abspath, assm_lst) )
+                #}
+
+                # Add assembled sequences to database
+                fasta_db = open(local_fasta, 'a')
+                for assm_path in assm_lst:#{
+                    print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
+
+                    how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
+                    with how_to_open(assm_path) as fasta_file:#{
+                        for line in fasta_file:#{
+                            line = line.strip()
+                            # You can find comments to "OWN_SEQ..." below. I don't want to duplicate them.
+                            # Paths will be written to seq IDs in following way:
+                            #   (_/some/happy/path.fastq_)
+                            # in order to retrieve them securely with regex later.
+                            if line.startswith('>'):#{
+                                own_seq_counter += 1
+                                line = ">" + "OWN_SEQ_{} (_{}_)_".format(own_seq_counter, assm_path) + line[1:]
                             #}
+                            fasta_db.write(line + '\n')
                         #}
                     #}
                 #}
+                fasta_db.close()
             #}
         #}
 
-        with open(local_fasta, 'a') as fasta_db:#{
-            for own_fasta_path in your_own_fasta_lst:#{
-                print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(own_fasta_path)))
+        # No 'with open' here in order not to indent too much.
+        fasta_db = open(local_fasta, 'a')
+        for own_fasta_path in your_own_fasta_lst:#{
+            print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(own_fasta_path)))
 
-                how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
-                with how_to_open(own_fasta_path) as fasta_file:#{
-                    for line in fasta_file:#{
-                        line = line.strip()
-                        # 'makeblastdb' considers first word (sep. is space) as sequence ID
-                        #   and throws an error if there are duplicate IDs.
-                        # In order not to allow this duplication we'll create our own sequence IDs:
-                        #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
-                        if line.startswith('>'):#{
-                            own_seq_counter += 1
-                            line = ">" + "OWN_SEQ_{} ".format(own_seq_counter) + line[1:]
-                        #}
-                        fasta_db.write(line + '\n')
+            how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
+            with how_to_open(own_fasta_path) as fasta_file:#{
+                for line in fasta_file:#{
+                    line = line.strip()
+                    # 'makeblastdb' considers first word (sep. is space) as sequence ID
+                    #   and throws an error if there are duplicate IDs.
+                    # In order not to allow this duplication we'll create our own sequence IDs:
+                    #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
+                    if line.startswith('>'):#{
+                        own_seq_counter += 1
+                        line = ">" + "OWN_SEQ_{} ".format(own_seq_counter) + line[1:]
                     #}
+                    fasta_db.write(line + '\n')
                 #}
             #}
         #}
+        fasta_db.close()
     #}
 
     # Configure command line
@@ -1005,8 +984,8 @@ def configure_request(packet, blast_algorithm):#{
     	use_index = "false"
 
     # Confirue command line
-    blast_cmd = "blastn -query {} -db {} -outfmt 5 -out {} -task {} -max_target_seqs 5 -use_index {}".format(query_path,
-        local_fasta, xml_output_path, blast_algorithm, use_index)
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
+        local_fasta, blast_algorithm, use_index)
 
     # Write packet sequences to query file
     with open(query_path, 'w') as query_file:#{
@@ -1022,15 +1001,14 @@ def send_request(request, filename):#{
     """
 
     # request is blastn cmd returned by 'configure_localdb_request' function
-    exit_code = os.system(request)
-    if exit_code != 0:#{`
+    pipe = Popen(request, stdout=PIPE, stderr=PIPE, shell=True)
+    stdout_stderr = pipe.communicate()
+    align_xml_text = stdout_stderr[0].decode("utf-8")
+    exit_code = pipe.returncode
+    if exit_code != 0:#{
         print_error("error while aligning a sequence against local database")
+        print(stdout_stderr[1].decode("utf-8"))
         platf_depend_exit(exit_code)
-    #}
-
-    # Read response XML text from file
-    with open(xml_output_path, 'r') as xml_file:#{
-        align_xml_text = xml_file.read().strip()
     #}
 
     return align_xml_text # return it
@@ -1038,7 +1016,7 @@ def send_request(request, filename):#{
 
 
 query_path = "query.fasta"  # path to file in which 'blastn will write it's report
-xml_output_path = "xml_output.xml"  # path to file in which a packet of sequences will be written
+# xml_output_path = "xml_output.xml"  # path to file in which a packet of sequences will be written
 
 def remove_tmp_files(*paths):#{
     """
@@ -1193,13 +1171,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
 
             # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
+                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
         #}
         else:
             # If there is no hit for current sequence
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "-", query_len,
-                "-", "-", "-", "-", str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
+                "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
     #}
     return result_tsv_lines
 #}
@@ -1448,8 +1426,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     #}
     remove_tmp_files(tmp_fpath)
 #}
-remove_tmp_files(query_path, xml_output_path)
+remove_tmp_files(query_path)
 
 
-print("\nTask completed successfully!")
+print("\n{} - Task completed successfully!".format(get_work_time()))
 platf_depend_exit(0)

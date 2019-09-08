@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-# Version 1.5
-# 06.09.2019 edition
+# Version 1.6
+# 08.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -9,14 +10,14 @@ from sys import version_info as verinf
 
 if verinf.major < 3:#{
     print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
-    print("\tPlease, use Python 3!\a")
+    print("   Please, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.5) ===|\n")
+print("\n |=== prober.py (version 1.6) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -35,9 +36,6 @@ from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
-
-from collections import Counter
-import heapq
 
 import http.client
 import urllib.request
@@ -435,7 +433,7 @@ Enter the number (1 or 2):>> """)
         try:#{
             continuation = int(continuation)
             if continuation != 1 and continuation != 2:#{ Check if input number is 1 or 2
-                print("\n\tNot a VALID number entered!\a\n" + '~'*20)
+                print("\n   Not a VALID number entered!\a\n" + '~'*20)
                 continuation = None
             #}
             else:#{
@@ -479,7 +477,7 @@ Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         try:#{
             packet_size = int(packet_size)
             if packet_size < 1 or packet_size > limit:#{ Check if input number is in [1, limit]
-                print("\n\tNot a VALID number entered!\a\n" + '~'*20)
+                print("\n   Not a VALID number entered!\a\n" + '~'*20)
                 packet_size = None
             #}
             else:#{
@@ -624,7 +622,7 @@ def rename_file_verbosely(file, directory):#{
         num_analog_files = str(num_analog_files)
         new_name = name_itself+"_old_"+num_analog_files+ext
 
-        print("\t'{}' --> '{}'".format(os.path.basename(file), new_name))
+        print("   '{}' --> '{}'".format(os.path.basename(file), new_name))
         os.rename(file, new_name)
     #}
 #}
@@ -657,7 +655,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
     fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
-    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_file) ]
+    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_path) ]
 
     # Form path to temporary file
     tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
@@ -672,7 +670,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):#{
         print('\n' + get_work_time() + " - The previous result file is found in the directory:")
-        print("\t'{}'".format(new_dpath))
+        print("   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
         continuation = is_continued()
         if not continuation:
@@ -708,8 +706,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
 
         # Collect information from accession file
-        global acc_set
-        global full_acc_dict
+        global acc_dict
         if os.path.exists(acc_fpath):#{
             try:#{  There can be invalid information in this file
                 with open(acc_fpath, 'r') as acc_file:#{
@@ -718,8 +715,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                     for line in local_files_filtered:#{
                         vals = line.split(DELIM)
                         acc = intern(vals[0].strip())
-                        full_acc_dict[acc] = (vals[1].strip(), vals[2].strip())
-                        acc_set.subtract({acc: int(vals[3])})
+                        acc_dict[acc] = (vals[1].strip(), vals[2].strip(), vals[3].strip())
                     #}
                 #}
             #}
@@ -734,9 +730,9 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             #}
             else:#{
                 print("\nHere are Genbank records encountered during previous run:")
-                for acc in full_acc_dict.keys():#{
-                    s_letter = "s" if -acc_set[acc] > 1 else ""
-                    print(" {} sequence{} - {}, '{}'".format(-acc_set[acc], s_letter, acc, full_acc_dict[acc][1]))
+                for acc in acc_dict.keys():#{
+                    s_letter = "s" if acc_dict[acc][2] > 1 else ""
+                    print(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
                 #}
                 print()
             #}
@@ -1045,32 +1041,32 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
                 conn.request("GET", wait_url) # ask for if there areresults
             except TimeoutError as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             except http.client.RemoteDisconnected as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             except socket.gaierror as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             except ConnectionResetError as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             except FileNotFoundError as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             except http.client.CannotSendRequest as err:
                 print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print('\t' + repr(err))
+                print("   " + str(err))
                 error = True
                 sleep(30)
             else:
@@ -1081,24 +1077,28 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         resp_content = str(response.read(), "utf-8") # get response text
         conn.close()
 
-        if re_search("Status=WAITING", resp_content) is not None:#{ if server asks to wait
-            print("{} - The request is still processing. Waiting for 60 seconds...".format(get_work_time()))
-            sleep(60)
+        if not re_search("Status=WAITING", resp_content) is None:#{ if server asks to wait
+            print("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()), end="")
+            for i in range(1, 7):#{ indicate each 10 seconds with a dot
+                sleep(10)
+                print("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i), end="")
+            #}
+            print() # go to next line
             continue
         #}
-        if re_search("Status=FAILED", resp_content) is not None:#{ if job failed
+        if not re_search("Status=FAILED", resp_content) is None:#{ if job failed
             print('\n' + get_work_time() + " - Job failed\a\n")
             response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return None
         #}
-        if re_search("Status=UNKNOWN", resp_content) is not None:#{ if job expired
+        if not re_search("Status=UNKNOWN", resp_content) is None:#{ if job is expired
             print('\n' + get_work_time() + " - Job expired\a\n")
             respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
     Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
         #}
-        if re_search("Status=READY", resp_content) is not None:#{ if results are ready
+        if not re_search("Status=READY", resp_content) is None:#{ if results are ready
             there_are_hits = True
             print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
             if re_search("ThereAreHits=yes", resp_content) is not None:#{ if there are hits
@@ -1208,8 +1208,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
     root = ElementTree.fromstring(xml_text) # get tree instance
 
-    global new_acc_set
-    global full_acc_dict
+    global new_acc_dict
     global qual_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
@@ -1249,8 +1248,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
             hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
             gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
             hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-            full_acc_dict[hit_acc] = (hit_gi, hit_name)
-            new_acc_set.subtract({hit_acc: 1})
+            try:#{
+                new_acc_dict[hit_acc][2] += 1
+            #}
+            except KeyError:#{
+                new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
+            #}
+
 
             # Find the first HSP (we need only the first one)
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
@@ -1272,14 +1276,14 @@ def parse_align_results_xml(xml_text, seq_names):#{
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
             # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( [query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
+                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
         #}
         else:#{
             # If there is no hit for current sequence
             print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
-            result_tsv_lines.append(DELIM.join( [query_name, "No significant similarity found", "-", query_len,
-                "-", "-", "-", "-", str(ph33_qual), str(accuracy)] ))
+            result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
+                "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
         #}
         print(qual_info_to_print, end="")
     #}
@@ -1314,19 +1318,10 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
 
     # === Write accession information ===
 
-    global acc_set
-    global new_acc_set
+    global acc_dict
+    global new_acc_dict
     global blast_algorithm
-    global acc_prior_queue
     acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
-
-    acc_set.update(new_acc_set)
-    new_acc_set = Counter() # reset new_acc_set
-
-    acc_prior_queue = list()
-    for acc in acc_set:#{
-        heapq.heappush(acc_prior_queue, (acc_set[acc], acc))
-    #}
 
     with open(acc_file_path, 'w') as acc_file:#{
         acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
@@ -1339,15 +1334,22 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
         acc_file.write(DELIM.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
     #}
 
-    # Write accessions and record names
-    with open(acc_file_path, 'a') as acc_file:#{
-        while len(acc_prior_queue) > 0:
-            next_item = heapq.heappop(acc_prior_queue)
-            occurence = -next_item[0] # because of descending order
-            acc = next_item[1]
-            acc_file.write(DELIM.join( [acc, full_acc_dict[acc][0], full_acc_dict[acc][1], str(occurence)]) + '\n')
+    for acc, other_info in new_acc_dict.items():#{
+        try:#{
+            acc_dict[acc][2] += 1
+        #}
+        except KeyError:#{
+            acc_dict[acc] = other_info
         #}
     #}
+    # Write accessions and record names
+    with open(acc_file_path, 'a') as acc_file:#{
+        for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
+            acc_file.write(DELIM.join( (acc, other_info[0], other_info[1], str(other_info[2]))) + '\n')
+        #}
+    #}
+
+    new_acc_dict.clear()
 #}
 
 
@@ -1438,13 +1440,10 @@ acc_counter = 0
 # Dictionary of accessions and record names.
 # Accessions are keys, record names are values.
 # This dictionary is filled while processing and at the beginning of continuation.
-acc_set = Counter()
+acc_dict = dict()
 # Dictionary of accessions and record names encountered while sending of the current packet.
 # Accessions are keys, record names are values.
-new_acc_set = Counter()
-
-full_acc_dict = dict()
-acc_prior_queue = list()
+new_acc_dict = dict()
 
 # Counter of processed sequences
 seqs_processed = 0
@@ -1456,6 +1455,7 @@ next_id_line = None
 
 stop = False
 omit_file= False
+
 
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):#{
@@ -1508,8 +1508,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if num_done_reads != 0:
         seqs_processed = num_done_reads
 
-    packs_at_all = probing_batch_size // packet_size # Calculate total number of packets sent from current FASTA file
-    if probing_batch_size % packet_size > 0: # And this is ceiling (in order not to import 'math')
+    if (probing_batch_size - seqs_processed) <= curr_fasta["nreads"]:
+        tmp_num = (probing_batch_size - seqs_processed)
+    else:
+        tmp_num = curr_fasta["nreads"]
+    packs_at_all = tmp_num // packet_size # Calculate total number of packets sent from current FASTA file
+
+    if tmp_num % packet_size > 0: # And this is ceiling (in order not to import 'math')
         packs_at_all += 1
     packs_received = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
@@ -1605,22 +1610,20 @@ print("\n {} sequences have been processed\n".format(seqs_processed))
 print("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
 print("They are sorted by their occurence in probing batch:")
 
-acc_prior_queue = list()
-for acc in acc_set:#{
-    heapq.heappush(acc_prior_queue, (acc_set[acc], acc))
+# Print accessions and record names sorted by occurence
+# "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
+#   [2] -- get 3-rd element (occurence)
+for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):#{ 
+    s_letter = "s" if other_info[2] > 1 else ""
+    print(" {} sequence{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
 #}
 
-# Print accessions and record names
-while len(acc_prior_queue) > 0:
-    next_item = heapq.heappop(acc_prior_queue)
-    occurence = -next_item[0] # minus because of descending order of the queue
-    acc = next_item[1]
-    s_letter = "s" if occurence > 1 else ""
-    print(" {} sequence{} - {}, '{}'".format(occurence, s_letter, acc, full_acc_dict[acc][1]))
+# Print number of unkmown sequences, if there are any:
+unkn_num = probing_batch_size - sum( map(lambda x: x[2], acc_dict.values()) )
+if unkn_num > 0:#{
+    s_letter = "s" if unkn_num > 1 else ""
+    print(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 #}
-unkn_num = probing_batch_size - sum(acc_set)
-s_letter = "s" if unkn_num > 1 else ""
-print(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 
 
 print("""\nThey are saved in following file:
@@ -1628,5 +1631,5 @@ print("""\nThey are saved in following file:
 print("""\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (on your local computer) database used by 'barapost.py'.""")
-print("\nProbing task is completed successfully!")
+print("\n{} - Probing task is completed successfully!".format(get_work_time()))
 platf_depend_exit(0)
