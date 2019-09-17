@@ -68,6 +68,18 @@ def print_error(text):#{
 #}
 
 
+from sys import stdout as sys_stdout
+def printn(text):#{
+    """
+    Function prints text to the console without adding '\n' in the end of the line.
+    Why not just to use 'print(text, end="")'?
+    In order to display informative error message if Python 2.X is launched
+        instead if awful error traceback.
+    """
+    sys_stdout.write(text)
+#}
+
+
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
@@ -693,7 +705,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):#{
         while not stop_wait:#{
             # Get size of downloaded data
             fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
-            print("\r{} - {} MB downloaded ".format(get_work_time(), fsize), end="")
+            printn("\r{} - {} MB downloaded ".format(get_work_time(), fsize))
             sleep(1) # instant updates are not necessary
         #}
         # Print total size of downloaded file
@@ -1380,8 +1392,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
 
-        print("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), attempt_all),
-                end="")
+        printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), attempt_all))
 
         # Go untill the last processed sequence
         # for _ in range( int(num_done_reads * 2) ):#{
@@ -1417,8 +1428,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path)
 
-            print("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), attempt, attempt_all),
-                end="")
+            printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), attempt, attempt_all))
 
             attempt += 1
         #}
@@ -1429,5 +1439,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 remove_tmp_files(query_path)
 
 
-print("\n{} - Task completed successfully!".format(get_work_time()))
+end_time = time()
+print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Task is completed successfully!\n")
 platf_depend_exit(0)

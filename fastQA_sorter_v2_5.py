@@ -24,6 +24,18 @@ def print_error(text):#{
     print("\n   \a!! - ERROR: " + text + '\n')
 #}
 
+
+from sys import stdout as sys_stdout
+def printn(text):#{
+    """
+    Function prints text to the console without adding '\n' in the end of the line.
+    Why not just to use 'print(text, end="")'?
+    In order to display informative error message if Python 2.X is launched
+        instead if awful error traceback.
+    """
+    sys_stdout.write(text)
+#}
+
 # |===== Stuff for dealing with time =====|
 
 from time import time, strftime, localtime, sleep, gmtime
@@ -654,11 +666,12 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
                 write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
             #}
 
-            print("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads), end="")
+            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
         #}
         print('\n' + '-'*20)
     #}
 #}
 
-print("\n{} - Sorting has been successfully completed!".format(get_work_time()))
+end_time = time()
+print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Sorting is completed successfully!\n")
 platf_depend_exit(0)

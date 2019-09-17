@@ -62,8 +62,20 @@ def platf_depend_exit(exit_code):#{
 
 
 def print_error(text):#{
-    "Function for printing error messages"
+    """Function for printing error messages"""
     print("\n   \a!! - ERROR: " + text + '\n')
+#}
+
+
+from sys import stdout as sys_stdout
+def printn(text):#{
+    """
+    Function prints text to the console without adding '\n' in the end of the line.
+    Why not just to use 'print(text, end="")'?
+    In order to display informative error message if Python 2.X is launched
+        instead if awful error traceback.
+    """
+    sys_stdout.write(text)
 #}
 
 
@@ -1078,10 +1090,10 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         conn.close()
 
         if not re_search("Status=WAITING", resp_content) is None:#{ if server asks to wait
-            print("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()), end="")
+            printn("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
             for i in range(1, 7):#{ indicate each 10 seconds with a dot
                 sleep(10)
-                print("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i), end="")
+                printn("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i))
             #}
             print() # go to next line
             continue
@@ -1285,7 +1297,7 @@ def parse_align_results_xml(xml_text, seq_names):#{
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
         #}
-        print(qual_info_to_print, end="")
+        printn(qual_info_to_print)
     #}
     return result_tsv_lines
 #}
@@ -1631,5 +1643,6 @@ print("""\nThey are saved in following file:
 print("""\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (on your local computer) database used by 'barapost.py'.""")
-print("\n{} - Probing task is completed successfully!".format(get_work_time()))
+end_time = time()
+print('\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Probing task is completed successfully!\n")
 platf_depend_exit(0)
