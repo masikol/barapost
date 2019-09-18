@@ -605,7 +605,7 @@ def get_packet(fasta_file, packet_size, fmt_func):#{
     }
     """
 
-    global next_id_line
+    next_id_line = None
     line = fmt_func(fasta_file.readline())
     if line.startswith('>') and ' ' in line:#{:
         line = line.partition(' ')[0]+'\n'
@@ -646,25 +646,94 @@ def get_packet(fasta_file, packet_size, fmt_func):#{
 #}
 
 
+def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
+    if num_done_reads == 0:
+        return None
+    else:#{
+        i = 0
+        while i < num_done_reads:#{
+            line = fmt_func(fasta_file.readline())
+            if line .startswith('>'):#{
+                if ' ' in line:
+                    line = line.partition(' ')[0]+'\n'
+                next_id_line = line
+                i += 1
+            #}
+        #}
+        return next_id_line
+    #}
+#}
 
-def fasta_packets(fasta_path, packet_size, reads_at_all, num_doce_reads):#{
+
+
+def fasta_packets(fasta_path, packet_size, reads_at_all, num_done_reads):#{
     
-    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_path) ]
-    fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta_path) ]
+    if is_gzipped(curr_fasta["fpath"]):#{
+        fmt_func = lambda l: l.decode("utf-8")
+        how_to_open = open_as_gzip
+    #}
+    else:#{
+        fmt_func = lambda l: l
+        how_to_open = open
+    #}
 
     with how_to_open(fasta_path) as fasta_file:#{
 
-        # Go untill the last processed sequence
-        get_packet(fasta_file, num_done_reads, fmt_func)
+        next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
+        line = fmt_func(fasta_file.readline())
+        if line.startswith('>') and ' ' in line:#{:
+            line = line.partition(' ')[0]+'\n'
+        #}
+        packet = ""
 
-        reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
+        i = 0
+        if not next_id_line is None:
+            packet += next_id_line
+        packet += line
+
+        packs_at_all = reads_at_all // packet_size # Calculate total number of packets sent from current FASTA file
+        if reads_at_all % packet_size > 0: # And this is ceiling (in order not to import 'math')
+            packs_at_all += 1
+        packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
+
+        reads_left = reads_at_all - num_done_reads # number of sequences left to precess
         packs_left = packs_at_all - packs_received # number of packets left to send
         pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
         # Iterate over packets left to send
-        for i in range(packs_left):#{
-            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
+        for _ in range(packs_left):#{
+            
+            while i < packet_size:#{
 
+                line = fmt_func(fasta_file.readline())
+                if line.startswith('>'):#{
+                    if ' ' in line:
+                        line = line.partition(' ')[0]+'\n'
+                    i += 1
+                #}
+                if line == "":
+                    break
+                packet += line
+            #}
+
+            if line != "":#{
+                next_id_line = packet.splitlines()[-1]+'\n'
+                packet = '\n'.join(packet.splitlines()[:-1])
+            #}
+            else:#{
+                next_id_line = None
+            #}
+
+            names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
+            names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+
+            if packet is "":#{   Just in case
+                print("Recent packet is empty")
+                return
+            #}
+
+            yield {"fasta": packet.strip(), "names": names}
+        #}
     #}
 #}
 
@@ -1393,52 +1462,26 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         packs_at_all += 1
     packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
-    if is_gzipped(curr_fasta["fpath"]):#{
-        fmt_func = lambda l: l.decode("utf-8")
-        how_to_open = open_as_gzip
-    #}
-    else:#{
-        fmt_func = lambda l: l
-        how_to_open = open
-    #}
-
-    with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
+    for packet in fasta_packets(curr_fasta["fpath"], packet_size, reads_at_all, num_done_reads):#{ # continue from here (reads_at_all: where are they from?)
 
         printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
 
-        # Go untill the last processed sequence
-        packet = get_packet(fasta_file, num_done_reads, fmt_func)
+        with open(tmp_fpath, 'w') as tmp_file:
+            tmp_file.write("packet_size: {}".format(packet_size))
 
-        reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
-        packs_left = packs_at_all - packs_processed # number of packets left to send
-        pack_to_process= packs_processed+1 if packs_processed > 0 else 1 # number of current packet
+        # Align the packet
+        align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
 
-        # Iterate througth packets left to send
-        for i in range(packs_left):#{
+        # Get result tsv lines
+        result_tsv_lines = parse_align_results_xml(align_xml_text,
+            packet["names"])
 
-            with open(tmp_fpath, 'w') as tmp_file:
-                tmp_file.write("packet_size: {}".format(packet_size))
+        # Write the result to tsv
+        write_result(result_tsv_lines, tsv_res_path)
 
-            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
+        printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_to_process, packs_at_all))
 
-            if packet["fasta"] is "":#{   Just in case
-                print("Recent packet is empty")
-                break
-            #}
-            # Align the packet
-            align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
-
-            # Get result tsv lines
-            result_tsv_lines = parse_align_results_xml(align_xml_text,
-                packet["names"])
-
-            # Write the result to tsv
-            write_result(result_tsv_lines, tsv_res_path)
-
-            printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_to_process, packs_at_all))
-
-            pack_to_process += 1
-        #}
+        pack_to_process += 1
         print() # just print 2 blank lines
     #}
     remove_tmp_files(tmp_fpath)
