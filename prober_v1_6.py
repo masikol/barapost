@@ -1542,9 +1542,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
 
         # Go untill the last processed sequence
-        # for _ in range( int(num_done_reads * 2) ):#{
-        #     fasta_file.readline()
-        # #}
         get_packet(fasta_file, num_done_reads, fmt_func)
 
         reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess

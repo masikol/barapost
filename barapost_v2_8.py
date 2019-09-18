@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Version 2.8
-# 08.09.2019 edition
+# 18.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -36,7 +36,7 @@ from re import search as re_search
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
-from subprocess import Popen, PIPE
+from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 
 import http.client
 import urllib.request
@@ -279,7 +279,9 @@ if len(fq_fa_list) == 0:#{
     # If input directory was not specified -- look for FASTQ files in current directory
     else:#{
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
-        fq_fa_list = list( filter(lambda f: True if f != "query.fasta" else False, fq_fa_list) )
+        # Query files might be in current dicectory. They won't be processed:
+        query_patt = r"^query[0-9]+\.fasta$"
+        fq_fa_list = list( filter(lambda f: True if re_search(query_patt, f) is None else False) )
         if len(fq_fa_list) == 0:#{
             print_error("there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
@@ -513,7 +515,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
     If there are results from previous run, returns a dict of the following structure:
     {
         "pack_size": packet_size (int),
-        "attmpt": saved_attempt (int),
         "tsv_respath": path_to_tsv_file_from_previous_run (str),
         "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
         "tmp_fpath": path_to_pemporary_file (str)
@@ -580,7 +581,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
         # Return data from previous run
         return {
             "pack_size": packet_size,
-            # "attmpt": attempt_save,
             "tsv_respath": tsv_res_fpath,
             "n_done_reads": num_done_reads,
             "tmp_fpath": tmp_fpath
@@ -644,6 +644,30 @@ def get_packet(fasta_file, packet_size, fmt_func):#{
 
     return {"fasta": packet.strip(), "names": names}
 #}
+
+
+
+def fasta_packets(fasta_path, packet_size, reads_at_all, num_doce_reads):#{
+    
+    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_path) ]
+    fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta_path) ]
+
+    with how_to_open(fasta_path) as fasta_file:#{
+
+        # Go untill the last processed sequence
+        get_packet(fasta_file, num_done_reads, fmt_func)
+
+        reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
+        packs_left = packs_at_all - packs_received # number of packets left to send
+        pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
+
+        # Iterate over packets left to send
+        for i in range(packs_left):#{
+            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
+
+    #}
+#}
+
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
@@ -803,12 +827,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
     #}
 
     if os.path.exists(acc_fpath):#{
-        print("\nChecking Internet connection...")
+        print("Checking Internet connection...")
         check_connection("https://ncbi.nlm.nih.gov")
-        print("OK\n\n")
+        print("OK\n")
 
-        print("""\nFollowing sequences will be downloaded from Genbank
-        for further aligning on your local machine with 'blast+' toolkit:\n""")
+        print("""Following sequences will be downloaded from Genbank
+    for further aligning on your local machine with 'blast+' toolkit:\n""")
         for i, acc in enumerate(acc_dict.keys()):#{
             print(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
         #}
@@ -977,7 +1001,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
 #}
 
 
-def configure_request(packet, blast_algorithm):#{
+def launch_blastn(packet, blast_algorithm):#{
     """
     Function meant to replace 'configure_request' one that works with BLAST server.
     """
@@ -991,44 +1015,35 @@ def configure_request(packet, blast_algorithm):#{
     # Indexed discontiguous searches are not supported:
     # https://www.ncbi.nlm.nih.gov/books/NBK279668/#usermanual.Megablast_indexed_searches
     if blast_algorithm != "dc-megablast":
-    	use_index = "true"
+        use_index = "true"
     else:
-    	use_index = "false"
+        use_index = "false"
 
-    # Confirue command line
-    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
-        local_fasta, blast_algorithm, use_index)
+    # PID of current process won't change, so we can use it to mark query files.
+    # 'paket's are too large to pass them to 'subprocess.Popen' as stdin,
+    #    therefore we need to use these query files.
+    query_path = "query{}.fasta".format(os.getpid())
 
-    # Write packet sequences to query file
     with open(query_path, 'w') as query_file:#{
         query_file.write(packet)
     #}
 
-    return blast_cmd # return command line in order to follow the interface used in 'kernel loop'
-#}
+    # Configure command line
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
+        local_fasta, blast_algorithm, use_index)
 
-def send_request(request, filename):#{
-    """
-    Function meant to replace 'send_request' one that works with BLAST server.
-    """
-
-    # request is blastn cmd returned by 'configure_localdb_request' function
-    pipe = Popen(request, stdout=PIPE, stderr=PIPE, shell=True)
+    pipe = sp_Popen(blast_cmd, shell=True, stdout=sp_PIPE, stderr=sp_PIPE)
     stdout_stderr = pipe.communicate()
-    align_xml_text = stdout_stderr[0].decode("utf-8")
-    exit_code = pipe.returncode
-    if exit_code != 0:#{
+
+    if pipe.returncode != 0:#{
         print_error("error while aligning a sequence against local database")
         print(stdout_stderr[1].decode("utf-8"))
-        platf_depend_exit(exit_code)
+        exit(pipe.returncode)
     #}
 
-    return align_xml_text # return it
+    return stdout_stderr[0].decode("utf-8")
 #}
 
-
-query_path = "query.fasta"  # path to file in which 'blastn will write it's report
-# xml_output_path = "xml_output.xml"  # path to file in which a packet of sequences will be written
 
 def remove_tmp_files(*paths):#{
     """
@@ -1293,7 +1308,6 @@ def configure_acc_dict(acc_fpath):#{
 # 2. 'previous_data' is a dict of the following structure:
 #    {
 #        "pack_size": packet_size (int),
-#        "attmpt": saved_attempt (int),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
 #        "tmp_fpath": path_to_pemporary_file (str)
@@ -1359,7 +1373,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     if previous_data is None:#{ # If there is no data from previous run
 
         num_done_reads = 0 # number of successfully processed sequences
-        # saved_attempt = None # number of last successful attempt (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
@@ -1368,7 +1381,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     else:#{ # if there is data from previous run
 
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        # saved_attempt = previous_data["attmpt"] # get number of last successful attempt
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
@@ -1376,10 +1388,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     print("Writing results to file:\n '{}'".format(tsv_res_path))
 
-    attempt_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
+    packs_at_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
     if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
-        attempt_all += 1
-    attempts_done = int( num_done_reads / packet_size ) # number of successfully processed sequences
+        packs_at_all += 1
+    packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
     if is_gzipped(curr_fasta["fpath"]):#{
         fmt_func = lambda l: l.decode("utf-8")
@@ -1392,20 +1404,17 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
     with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
 
-        printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), attempt_all))
+        printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
 
         # Go untill the last processed sequence
-        # for _ in range( int(num_done_reads * 2) ):#{
-        #     fasta_file.readline()
-        # #}
         packet = get_packet(fasta_file, num_done_reads, fmt_func)
 
         reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
-        attempts_left = attempt_all - attempts_done # number of packets left to send
-        attempt = attempts_done+1 if attempts_done > 0 else 1 # current attempt
+        packs_left = packs_at_all - packs_processed # number of packets left to send
+        pack_to_process= packs_processed+1 if packs_processed > 0 else 1 # number of current packet
 
         # Iterate througth packets left to send
-        for i in range(attempts_left):#{
+        for i in range(packs_left):#{
 
             with open(tmp_fpath, 'w') as tmp_file:
                 tmp_file.write("packet_size: {}".format(packet_size))
@@ -1416,10 +1425,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 print("Recent packet is empty")
                 break
             #}
-            request = configure_request(packet["fasta"], blast_algorithm) # get the request
-
-            # Send the request get BLAST XML response
-            align_xml_text = send_request(request, fasta_hname+".fasta")
+            # Align the packet
+            align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
 
             # Get result tsv lines
             result_tsv_lines = parse_align_results_xml(align_xml_text,
@@ -1428,16 +1435,15 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path)
 
-            printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), attempt, attempt_all))
+            printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_to_process, packs_at_all))
 
-            attempt += 1
+            pack_to_process += 1
         #}
         print() # just print 2 blank lines
     #}
     remove_tmp_files(tmp_fpath)
 #}
-remove_tmp_files(query_path)
-
+remove_tmp_files("query{}.fasta".format(os.getpid()))
 
 end_time = time()
 print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Task is completed successfully!\n")

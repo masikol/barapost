@@ -4,8 +4,6 @@
 
 Version 1.6; 08.09.2019 edition;
 
-[test-link-to-section](#2.-barapost.py)
-
 ### DESCRIPTION:
 
 "prober.py" -- script is designed for determinating the taxonomic position
