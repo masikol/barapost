@@ -37,6 +37,7 @@ from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
+import multiprocessing as mp
 
 import http.client
 import urllib.request
@@ -145,9 +146,9 @@ from sys import argv
 import getopt
 
 try:#{
-    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:r:l:o:",
+    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:r:l:o:t:",
         ["help", "infile=", "indir=", "packet-size=", "algorithm=", "prober-result-dir=",
-        "local-fasta-to-bd=", "outdir="])
+        "local-fasta-to-bd=", "outdir=", "threads="])
 #}
 except getopt.GetoptError as gerr:#{
     print( str(gerr) )
@@ -257,6 +258,31 @@ for opt, arg in opts:#{
     if opt in ("-o", "--outdir"):#{
         prober_res_dir = arg
     #}
+
+    elif opt in ("-t", "--threads"):#{
+        try:#{
+            n_thr = int(arg)
+            if n_thr < 1:
+                raise ValueError
+        #}
+        except ValueError:#{
+            print_error("number of threads must be positive integer number!")
+            print(" And here is your value: '{}'".format(arg))
+            exit(1)
+        #}
+        if n_thr > mp.cpu_count():#{
+            print("""\n  Warning! You have specified {} threads to use
+    while {} are available.\n""".format(n_thr, mp.cpu_count()))
+            reply = input("""If this is just what you want, press ENTER
+    or enter 'q' to exit:>>""")
+            if reply == "":#{
+                pass
+            #}
+            else:#{
+                exit(0)
+            #}
+        #}
+    #}
 #}
 
 if not os.path.exists(prober_res_dir) and len(your_own_fasta_lst) == 0:#{
@@ -281,7 +307,7 @@ if len(fq_fa_list) == 0:#{
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
         # Query files might be in current dicectory. They won't be processed:
         query_patt = r"^query[0-9]+\.fasta$"
-        fq_fa_list = list( filter(lambda f: True if re_search(query_patt, f) is None else False) )
+        fq_fa_list = list( filter(lambda f: True if re_search(query_patt, f) is None else False, fq_fa_list))
         if len(fq_fa_list) == 0:#{
             print_error("there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
@@ -399,7 +425,7 @@ FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
 
 
-def fastq2fasta(fq_fa_path, i, new_dpath):#{
+def fastq2fasta(fq_fa_path, new_dpath):#{
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
         the same name as FASTQ file. Also it counts sequences in this file.
@@ -463,14 +489,13 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         #}
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
-        print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
+        print("\n'{}' ({} reads) --> FASTA".format(os.path.basename(fq_fa_path), num_reads))
     #}
     # IF FASTA file is already created
     # We need only number of sequences in it.
     elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
         num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
-        print("\n{}. '{}' ({} reads)".format(i+1, os.path.basename(fq_fa_path), num_reads))
     #}
     # If we've got FASTA source file
     # We need only number of sequences in it.
@@ -480,7 +505,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
         # If we've got FASTA source file we do not need to copy it
         fasta_path = fq_fa_path
-        print("\n{}. '{}' ({} sequences)".format(i+1, os.path.basename(fq_fa_path), num_reads))
     #}
 
     return {"fpath": fasta_path, "nreads": num_reads}
@@ -589,61 +613,61 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 #}
 
 
-def get_packet(fasta_file, packet_size, fmt_func):#{
-    """
-    Function collects the packet of query sequences to send to BLAST server.
+# def get_packet(fasta_file, packet_size, fmt_func):#{
+#     """
+#     Function collects the packet of query sequences to send to BLAST server.
 
-    :param fasta_file: file instance of FASTA file to retrieve sequences from;
-    :type fasta_file: _io.TextIOWrapper;
-    :param packet_size: number of query sequences to send as a particular request;
-    :type packet_size: int;
+#     :param fasta_file: file instance of FASTA file to retrieve sequences from;
+#     :type fasta_file: _io.TextIOWrapper;
+#     :param packet_size: number of query sequences to send as a particular request;
+#     :type packet_size: int;
 
-    Returns dict of the following structure:
-    {
-        "fasta": FASTA_data_containing_query_sequences (str),
-        "names": list_of_sequence_ids_from_fasta_file (list<str>)
-    }
-    """
+#     Returns dict of the following structure:
+#     {
+#         "fasta": FASTA_data_containing_query_sequences (str),
+#         "names": list_of_sequence_ids_from_fasta_file (list<str>)
+#     }
+#     """
 
-    next_id_line = None
-    line = fmt_func(fasta_file.readline())
-    if line.startswith('>') and ' ' in line:#{:
-        line = line.partition(' ')[0]+'\n'
-    #}
-    packet = ""
+#     next_id_line = None
+#     line = fmt_func(fasta_file.readline())
+#     if line.startswith('>') and ' ' in line:#{:
+#         line = line.partition(' ')[0]+'\n'
+#     #}
+#     packet = ""
 
-    i = 0
-    if not next_id_line is None:
-        packet += next_id_line
-    packet += line
+#     i = 0
+#     if not next_id_line is None:
+#         packet += next_id_line
+#     packet += line
 
-    while i < packet_size:#{
+#     while i < packet_size:#{
 
-        line = fmt_func(fasta_file.readline())
-        if line.startswith('>'):#{
-            if ' ' in line:
-                line = line.partition(' ')[0]+'\n'
-            i += 1
-        #}
-        if line == "":
-            break
-        packet += line
-    #}
+#         line = fmt_func(fasta_file.readline())
+#         if line.startswith('>'):#{
+#             if ' ' in line:
+#                 line = line.partition(' ')[0]+'\n'
+#             i += 1
+#         #}
+#         if line == "":
+#             break
+#         packet += line
+#     #}
 
-    if line != "":#{
-        next_id_line = packet.splitlines()[-1]+'\n'
-        packet = '\n'.join(packet.splitlines()[:-1])
-    #}
-    else:#{
-        next_id_line = None
-        packet = packet.strip()
-    #}
+#     if line != "":#{
+#         next_id_line = packet.splitlines()[-1]+'\n'
+#         packet = '\n'.join(packet.splitlines()[:-1])
+#     #}
+#     else:#{
+#         next_id_line = None
+#         packet = packet.strip()
+#     #}
 
-    names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-    names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+#     names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
+#     names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
 
-    return {"fasta": packet.strip(), "names": names}
-#}
+#     return {"fasta": packet.strip(), "names": names}
+# #}
 
 
 def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
@@ -651,7 +675,7 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
         return None
     else:#{
         i = 0
-        while i < num_done_reads:#{
+        while i <= num_done_reads:#{
             line = fmt_func(fasta_file.readline())
             if line .startswith('>'):#{
                 if ' ' in line:
@@ -665,10 +689,9 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
 #}
 
 
-
 def fasta_packets(fasta_path, packet_size, reads_at_all, num_done_reads):#{
     
-    if is_gzipped(curr_fasta["fpath"]):#{
+    if is_gzipped(fasta_path):#{
         fmt_func = lambda l: l.decode("utf-8")
         how_to_open = open_as_gzip
     #}
@@ -679,14 +702,16 @@ def fasta_packets(fasta_path, packet_size, reads_at_all, num_done_reads):#{
 
     with how_to_open(fasta_path) as fasta_file:#{
 
+        # Variable that contains id of next sequence in current FASTA file.
+        # If no or all sequences in current FASTA file have been already processed, this variable is None
         next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
+
         line = fmt_func(fasta_file.readline())
         if line.startswith('>') and ' ' in line:#{:
             line = line.partition(' ')[0]+'\n'
         #}
-        packet = ""
 
-        i = 0
+        packet = ""
         if not next_id_line is None:
             packet += next_id_line
         packet += line
@@ -696,12 +721,16 @@ def fasta_packets(fasta_path, packet_size, reads_at_all, num_done_reads):#{
             packs_at_all += 1
         packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
-        reads_left = reads_at_all - num_done_reads # number of sequences left to precess
-        packs_left = packs_at_all - packs_received # number of packets left to send
-        pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
+        reads_left = reads_at_all - num_done_reads # number of sequences left to process
+        packs_left = packs_at_all - packs_processed # number of packets left to send
+        pack_to_send = packs_processed+1 if packs_processed > 0 else 1 # number of packet meant to be sent now
 
-        # Iterate over packets left to send
+        # Iterate over packets left to process
         for _ in range(packs_left):#{
+
+            # if not next_id_line is None:
+            #     packet += next_id_line
+            i = 0
             
             while i < packet_size:#{
 
@@ -733,6 +762,10 @@ def fasta_packets(fasta_path, packet_size, reads_at_all, num_done_reads):#{
             #}
 
             yield {"fasta": packet.strip(), "names": names}
+            if not next_id_line is None:
+                packet = next_id_line+'\n'
+            else:
+                return
         #}
     #}
 #}
@@ -1162,7 +1195,7 @@ def configure_qual_dict(fastq_path):#{
 #}
 
 
-def parse_align_results_xml(xml_text, seq_names):#{
+def parse_align_results_xml(xml_text, seq_names, qual_dict):#{
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -1362,6 +1395,137 @@ def configure_acc_dict(acc_fpath):#{
 #}
 
 
+def init_proc_many_files(print_lock_buff):#{
+    global print_lock
+    print_lock = print_lock_buff
+#}
+
+
+def spread_files_equally(n_thr, fq_fa_list):#{
+    sublist_size = len(fq_fa_list) // n_thr
+    if len(fq_fa_list) % n_thr != 0:
+        sublist_size += 1
+
+    i = 0
+    sublist = list()
+    for i, path in enumerate(fq_fa_list):#{
+
+        sublist.append(path)
+
+        if i+1 == sublist_size:
+            yield sublist
+            sublist = list()
+
+        if i+1 == len(fq_fa_list):
+            yield sublist
+            return
+    #}
+#}
+
+
+
+def process_multiple_files(fq_fa_list, parallel=False):#{
+
+    # Iterate over source FASTQ and FASTA files
+    for i, fq_fa_path in enumerate(fq_fa_list):#{
+
+        # Configure quality dictionary
+        qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
+
+        # Create the result directory with the name of FASTQ of FASTA file being processed:
+        new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
+
+        # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
+        curr_fasta = fastq2fasta(fq_fa_path, new_dpath)
+
+        if parallel:
+            with print_lock:
+                print("\n '{}' ({} sequences) is processing, - {}".format(os.path.basename(fq_fa_path), curr_fasta["nreads"], os.getpid()))
+        else:
+            print("\n {}. '{}' ({} sequences) is processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
+
+        # "hname" means human readable name (i.e. without file path and extention)
+        fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
+        fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of file extention
+
+        # Look around and ckeck if there are results of previous runs of this script
+        # If 'look_around' is None -- there is no data from previous run
+        previous_data = look_around(new_dpath, curr_fasta["fpath"],
+            blast_algorithm)
+
+        if previous_data is None:#{ # If there is no data from previous run
+
+            num_done_reads = 0 # number of successfully processed sequences
+            tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
+                fasta_hname), blast_algorithm) # form result tsv file path
+            tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
+                fasta_hname), blast_algorithm) # form temporary file path
+        #}
+        else:#{ # if there is data from previous run
+
+            num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
+            packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
+            tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
+            tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
+        #}
+
+        if parallel:
+            print_lock.acquire()
+        if num_done_reads > 0:#{
+            verb, s_letter = ("have", "s") if num_done_reads != 1 else ("has", "")
+            print("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
+        #}
+        print("Writing results to file:\n '{}'".format(tsv_res_path))
+        if parallel:
+            print_lock.release()
+
+        packs_at_all = (curr_fasta["nreads"] - num_done_reads) // packet_size # Calculate total number of packets sent from current FASTA file
+        if (curr_fasta["nreads"] - num_done_reads) % packet_size != 0: # And this is ceiling (in order not to import 'math')
+            packs_at_all += 1
+        packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
+        packs_left = packs_at_all - packs_processed
+
+        if not parallel:
+            printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
+        else:
+            next_done_perc = 0.10
+            perc_step = 0.10
+
+        for pack_i, packet in enumerate(fasta_packets(curr_fasta["fpath"],
+            packet_size, curr_fasta["nreads"], num_done_reads)):#{
+
+            with open(tmp_fpath, 'w') as tmp_file:
+                tmp_file.write("packet_size: {}".format(packet_size))
+
+            # Align the packet
+            align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
+
+            # Get result tsv lines
+            result_tsv_lines = parse_align_results_xml(align_xml_text,
+                packet["names"], qual_dict)
+
+            # Write the result to tsv
+            write_result(result_tsv_lines, tsv_res_path)
+
+            if not parallel:#{
+                printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_i+1, packs_at_all))
+            #}
+            elif parallel and (pack_i+1) / packs_left > next_done_perc:#{
+                next_done_perc += perc_step
+                with print_lock:#{
+                    print("'{}' - {}% done".format( os.path.basename(fq_fa_path),
+                        round(100.0 * (pack_i+1) / packs_left) ))
+                #}
+            #}
+        #}
+        if not parallel:
+            print() # just print blank line
+        remove_tmp_files(tmp_fpath)
+    #}
+    remove_tmp_files("query{}.fasta".format(os.getpid()))
+#}
+
+
 # =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
 #                       |===== Proceed =====|
 
@@ -1413,80 +1577,21 @@ acc_dict = configure_acc_dict(acc_fpath)
 # Build a database
 local_fasta = build_local_db(acc_dict, prober_res_dir)
 
-# Variable that contains id of next sequence in current FASTA file.
-# If no or all sequences in current FASTA file have been already processed, this variable is None
-# Function 'get_packet' changes this variable
-next_id_line = None
 
-# Iterate through found source FASTQ and FASTA files
-for i, fq_fa_path in enumerate(fq_fa_list):#{
-
-    # Configure quality dictionary
-    qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
-
-    # Create the result directory with the name of FASTQ of FASTA file being processed:
-    new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
-
-    # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
-    curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
-
-    # "hname" means human readable name (i.e. without file path and extention)
-    fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
-    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of file extention
-
-    # Look around and ckeck if there are results of previous runs of this script
-    # If 'look_around' is None -- there is no data from previous run
-    previous_data = look_around(new_dpath, curr_fasta["fpath"],
-        blast_algorithm)
-
-    if previous_data is None:#{ # If there is no data from previous run
-
-        num_done_reads = 0 # number of successfully processed sequences
-        tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm) # form result tsv file path
-        tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm) # form temporary file path
+if len(fq_fa_list) >= n_thr:#{
+    if n_thr != 1:#{
+        print_lock = mp.Lock()
+        pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock,))
+        pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(n_thr, fq_fa_list) ])
     #}
-    else:#{ # if there is data from previous run
-
-        num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
-        tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
-        tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
+    else:#{
+        process_multiple_files(fq_fa_list, parallel=False)
     #}
-
-    print("Writing results to file:\n '{}'".format(tsv_res_path))
-
-    packs_at_all = curr_fasta["nreads"] // packet_size # Calculate total number of packets sent from current FASTA file
-    if curr_fasta["nreads"] % packet_size > 0: # And this is ceiling (in order not to import 'math')
-        packs_at_all += 1
-    packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
-
-    for packet in fasta_packets(curr_fasta["fpath"], packet_size, reads_at_all, num_done_reads):#{ # continue from here (reads_at_all: where are they from?)
-
-        printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
-
-        with open(tmp_fpath, 'w') as tmp_file:
-            tmp_file.write("packet_size: {}".format(packet_size))
-
-        # Align the packet
-        align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
-
-        # Get result tsv lines
-        result_tsv_lines = parse_align_results_xml(align_xml_text,
-            packet["names"])
-
-        # Write the result to tsv
-        write_result(result_tsv_lines, tsv_res_path)
-
-        printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_to_process, packs_at_all))
-
-        pack_to_process += 1
-        print() # just print 2 blank lines
-    #}
-    remove_tmp_files(tmp_fpath)
 #}
-remove_tmp_files("query{}.fasta".format(os.getpid()))
+else:#{
+    process_multiple_files(fq_fa_list, parallel=False)
+#}
+
 
 end_time = time()
 print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Task is completed successfully!\n")
