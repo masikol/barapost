@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.6
-# 08.09.2019 edition
+# Version 1.7
+# 20.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.6) ===|\n")
+print("\n |=== prober.py (version 1.7) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
