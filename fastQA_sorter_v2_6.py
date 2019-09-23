@@ -20,7 +20,7 @@ if verinf.major < 3:#{
 print("\n |=== fastQA_sorter.py (version 2.6) ===|\n\n")
 
 def print_error(text):#{
-    "Function for printing error messages"
+    """Function for printing error messages"""
     print("\n   \a!! - ERROR: " + text + '\n')
 #}
 
@@ -228,7 +228,7 @@ if len(fq_fa_paths) == 0:#{
     #}
 #}
 
-del help_msg # we do not need this large string any more
+del help_msg # we do not need this large string object any more
 
 #                      Genus    species                   strain name and anything after it
 hit_name_patt = r"[A-Z][a-z]+_[a-z]*(sp\.)?(phage)?_(strain_)?.+$"
@@ -351,18 +351,11 @@ def format_taxonomy_name(hit_name, sens):#{
 #}
 
 
-# Data from plain text and gzipped should be parsed in different way,
-#   because data from .gz is read as 'bytes', not 'str'.
-FORMATTING_FUNCS = (
-    lambda line: line,   # format text line
-    lambda line: line.decode("utf-8")  # format gzipped line
-)
-
-
 def read_fastq_record(read_file, fmt_func):#{
     """
     :param read_file: file instance of FASTQ file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
+    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
 
     Returns dictionary of the following structure:
     {
@@ -397,6 +390,7 @@ def read_fasta_record(fasta_file, fmt_func):#{
     """
     :param fasta_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
+    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
 
     Returns dictionary of the following structure:
     {
@@ -455,8 +449,8 @@ def read_fasta_record(fasta_file, fmt_func):#{
 
 def write_fastq_record(outfile_path, fastq_record):#{
     """
-    :param outfile: file, which data from fastq_record is written in
-    :type outfile: _io.TextIOWrapper
+    :param outfile_path: file, which data from fastq_record is written in
+    :type outfile_path: _io.TextIOWrapper
     :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ
     :type fastq_record: dict<str: str>
 
@@ -479,12 +473,10 @@ def write_fastq_record(outfile_path, fastq_record):#{
 
 def write_fasta_record(outfile_path, fasta_record):#{
     """
-    :param outfile: file, which data from fasta_record is written in
-    :type outfile: _io.TextIOWrapper
+    :param outfile_path: file, which data from fasta_record is written in
+    :type outfile_path: _io.TextIOWrapper
     :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
     :type fasta_record: dict<str: str>
-
-    Returns None
     """
     try:#{
         with open_as_gzip(outfile_path, 'ab') as sorted_file:
@@ -501,6 +493,13 @@ def write_fasta_record(outfile_path, fasta_record):#{
 
 is_gzipped = lambda f: True if f.endswith(".gz") else False
 OPEN_FUNCS = (open, open_as_gzip)
+
+# Data from plain text and gzipped should be parsed in different way,
+#   because data from .gz is read as 'bytes', not 'str'.
+FORMATTING_FUNCS = (
+    lambda line: line,   # format text line
+    lambda line: line.decode("utf-8")  # format gzipped line
+)
 
 
 # |===== Create output directory =====|
@@ -601,7 +600,7 @@ def configure_resfile_lines(tsv_res_fpath):#{
 
 print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
-print(" - Sorting sensitivity: '{}';\n".format(sens))\
+print(" - Sorting sensitivity: '{}';\n".format(sens))
 
 print("\nFollowing files will be processed:")
 for i, path in enumerate(fq_fa_paths):#{
@@ -611,7 +610,6 @@ print('-'*20 + '\n')
 
 
 LINES_PER_READ_FASTQ = 4
-LINES_PER_SEQ_FASTA = 2
 is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
 num_files = len(fq_fa_paths)
 next_id_line = None
@@ -624,21 +622,17 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
-    # Prune name of source FASTQ or FASTA file
-    # source_path_pruned = os.path.basename(fq_fa_path) # get rid of absolute path
-    # source_path_pruned = source_path_pruned.partition(".fast")[0] # get rid of extention
-
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ] # get ready to open gzipped files
     if is_fastq(fq_fa_path):#{
         num_reads = int (sum(1 for line in how_to_open(fq_fa_path)) / LINES_PER_READ_FASTQ) # count number of reads in file
     #}
     else:#{
-        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
+        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path))
     #}
 
-    # Get function that will read one record -- FASTQ of FASTA, in dependence of your file
+    # Get function that will read one record -- FASTQ or FASTA, in dependence of your file
     read_fun = read_fastq_record if is_fastq(fq_fa_path) else read_fasta_record
-    # Get function that will write one record -- FASTQ of FASTA, in dependence of your file
+    # Get function that will write one record -- FASTQ or FASTA, in dependence of your file
     write_fun = write_fastq_record if is_fastq(fq_fa_path) else write_fasta_record
     
     with how_to_open(fq_fa_path) as source_fastq_file:#{
@@ -655,7 +649,7 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
             #}
             except KeyError:#{
                 print("\n\t\a !! - Warning: read '{}' not found in '{}' result file".format(read_name, prober_res_dir))
-                print("Make sure that this read has been already baraposted.")
+                print("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
                 continue
             #}
             # If read is found in TSV file:

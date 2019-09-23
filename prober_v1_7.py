@@ -316,7 +316,7 @@ if len(fq_fa_list) == 0:#{
     #}
 #}
 
-del help_msg # we do not need it any more
+del help_msg # we do not need this large string object any more
 
 print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
@@ -335,15 +335,15 @@ FORMATTING_FUNCS = (
     lambda line: line.decode("utf-8").strip()  # format gzipped line
 )
 
-# |=== Delimiter for result tsv file ===|
+# Delimiter for result tsv file:
 DELIM = '\t'
 
 
-# |=== File format constants ===|
+# File format constants:
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
 
-# |=== Check if there is enough sequeneces in files (>= probing_batch_size) ===|
+# |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
 print() # just print new line
 for file in fq_fa_list:#{
@@ -357,8 +357,8 @@ for file in fq_fa_list:#{
         break
 #}
 
-# Print a warning message if a user has specified batch size that is greater than number of sequences he has at all
-# And do not disturb him if he ran 'prober.py' with default batch size
+# Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
+# And do not disturb him if he has run 'prober.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):#{
     print('\n'+'-'*20)
     print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
@@ -610,8 +610,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     else:#{ 
         global FASTA_LINES_PER_SEQ
 
-        # num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
-        # num_reads = int( num_lines / FASTA_LINES_PER_SEQ ) # get number of sequences
         num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
         fasta_path = fq_fa_path
     #}
@@ -1156,7 +1154,7 @@ def save_txt_align_result(server, filename, pack_to_send, rid):#{
     conn.request("GET", retrieve_text_url)
     response = conn.getresponse()
 
-    txt_hpath = os.path.join(outdir_path, filename.replace(".fasta", ""), "blast_result_{}.txt".format(pack_to_send))
+    txt_hpath = os.path.join(outdir_path, "blast_result_{}.txt".format(pack_to_send))
     # Write text result for a human to read
     with open(txt_hpath, 'w') as txt_file:
         txt_file.write(str(response.read(), "utf-8") + '\n')
@@ -1170,10 +1168,14 @@ def parse_align_results_xml(xml_text, seq_names):#{
         1. Query name.
         2. Hit name formatted by 'format_taxonomy_name()' function.
         3. Hit accession.
-        4. Length of alignment.
-        5. Percent of identity.
-        6. Percent of gaps.
-        7. E-value.
+        4. Length of query sequence.
+        5. Length of alignment.
+        6. Percent of identity.
+        7. Percent of gaps.
+        8. E-value.
+        9. Average Phred33 quality of a read (if source file is FASTQ).
+        10. Read accuracy (%) (if source file is FASTQ).
+
     Erroneous tsv lines that function may produce:
         1. "<query_name>\\tQuery has been lost: ERROR, Bad Gateway"
             if data packet has been lost.
@@ -1256,7 +1258,6 @@ def parse_align_results_xml(xml_text, seq_names):#{
             hit_taxa_name = hit_taxa_name.replace(" complete genome", "") # sometimes there are no comma before it
             hit_taxa_name = hit_taxa_name.replace(' ', '_')
 
-
             hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
             gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
             hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
@@ -1266,7 +1267,6 @@ def parse_align_results_xml(xml_text, seq_names):#{
             except KeyError:#{
                 new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
             #}
-
 
             # Find the first HSP (we need only the first one)
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
@@ -1380,7 +1380,13 @@ def create_result_directory(fq_fa_path, outdir_path):#{
     new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
     new_dpath =re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
     if not os.path.exists(new_dpath):#{
-        os.makedirs(new_dpath)
+        try:#{
+            os.makedirs(new_dpath)
+        #}
+        except OSError as oserr:#{
+            print_error("error while creating result directory")
+            print( str(oserr) )
+        #}
     #}
 
     return new_dpath
@@ -1465,7 +1471,11 @@ seqs_processed = 0
 # Function 'get_packet' changes this variable
 next_id_line = None
 
+# Varible for stopping execution when probing batch is processed completely.
 stop = False
+
+# Files that were processed completely will be omited.
+# Function 'look_around' changes value of this variable.
 omit_file= False
 
 
@@ -1490,6 +1500,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
     previous_data = look_around(outdir_path, new_dpath, curr_fasta["fpath"],
         blast_algorithm)
 
+    # Omit completely processed files.
     if omit_file:#{
         omit_file = False
         continue

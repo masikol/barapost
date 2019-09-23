@@ -32,10 +32,6 @@ def get_work_time():#{
 # |===========================================|
 
 import os
-from re import search as re_search
-from gzip import open as open_as_gzip # input files might be gzipped
-from xml.etree import ElementTree # for retrieving information from XML BLAST report
-from sys import intern
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 import multiprocessing as mp
 
@@ -44,6 +40,12 @@ import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
 import socket
+
+from re import search as re_search
+from gzip import open as open_as_gzip # input files might be gzipped
+from xml.etree import ElementTree # for retrieving information from XML BLAST report
+from sys import intern
+
 
 
 # |===== Function that asks to press ENTER on Windows =====|
