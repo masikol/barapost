@@ -1,8 +1,18 @@
 # barapost toolkit
 
-"Barapost" toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting.
+**"Barapost"** command line toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
 
-The default workflow looks like:
+## Motivation
+
+>Rhodococcus separately, Pseudomonas separately!
+
+Everyone can encounter a situation, when there is a large amount of FASTA or FASTQ files, where sequences that belong to different organisms are **mixed up** together, but you want them to be **separated**.
+
+It is awful to to sit in front of the computer for hours sending all these sequences to NCBI BLAST server and to rewrite large FAST(A/Q) files by hand, isn't it?
+
+"Barapost" toolkit is the thing that can do it for you and **save your time**.
+
+## The default workflow looks like:
 
 1. **prober_v1_7.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober_v1_7.py" saves information about the best hit of each sequence from probing batch.
 Process all sequences in this way takes too much time, what leads us to "barapost_v3_0.py".

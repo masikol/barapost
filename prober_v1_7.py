@@ -725,7 +725,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                     for line in local_files_filtered:#{
                         vals = line.split(DELIM)
                         acc = intern(vals[0].strip())
-                        acc_dict[acc] = (vals[1].strip(), vals[2].strip(), vals[3].strip())
+                        acc_dict[acc] = (vals[1].strip(), vals[2].strip(), int(vals[3].strip()))
                     #}
                 #}
             #}
@@ -884,6 +884,141 @@ def get_packet(fasta_file, packet_size, fmt_func):#{
 #}
 
 
+
+def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
+    """
+    Function passes sequences that have been already processed.
+
+    :param fasta_file: FASTA file instalce;
+    :type fasta_file: str;
+    :param num_done_reads: amount of sequences that have been already processed;
+    :type num_done_reads: int;
+    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
+    """
+    
+    if num_done_reads == 0:
+        return None
+    else:#{
+        i = 0
+        while i <= num_done_reads:#{
+            line = fmt_func(fasta_file.readline())
+            if line .startswith('>'):#{
+                if ' ' in line:
+                    line = line.partition(' ')[0]
+                next_id_line = line
+                i += 1
+            #}
+        #}
+        return next_id_line
+    #}
+#}
+
+
+def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
+    """
+    Function (actually, generator) retrieves 'packet_size' records from FASTA file.
+    This function will pass 'num_done_reads' sequences (i.e. they will not be processed)
+        by calling 'pass_processed_files'.
+
+    :param fasta: path to FASTA file;
+    :type fasta: str;
+    :param packet_size: number of sequences to align in one 'blastn' launching;
+    :type packet_size: int;
+    :param reads_at_all: number of sequences in current file;
+    :type reads_at_all: int;
+    :param num_done_reads: number of sequnces in current file that have been already processed;
+    :type num_doce_reads: int;
+    """
+
+
+    how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
+    fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
+
+    
+    with how_to_open(fasta) as fasta_file:#{
+        # Next line etrieving will be performed as simple line-from-file reading.
+        get_next_line = lambda: fmt_func(fasta_file.readline())
+
+        # Variable that contains id of next sequence in current FASTA file.
+        # If no or all sequences in current FASTA file have been already processed, this variable is None.
+        # There is no way to count sequences in multi-FASTA file, accept of counting sequence IDs.
+        # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
+        try:#{
+            next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
+        #}
+        except UnboundLocalError:#{
+            # This exception occurs when 'fasta_file' variable is not defined, i.e. when
+            #   'fasta' is actual FASTA data, not path to file.
+            # In this case we need all FASTA data.
+            next_id_line = None
+        #}
+
+        packet = ""
+
+        line = get_next_line()
+        if line.startswith('>') and ' ' in line:#{
+            line = line.partition(' ')[0] # prune sequence ID
+        #}
+
+        # If some sequences have been passed, this if-statement will be executed.
+        # New packet should start with sequence ID line.
+        if not next_id_line is None:
+            packet += next_id_line+'\n'
+        packet += line+'\n' # add recently read line
+
+        packs_at_all = reads_at_all // packet_size # Calculate total number of packets sent from current FASTA file
+        if reads_at_all % packet_size > 0: # And this is ceiling (in order not to import 'math')
+            packs_at_all += 1
+        packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
+        packs_left = packs_at_all - packs_processed # number of packets left to send
+
+        # Iterate over packets left to process
+        for _ in range(packs_left):#{
+
+            i = 0 # variable for counting sequenes within packet
+            
+            while i < packet_size:#{
+
+                line = get_next_line()
+                if line.startswith('>'):#{
+                    if ' ' in line:
+                        line = line.partition(' ')[0] # prune sequence ID
+                    i += 1
+                #}
+                if line == "": # if end of file (data) is reached
+                    break
+                packet += line+'\n' # add line to packet
+            #}
+
+            if line != "":#{
+                next_id_line = packet.splitlines()[-1] # save sequence ID next packet will start with
+                packet = '\n'.join(packet.splitlines()[:-1]) # exclude 'next_id_line' from packet
+            #}
+            else:#{
+                next_id_line = None
+            #}
+
+            # Get list of sequence IDs:
+            names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
+            names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+
+            if packet is "":#{   Just in case
+                print("Recent packet is empty")
+                return
+            #}
+
+            yield {"fasta": packet.strip(), "names": names}
+
+            # Reset packet
+            if not next_id_line is None:
+                packet = next_id_line+'\n'
+            else:
+                return
+        #}
+    #}
+#}
+
+
 def remove_tmp_files(*paths):#{
     """
     Function removes files passed to it.
@@ -936,7 +1071,7 @@ def configure_request(packet, blast_algorithm, organisms):#{
     return {"payload":payload, "headers": headers}
 #}
 
-    
+
 def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):#{
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
@@ -1087,7 +1222,15 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         resp_content = str(response.read(), "utf-8") # get response text
         conn.close()
 
-        if not re_search("Status=WAITING", resp_content) is None:#{ if server asks to wait
+        if "[blastsrv4.REAL]" in resp_content:#{
+            print("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
+            print("Let's try to prune these sequences.")
+            print("""All sequences in this packet will be shorten twice
+    and the packet will be resent to BLAST server.""")
+            return None
+        #}
+
+        if "Status=WAITING" in resp_content:#{ if server asks to wait
             printn("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
             for i in range(1, 7):#{ indicate each 10 seconds with a dot
                 sleep(10)
@@ -1096,22 +1239,22 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
             print() # go to next line
             continue
         #}
-        if not re_search("Status=FAILED", resp_content) is None:#{ if job failed
+        if "Status=FAILED" in resp_content:#{ if job failed
             print('\n' + get_work_time() + " - Job failed\a\n")
             response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
-            return None
+            return response_text
         #}
-        if not re_search("Status=UNKNOWN", resp_content) is None:#{ if job is expired
+        if "Status=UNKNOWN" in resp_content:#{ if job is expired
             print('\n' + get_work_time() + " - Job expired\a\n")
             respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
     Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
         #}
-        if not re_search("Status=READY", resp_content) is None:#{ if results are ready
+        if "Status=READY" in resp_content:#{ if results are ready
             there_are_hits = True
             print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
-            if re_search("ThereAreHits=yes", resp_content) is not None:#{ if there are hits
+            if "ThereAreHits=yes" in resp_content:#{ if there are hits
                 for i in range(45, 0, -5):
                     print('-' * i)
                 print() # just print a blank line
@@ -1142,6 +1285,19 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     #}
 
     return respond_text
+#}
+
+
+def prune_seqs_twice(packet):#{
+    
+    lines = packet.splitlines()
+
+    for i in range(1, len(lines), 2):#{
+        seq = lines[i]
+        lines[i] = seq[: len(seq)//2]
+    #}
+
+    return '\n'.join(lines).strip()
 #}
 
 
@@ -1199,7 +1355,18 @@ def parse_align_results_xml(xml_text, seq_names):#{
             print("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
         #}
-        input("Press ENTER to continue...")
+
+        return result_tsv_lines
+    #}
+
+    if "Status=FAILED" in xml_text:#{
+        print('\n' + get_work_time() + "BLAST ERROR!: request failed")
+
+        print("Here are names of lost queries:")
+        for i, name in enumerate(seq_names):#{
+            print("{}. '{}'".format(i+1, name))
+            result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
+        #}
 
         return result_tsv_lines
     #}
@@ -1212,8 +1379,6 @@ def parse_align_results_xml(xml_text, seq_names):#{
             print("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         #}
-
-        input("Press ENTER to continue...")
 
         return result_tsv_lines
     #}
@@ -1348,7 +1513,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
 
     for acc, other_info in new_acc_dict.items():#{
         try:#{
-            acc_dict[acc][2] += 1
+            acc_dict[acc][2] += other_info[2]
         #}
         except KeyError:#{
             acc_dict[acc] = other_info
@@ -1550,74 +1715,78 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         how_to_open = open
     #}
 
-    with how_to_open(curr_fasta["fpath"]) as fasta_file:#{
+    # # Go untill the last processed sequence
+    # get_packet(fasta_file, num_done_reads, fmt_func)
 
-        # Go untill the last processed sequence
-        get_packet(fasta_file, num_done_reads, fmt_func)
+    reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
+    packs_left = packs_at_all - packs_received # number of packets left to send
+    pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
-        reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
-        packs_left = packs_at_all - packs_received # number of packets left to send
-        pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
+    # Iterate over packets left to send
+    for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):#{ 
 
-        # Iterate througth packets left to send
-        for i in range(packs_left):#{
+        # packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 
-            packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
+        if packet["fasta"] is "":#{   Just in case
+            print("Recent packet is empty")
+            break
+        #}
 
-            if packet["fasta"] is "":#{   Just in case
-                print("Recent packet is empty")
-                break
-            #}
+        print("\nGo to BLAST (" + blast_algorithm + ")!")
+        print("Request number {} out of {}.".format(pack_to_send, packs_at_all))
 
-            print("\nGo to BLAST (" + blast_algorithm + ")!")
-            print("Request number {} out of {}.".format(pack_to_send, packs_at_all))
+        send = True
 
-            send = True
+        # If current packet has been already send, we can try to get it and not to send it again
+        if pack_to_send == saved_npack and saved_RID is not None:#{
 
-            # If current packet has been already send, we can try to get it and not to send it again
-            if pack_to_send == saved_npack and saved_RID is not None:#{
+            align_xml_text = wait_for_align(saved_RID, contin_rtoe,
+                pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
 
-                align_xml_text = wait_for_align(saved_RID, contin_rtoe,
-                    pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
+            # If request is not expired get he result and not send it again
+            if align_xml_text != "expired":#{
+                send = False
 
-                # If request is not expired get he result and not send it again
-                if align_xml_text != "expired":#{
-                    send = False
-
-                    result_tsv_lines = parse_align_results_xml(align_xml_text,
-                        packet["names"]) # get result tsv lines
-
-                    seqs_processed += len( packet["names"] )
-
-                    # Write the result to tsv
-                    write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
-                #}
-            #}
-
-            if send:#{
-            
-                request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
-
-                # Send the request get BLAST XML response
-                align_xml_text = send_request(request,
-                    pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
-
-                # Get result tsv lines
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"])
+                    packet["names"]) # get result tsv lines
 
                 seqs_processed += len( packet["names"] )
 
                 # Write the result to tsv
                 write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
             #}
-            pack_to_send += 1
+        #}
 
-            if seqs_processed >= probing_batch_size:#{
-                remove_tmp_files(tmp_fpath)
-                stop = True
-                break
+        if send:#{
+
+            align_xml_text = None
+            while align_xml_text is None:#{
+
+                request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
+
+                # Send the request get BLAST XML response
+                align_xml_text = send_request(request,
+                    pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
+
+                if align_xml_text is None:
+                    packet["fasta"] = prune_seqs_twice(packet["fasta"])
             #}
+
+            # Get result tsv lines
+            result_tsv_lines = parse_align_results_xml(align_xml_text,
+                packet["names"])
+
+            seqs_processed += len( packet["names"] )
+
+            # Write the result to tsv
+            write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
+        #}
+        pack_to_send += 1
+
+        if seqs_processed >= probing_batch_size:#{
+            remove_tmp_files(tmp_fpath)
+            stop = True
+            break
         #}
     #}
     remove_tmp_files(tmp_fpath)

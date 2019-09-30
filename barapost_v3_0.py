@@ -624,8 +624,15 @@ def look_around(new_dpath, fasta_path, blast_algorithm):#{
 
 def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
     """
-    Function 
+    Function passes sequences that have been already processed.
+
+    :param fasta_file: FASTA file instalce;
+    :type fasta_file: str;
+    :param num_done_reads: amount of sequences that have been already processed;
+    :type num_done_reads: int;
+    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
     """
+
     if num_done_reads == 0:
         return None
     else:#{
@@ -668,10 +675,12 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
     # If 'fasta' is a path to FASTA file
     if not re_search(r"\.(m)?f(fast)?a(\.gz)?$", fasta) is None:#{
 
+        print(u"АЛО!")
+
         how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
         fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
 
-        # There is actuall no need to close this file afterwards:
+        # There is actually no need to close this file afterwards:
         #    CPython interpreter will close it automatically when the
         #    last reference to it will 'die'. In this case it will happen when
         #    this generator function stops iteration.
@@ -1642,6 +1651,9 @@ def process_multiple_files(fq_fa_list, parallel=False):#{
 
             with open(tmp_fpath, 'w') as tmp_file:
                 tmp_file.write("packet_size: {}".format(packet_size))
+
+            with open("tmp.txt", 'w') as file:
+                file.write(str(packet))
 
             # Align the packet
             align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
