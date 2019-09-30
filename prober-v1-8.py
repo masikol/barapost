@@ -2,20 +2,20 @@
 # -*- coding: utf-8 -*-
 
 # Version 1.8
-# 30.09.2019 edition
+# 01.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
 from sys import version_info as verinf
 
-if verinf.major < 3:#{
+if verinf.major < 3:
     print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
     print("   Please, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
     exit(1)
-#}
+# end if
 
 print("\n |=== prober.py (version 1.8) ===|\n")
 
@@ -25,9 +25,9 @@ from time import time, strftime, localtime, sleep, gmtime
 start_time = time()
 
 
-def get_work_time():#{
+def get_work_time():
     return strftime("%H:%M:%S", gmtime( time() - start_time))
-#}
+# end def get_work_time
 
 # |===========================================|
 
@@ -48,27 +48,29 @@ import socket
 
 from sys import platform
 
-def platf_depend_exit(exit_code):#{
+def platf_depend_exit(exit_code):
     """
     Function asks to press ENTER press on Windows
         and exits after that.
 
     :type exit_code: int;
     """
+
     if platform.startswith("win"):
         input("Press ENTER to exit:")
+    # end if
     exit(exit_code)
-#}
+# end def platf_depend_exit
 
 
-def print_error(text):#{
+def print_error(text):
     """Function for printing error messages"""
     print("\n   \a!! - ERROR: " + text + '\n')
-#}
+# end def print_error
 
 
 from sys import stdout as sys_stdout
-def printn(text):#{
+def printn(text):
     """
     Function prints text to the console without adding '\n' in the end of the line.
     Why not just to use 'print(text, end="")'?
@@ -76,8 +78,7 @@ def printn(text):#{
         instead if awful error traceback.
     """
     sys_stdout.write(text)
-#}
-
+# end def printn
 
 # |===== Handle command line arguments =====|
 help_msg = """
@@ -94,8 +95,7 @@ DESCRIPTION:\n
   2. There is a file named "...result.tsv". It contains full result of aligning.
     Results of barapost.py's work will be appended to this file.\n
  FASTQ files processed by this script are meant to be processed afterwards by 'barapost.py'.
-----------------------------------------------------------
-
+----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
 - packet size (see '-p' option): 100 sequences;
@@ -103,8 +103,7 @@ Default parameters:\n
 - algorithm (see '-a' option): 'megaBlast';
 - organisms (see '-g' option): full 'nt' database, i.e. no slices;
 - output directory ('-o' option): directory named "barapost_result"
-  nested in current directory;
-
+  nested in current directory;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
 It means that you should not process all your data by 'prober.py' -- it would take long time.\n
   Instead of this you should process some sequences by 'prober.py' -- it will determine,
@@ -114,8 +113,7 @@ what Genbank records (genomes, if you want) are present in your data and then go
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost.py'.
 But you always can run 'prober.py' again on "unknown" sequences.
-----------------------------------------------------------
-
+----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
     -f (--infile) --- input FASTQ or FASTA (or '.fastq.gz', '.fasta.gz') file;
@@ -145,8 +143,7 @@ OPTIONS:\n
         as local database. Further aligning against this database will be preformed
         on local machine with 'blast+' toolkit.
         Value: positive integer number. Default value is 200;\n
-----------------------------------------------------------
-
+----------------------------------------------------------\n
 EXAMPLES:\n
   1) Process one FASTQ file with default settings:\n
        ./prober.py -f reads.fastq\n
@@ -160,14 +157,13 @@ EXAMPLES:\n
 from sys import argv
 import getopt
 
-try:#{
+try:
     opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:g:b:",
         ["help", "infile=", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size="])
-#}
-except getopt.GetoptError as gerr:#{
+except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
-#}
+# end try
 
 is_fq_or_fa = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
 
@@ -180,141 +176,144 @@ probing_batch_size = 200
 blast_algorithm = "megaBlast"
 organisms = list() # default is whole 'nt' database
 
-if len(args) != 0:#{
+if len(args) != 0:
     print_error("prober.py does not take any positional arguments")
     print("Here are positional arguments specified by you:")
     for a in args:
         print(' ' + a)
+    # end for
     platf_depend_exit(1)
-#}
+# end if
 
-for opt, arg in opts:#{
+for opt, arg in opts:
     
-    if opt in ("-h", "--help"):#{
+    if opt in ("-h", "--help"):
         print(help_msg)
         platf_depend_exit(0)
-    #}
+    # end if
 
-    if opt in ("-f", "--infile"):#{
-        if not os.path.exists(arg):#{
+    if opt in ("-f", "--infile"):
+        if not os.path.exists(arg):
             print_error("file '{}' does not exist!".format(arg))
             platf_depend_exit(1)
-        #}
-        if not is_fq_or_fa(arg):#{
+        # end if
+        
+        if not is_fq_or_fa(arg):
             print_error("file '{}' is not '.fastq' or '.fasta'!".format(arg))
             platf_depend_exit(1)
-        #}
+        # end if
+        
         fq_fa_list.append( os.path.abspath(arg) )
-    #}
-
-    if opt in ("-d", "--indir"):#{
-        if not os.path.exists(arg):#{
+    # end if
+    
+    if opt in ("-d", "--indir"):
+        if not os.path.exists(arg):
             print_error("directory '{}' does not exist!".format(arg))
             platf_depend_exit(1)
-        #}
-        if not os.path.isdir(arg):#{
+        # end if
+        
+        if not os.path.isdir(arg):
             print_error("'{}' is not a directory!".format(arg))
             platf_depend_exit(1)
-        #}
+        # end if
+        
         indir_path = os.path.abspath(arg)
 
         fq_fa_list.extend(list( filter(is_fq_or_fa, os.listdir(indir_path)) ))
-    #}
+    # end if
 
-    if opt in ("-o", "--outdir"):#{
+    if opt in ("-o", "--outdir"):
         outdir_path = os.path.abspath(arg)
-    #}
+    # end if
 
-    if opt in ("-p", "--packet-size"):#{
-        try:#{
+    if opt in ("-p", "--packet-size"):
+        try:
             packet_size = int(arg)
             if packet_size < 1 or packet_size > 500:
                 raise ValueError
-        #}
-        except ValueError:#{
+            # end if
+        except ValueError:
             print_error("packet_size (-p option) must be integer number from 1 to 500")
             platf_depend_exit(1)
-        #}
-    #}
+        # end try
+    # end if
 
-    if opt in ("-a", "--algorithm"):#{
-        if not arg in ("megaBlast", "discoMegablast", "blastn"):#{
+    if opt in ("-a", "--algorithm"):
+        if not arg in ("megaBlast", "discoMegablast", "blastn"):
             print_error("invalid value specified by '-a' option!")
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
             platf_depend_exit(1)
-        #}
+        # end if
         blast_algorithm = arg
-    #}
+    # end if
 
-    if opt in ("-g", "--organisms"):#{
+    if opt in ("-g", "--organisms"):
         max_org = 5
 
-        try:#{
+        try:
             org_list = arg.strip().split('+')
             org_list = list( map(str.strip, org_list) )
-
-            if len(org_list) > max_org:#{
+            if len(org_list) > max_org:
                 raise Exception("\nYou can specify from 1 to {} organisms.\a".format(max_org))
-            #}
+            # end if
 
-            for org in org_list:#{
+            for org in org_list:
                 name_and_taxid = org.strip().split(',')
                 name_and_taxid = list( map(str.strip, name_and_taxid) )
-                if len(name_and_taxid) != 2:#{
+                if len(name_and_taxid) != 2:
                     raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
     and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
-                #}
+                # end if
                 # Validate TaxID integer format: it will raise ValueError if taxid is invalid
                 tmp_taxid = int(name_and_taxid[1])
-                if tmp_taxid < 1:#{
+                if tmp_taxid < 1:
                     raise ValueError("\nTaxID should be positive integer number\a")
-                #}
+                # end if
                 organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
-            #}
-        #}
-        except ValueError:#{
+            # end for
+        except ValueError:
             print("\n" + "=/"*20 + "\n")
             print_error("TaxID should be positive integer number\a")
             platf_depend_exit(1)
-        #}
-        except Exception as err:#{
+        except Exception as err:
             print("\n" + "=/"*20 + "\n")
             print_error("ERROR: invalid organisms (-g option) input format")
             print( str(err) )
             platf_depend_exit(1)
-        #}
-    #}
+        # end try
+    # end if
 
-    if opt in ("-b", "--probing-batch-size"):#{
-        try:#{
+    if opt in ("-b", "--probing-batch-size"):
+        try:
             probing_batch_size = int(arg)
             if probing_batch_size <= 0:
                 raise ValueError
-        #}
-        except ValueError:#{
+            # end if
+        except ValueError:
             print_error("probing batch size ('-b' option) must be positive integer number!")
             platf_depend_exit(1)
-        #}
-    #}
-#}
+        # end try
+    # end if
+# end for
+
 
 # If no FASTQ or FASTA file have been found
-if len(fq_fa_list) == 0:#{
+if len(fq_fa_list) == 0:
     # If input directory was specified -- exit
-    if not indir_path is None:#{
+    if not indir_path is None:
         print_error("""no input FASTQ or FASTA files specified
+    # end if
     or there is no FASTQ and FASTA files in the input directory.\n""")
         platf_depend_exit(1)
-    #}
+    
     # If input directory was not specified -- look for FASTQ files in current directory
-    else:#{
+    else:
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
-        if len(fq_fa_list) == 0:#{
+        if len(fq_fa_list) == 0:
             print_error("there is no FASTQ or FASTA files to process found.")
             platf_depend_exit(1)
-        #}
-    #}
-#}
+        # end if
+# end if
 
 del help_msg # we do not need this large string object any more
 
@@ -346,25 +345,28 @@ FASTA_LINES_PER_SEQ = 2
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
 print() # just print new line
-for file in fq_fa_list:#{
+for file in fq_fa_list:
     how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
     if is_fastq(file):
         n_seqs = int( sum(1 for line in how_to_open(file, 'r')) / FASTQ_LINES_PER_READ )
     else:
         n_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(file, 'r'))
+    # end if
     seqs_at_all += n_seqs
     if seqs_at_all >= probing_batch_size:
         break
-#}
+    # end if
+# end for
+
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
-if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):#{
+if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     print('\n'+'-'*20)
     print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
     print(" Probing batch size specified by you is {}".format(probing_batch_size))
 
-    while True:#{
+    while True:
         reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
         if reply == "":
             probing_batch_size = seqs_at_all
@@ -374,57 +376,54 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
         else:
             print_error("invalid reply")
             continue
-    #}
-#}
+        # end if
+    # end while
+# end if
 
-if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):#{
+if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):
     probing_batch_size = seqs_at_all
-#}
+# end if
 
 
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
 
-def check_connection():#{
+def check_connection():
     """
     Function checks if 'https://blast.ncbi.nlm.nih.gov' is available.
 
     :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
     """
 
-    try:#{
-
+    try:
         ncbi_server = "https://blast.ncbi.nlm.nih.gov"
         status_code = urllib.request.urlopen(ncbi_server).getcode()
-
         # Just in case
-        if status_code != 200:#{
+        if status_code != 200:
             print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
             print("Check your Internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
-        #}
+        # end if
         return
-    #}
-    except OSError as err:#{
-
+    except OSError as err:
         print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
         print('\n' + '=/' * 20)
         print( str(err) )
 
         # 'urllib.request.HTTPError' can provide a user with information about the error
-        if isinstance(err, HTTPError):#{
+        if isinstance(err, HTTPError):
             print("Status code: {}".format(err.code))
             print(err.reason)
-        #}
+        # end if
         platf_depend_exit(-2)
-    #}
-#}
+    # end try
+# end def check_connection
 
 
 # |===== Question funtions =====|
 
-def is_continued():#{
+def is_continued():
     """
     Function asks the user if he/she wants to continue the previous run.
 
@@ -434,7 +433,7 @@ def is_continued():#{
 
     continuation = None
 
-    while continuation is None:#{
+    while continuation is None:
         continuation = input("""
 Would you like to continue the previous run?
     1. Continue!
@@ -442,26 +441,24 @@ Would you like to continue the previous run?
 
 Enter the number (1 or 2):>> """)
         # Check if entered value is integer number. If no, give another attempt.
-        try:#{
+        try:
             continuation = int(continuation)
-            if continuation != 1 and continuation != 2:#{ Check if input number is 1 or 2
+            # Check if input number is 1 or 2
+            if continuation != 1 and continuation != 2:
                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
                 continuation = None
-            #}
-            else:#{
+            else:
                 print("You have chosen number " + str(continuation) + '\n')
-            #}
-        #}
-        except ValueError:#{
+            # end if
+        except ValueError:
             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
             continuation = None
-        #}
-    #}
+        # end try
+
     return(True if continuation == 1 else False)
-#}
 
 
-def get_packet_size(num_reads):#{
+def get_packet_size(num_reads):
     """
     Function asks the user about how many query sequences will be sent 
         to NCBI BLAST as a particular request.
@@ -474,7 +471,7 @@ def get_packet_size(num_reads):#{
     # You cannot sent more query sequences than you have
     limit = num_reads if num_reads <= 500 else 500
 
-    while packet_size is None:#{
+    while packet_size is None:
         
         packet_size = input("""
 Please, specify the number of sequences that should be sent to the NCBI server in one request.
@@ -486,63 +483,64 @@ E.g. if you have 10 sequences in your file, you can send 10 sequences as single
 There are {} sequences left to process in current file.
 Enter the number (from 1 to {}):>> """.format(num_reads, limit))
         # Check if entered value is integer number. If no, give another attempt.
-        try:#{
+        try:
             packet_size = int(packet_size)
-            if packet_size < 1 or packet_size > limit:#{ Check if input number is in [1, limit]
+            # Check if input number is in [1, limit]
+            if packet_size < 1 or packet_size > limit:
                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
                 packet_size = None
-            #}
-            else:#{
+            else:
                 print("You have chosen number " + str(packet_size) + '\n')
-            #}
-        #}
-        except ValueError:#{
+            # end if
+        except ValueError:
             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
             packet_size = None
-        #}
-    #}
+        # end try
+    # end while
     return(packet_size)
-#}
+# end def get_packet_size
+
 
 # |===== End of question funtions =====|
 
-
 get_phred33 = lambda q_symb: ord(q_symb) - 33
 
-def get_read_avg_qual(qual_str):#{
+def get_read_avg_qual(qual_str):
 
     phred33 = map(get_phred33, list(qual_str))
     read_qual = round( sum(phred33) / len(qual_str), 2 )
     return read_qual
-#}
+# end def get_read_avg_qual
 
-def configure_qual_dict(fastq_path):#{
+
+def configure_qual_dict(fastq_path):
 
     qual_dict = dict()
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
 
-    with how_to_open(fastq_path) as fastq_file:#{
+    with how_to_open(fastq_path) as fastq_file:
         counter = 1
         line = fmt_func(fastq_file.readline())
-        while line != "":#{
-            if counter == 1:#{
+        while line != "":
+            if counter == 1:
                 seq_id = intern( (line.partition(' ')[0])[1:] )
-            #}
+            # end if
+            
             counter += 1
             line = fmt_func(fastq_file.readline())
-            if counter == 4:#{
+            if counter == 4:
                 qual_dict[seq_id] = get_read_avg_qual(line)
                 counter = 0
-            #}
-        #}
-    #}
+            # end if
+        # end while
+    # end with
 
     return qual_dict
-#}
+# end def configure_qual_dict
 
 
-def fastq2fasta(fq_fa_path, i, new_dpath):#{
+def fastq2fasta(fq_fa_path, i, new_dpath):
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
         the same name as FASTQ file. Also it counts sequences in this file.
@@ -570,7 +568,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
-    if not re_search(fastq_patt, fq_fa_path) is None:#{
+    if not re_search(fastq_patt, fq_fa_path) is None:
 
         global FASTQ_LINES_PER_READ
 
@@ -578,50 +576,52 @@ def fastq2fasta(fq_fa_path, i, new_dpath):#{
         # how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
         fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
-        with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:#{
+        with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:
 
             counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
-            for line in fastq_file:#{
+            for line in fastq_file:
                 line = fmt_func(line)
-                if counter <= 2:#{      write only 1-st and 2-nd line out of 4
+                # write only 1-st and 2-nd line out of 4
+                if counter <= 2:
                     if line[0] == '@':
                         line = '>' + line[1:]  # replace '@' with '>'
+                    # end if
                     fasta_file.write(line + '\n')
-                #}
                 # reset the counter if the 4-th (quality) line has been encountered
                 elif counter == 4:
                     counter = 0
+                # end if
                 counter += 1
                 num_lines += 1
-            #}
-        #}
+            # end for
+        # end with
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
         print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
-    #}
+    
     # IF FASTA file is already created
     # We need only number of sequences in it.
-    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):#{
+    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):
         num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
-    #}
     # We've got FASTA source file
     # We need only number of sequences in it.
-    else:#{ 
+    else:
         global FASTA_LINES_PER_SEQ
 
         num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
         fasta_path = fq_fa_path
-    #}
+    # end if
 
     print("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(fasta_path), num_reads))
     return {"fpath": fasta_path, "nreads": num_reads}
-#}
+# end def fastq2fasta
 
 
-def rename_file_verbosely(file, directory):#{
 
-    if os.path.exists(file):#{
+def rename_file_verbosely(file, directory):
+
+    if os.path.exists(file):
 
         is_analog = lambda f: file[:os.path.basename(file).rfind('.')] in f
         num_analog_files = len( list(filter(is_analog, os.listdir(directory))) )
@@ -634,11 +634,11 @@ def rename_file_verbosely(file, directory):#{
 
         print("   '{}' --> '{}'".format(os.path.basename(file), new_name))
         os.rename(file, new_name)
-    #}
-#}
+    # end if
+# end def rename_file_verbosely
 
 
-def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
+def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     """
     Function looks around in order to ckeck if there are results from previous runs of this script.
 
@@ -678,7 +678,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
     continuation = None
     # Check if there are results from previous run.
-    if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):#{
+    if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
         print('\n' + get_work_time() + " - The previous result file is found in the directory:")
         print("   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
@@ -687,21 +687,24 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
             rename_file_verbosely(tsv_res_fpath, new_dpath)
             rename_file_verbosely(tmp_fpath, new_dpath)
             rename_file_verbosely(acc_fpath, new_dpath)
-    #}
-
-    if continuation == True:#{   Find the name of last successfull processed sequence
+        # end if
+    # end if
+    
+    # Find the name of last successfull processed sequence
+    if continuation == True:
         print("Let's try to continue...")
 
         # Collect information from result file
-        if os.path.exists(tsv_res_fpath):#{
-            try:#{ There can be invalid information in this file
-                with open(tsv_res_fpath, 'r') as res_file:#{
+        if os.path.exists(tsv_res_fpath):
+            # There can be invalid information in this file
+            try:
+                with open(tsv_res_fpath, 'r') as res_file:
                     lines = res_file.readlines()
                     num_done_reads = len(lines) - 1 # the first line is a head
                     last_line = lines[-1]
                     last_seq_id = last_line.split(DELIM)[0]
-                #}
-            except Exception as err:#{
+                # end with
+            except Exception as err:
                 print("\nData in result file '{}' not found or broken.".format(tsv_res_fpath))
                 print( str(err) )
                 print("Start from the beginning.")
@@ -709,27 +712,26 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 rename_file_verbosely(acc_fpath, new_dpath)
                 return None
-            #}
-            else:#{
+            else:
                 print("Last sent sequence: " + last_seq_id)
-        #}
-
-
+            # end try
+        # end if
+        
         # Collect information from accession file
         global acc_dict
-        if os.path.exists(acc_fpath):#{
-            try:#{  There can be invalid information in this file
-                with open(acc_fpath, 'r') as acc_file:#{
+        if os.path.exists(acc_fpath):
+            # There can be invalid information in this file
+            try:
+                with open(acc_fpath, 'r') as acc_file:
                     lines = acc_file.readlines()[9:] # omit description and head of the table
                     local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines) ) # omit file paths
-                    for line in local_files_filtered:#{
+                    for line in local_files_filtered:
                         vals = line.split(DELIM)
                         acc = intern(vals[0].strip())
                         acc_dict[acc] = (vals[1].strip(), vals[2].strip(), int(vals[3].strip()))
-                    #}
-                #}
-            #}
-            except Exception as err:#{
+                    # end for
+                # end with
+            except Exception as err:
                 print("\nData in accession file '{}' not found or broken.".format(acc_fpath))
                 print( str(err) )
                 print("Start from the beginning.")
@@ -737,32 +739,34 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 rename_file_verbosely(acc_fpath, new_dpath)
                 return None
-            #}
-            else:#{
+            else:
                 print("\nHere are Genbank records encountered during previous run:")
-                for acc in acc_dict.keys():#{
+                for acc in acc_dict.keys():
                     s_letter = "s" if acc_dict[acc][2] > 1 else ""
                     print(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
-                #}
+                # end for
                 print()
-            #}
-        #}
+            # end try
+        # end if
 
         # If we start from the beginning, we have no sequences processed
         if num_done_reads is None:
             num_done_reads = 0
+        # end if
 
         # Get packet size, number of the last sent packet and RID
-        try:#{ There can be invalid information in tmp file of tmp file may not exist
+        # There can be invalid information in tmp file of tmp file may not exist
+        try:
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
+            # end with
             packet_size = int(re_search(r"packet_size: ([0-9]+)", temp_lines[0]).group(1).strip())
             saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[1]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[2]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
-        #}
-        except Exception as exc:#{
+        
+        except Exception as exc:
             total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path))
             print("\n    Attention! Temporary file not found or broken!")
             print( str(exc) )
@@ -772,16 +776,17 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
 
             reply = "BULLSHIT"
             global omit_file
-            while True:#{
+            while True:
                 reply = input("Press ENTER to omit this file and go to the next one.\n \
  Or enter 'c' to to continue processing this file:>>")
                 if reply == 'c':
-                    if num_done_reads >= total_num_seqs:#{
+                    if num_done_reads >= total_num_seqs:
                         print_error("there are no sequences left to process in this file")
                         print("Omitting this file")
                         omit_file = True
                         return
-                    #}
+                    # end if
+                    
                     break
                 elif reply == "":
                     omit_file = True
@@ -790,8 +795,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                     return
                 else:
                     print_error("invalid reply")
-            #}
-
+                # end if
+            # end while
 
             print("{} reads have been already processed".format(num_done_reads))
             print("{} reads left".format(total_num_seqs - num_done_reads))
@@ -805,7 +810,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 "n_done_reads": num_done_reads,
                 "tmp_fpath": tmp_fpath
             }
-        else:#{
+        else:
             # Return data from previous run
             return {
                 "pack_size": packet_size,
@@ -816,18 +821,21 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):#{
                 "n_done_reads": num_done_reads,
                 "tmp_fpath": tmp_fpath
             }
-        #}
-    elif continuation == False:#{
+        # end try
+        
+    elif continuation == False:
         # If we've decided to start from the beginnning - rename old files
         rename_file_verbosely(tsv_res_fpath, new_dpath)
         rename_file_verbosely(tmp_fpath, new_dpath)
         rename_file_verbosely(acc_fpath, new_dpath)
-    #}
+    # end if
+    
     return None
-#}
+# end def look_around
 
 
-def get_packet(fasta_file, packet_size, fmt_func):#{
+
+def get_packet(fasta_file, packet_size, fmt_func):
     """
     Function collects the packet of query sequences to send to BLAST server.
 
@@ -845,47 +853,51 @@ def get_packet(fasta_file, packet_size, fmt_func):#{
 
     global next_id_line
     line = fmt_func(fasta_file.readline())
-    if line.startswith('>') and ' ' in line:#{:
+    if line.startswith('>') and ' ' in line:
         line = line.partition(' ')[0]+'\n'
-    #}
+    # end if
+    
     packet = ""
 
     i = 0
     if not next_id_line is None:
         packet += next_id_line
+    # end if
     packet += line
 
-    while i < packet_size:#{
+    while i < packet_size:
 
         line = fmt_func(fasta_file.readline())
-        if line.startswith('>'):#{
+        if line.startswith('>'):
             if ' ' in line:
                 line = line.partition(' ')[0]+'\n'
+            # end if
             i += 1
-        #}
+        # end if
+        
         if line == "":
             break
+        # end if
         packet += line
-    #}
-
-    if line != "":#{
+    # end while
+    
+    if line != "":
         next_id_line = packet.splitlines()[-1]+'\n'
         packet = '\n'.join(packet.splitlines()[:-1])
-    #}
-    else:#{
+    
+    else:
         next_id_line = None
         packet = packet.strip()
-    #}
-
+    # end if
+    
     names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
     names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
 
     return {"fasta": packet.strip(), "names": names}
-#}
+# end def get_packet
 
 
-
-def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
+def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
     """
     Function passes sequences that have been already processed.
 
@@ -898,23 +910,24 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):#{
     
     if num_done_reads == 0:
         return None
-    else:#{
+    else:
         i = 0
-        while i <= num_done_reads:#{
+        while i <= num_done_reads:
             line = fmt_func(fasta_file.readline())
-            if line .startswith('>'):#{
+            if line .startswith('>'):
                 if ' ' in line:
                     line = line.partition(' ')[0]
+                # end if
                 next_id_line = line
                 i += 1
-            #}
-        #}
+            # end if
+        # end while
         return next_id_line
-    #}
-#}
+    # end if
+# end def pass_processed_seqs
 
 
-def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
+def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
     """
     Function (actually, generator) retrieves 'packet_size' records from FASTA file.
     This function will pass 'num_done_reads' sequences (i.e. they will not be processed)
@@ -930,12 +943,10 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
     :type num_doce_reads: int;
     """
 
-
     how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
 
-    
-    with how_to_open(fasta) as fasta_file:#{
+    with how_to_open(fasta) as fasta_file:
         # Next line etrieving will be performed as simple line-from-file reading.
         get_next_line = lambda: fmt_func(fasta_file.readline())
 
@@ -943,69 +954,73 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
         # If no or all sequences in current FASTA file have been already processed, this variable is None.
         # There is no way to count sequences in multi-FASTA file, accept of counting sequence IDs.
         # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
-        try:#{
+        try:
             next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
-        #}
-        except UnboundLocalError:#{
+        except UnboundLocalError:
             # This exception occurs when 'fasta_file' variable is not defined, i.e. when
             #   'fasta' is actual FASTA data, not path to file.
             # In this case we need all FASTA data.
             next_id_line = None
-        #}
+        # end try
 
         packet = ""
 
         line = get_next_line()
-        if line.startswith('>') and ' ' in line:#{
+        if line.startswith('>') and ' ' in line:
             line = line.partition(' ')[0] # prune sequence ID
-        #}
+        # end if
 
         # If some sequences have been passed, this if-statement will be executed.
         # New packet should start with sequence ID line.
         if not next_id_line is None:
             packet += next_id_line+'\n'
+        # end if
         packet += line+'\n' # add recently read line
 
         packs_at_all = reads_at_all // packet_size # Calculate total number of packets sent from current FASTA file
         if reads_at_all % packet_size > 0: # And this is ceiling (in order not to import 'math')
             packs_at_all += 1
+        # end if
         packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
         packs_left = packs_at_all - packs_processed # number of packets left to send
 
         # Iterate over packets left to process
-        for _ in range(packs_left):#{
+        for _ in range(packs_left):
 
             i = 0 # variable for counting sequenes within packet
             
-            while i < packet_size:#{
+            while i < packet_size:
 
                 line = get_next_line()
-                if line.startswith('>'):#{
+                if line.startswith('>'):
                     if ' ' in line:
                         line = line.partition(' ')[0] # prune sequence ID
+                    # end if
                     i += 1
-                #}
+                # end if
+                
                 if line == "": # if end of file (data) is reached
                     break
+                # end if
                 packet += line+'\n' # add line to packet
-            #}
+            # end while
 
-            if line != "":#{
+            if line != "":
                 next_id_line = packet.splitlines()[-1] # save sequence ID next packet will start with
                 packet = '\n'.join(packet.splitlines()[:-1]) # exclude 'next_id_line' from packet
-            #}
-            else:#{
+            else:
                 next_id_line = None
-            #}
+            # end if
 
             # Get list of sequence IDs:
             names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
             names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
 
-            if packet is "":#{   Just in case
+            # Just in case
+            if packet is "":
                 print("Recent packet is empty")
                 return
-            #}
+            # end if
 
             yield {"fasta": packet.strip(), "names": names}
 
@@ -1014,25 +1029,27 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
                 packet = next_id_line+'\n'
             else:
                 return
-        #}
-    #}
-#}
+            # end if
+        # end for
+    # end with
+# end def fasta_packets
 
 
-def remove_tmp_files(*paths):#{
+def remove_tmp_files(*paths):
     """
     Function removes files passed to it.
     Actually, passed arguments are paths ('str') to files meant to be removed.
     """
-    for path in paths:#{
-        if os.path.exists(path):#{
+
+    for path in paths:
+        if os.path.exists(path):
             os.unlink(path)
-        #}
-    #}
-#}
+        # end if
+    # end for
+# end def remove_tmp_files
 
 
-def configure_request(packet, blast_algorithm, organisms):#{
+def configure_request(packet, blast_algorithm, organisms):
     """
     Function configures the request to BLAST server.
 
@@ -1060,19 +1077,20 @@ def configure_request(packet, blast_algorithm, organisms):#{
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
 
     # 'nt' database slices:
-    for i, org in enumerate(organisms):#{
+    for i, org in enumerate(organisms):
         payload["EQ_MENU{}".format(i if i > 0 else "")] = org
-    #}
+    # end for
+    
     payload["NUM_ORG"] = str( len(organisms) )
 
     payload = urllib.parse.urlencode(payload)
     headers = { "Content-Type" : "application/x-www-form-urlencoded" }
 
     return {"payload":payload, "headers": headers}
-#}
+# end def configure_request
 
 
-def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):#{
+def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
         and then waits for satisfaction of the request and retrieves response text.
@@ -1099,50 +1117,50 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):#{
     # Save packet size
     with open(tmp_fpath, 'w') as tmp_file:
         tmp_file.write("packet_size: {}\n".format(packet_size))
+    # end with
 
-    while error:#{
-        try:#{
+    while error:
+        try:
             conn = http.client.HTTPSConnection(server) # create a connection
             conn.request("POST", url, payload, headers) # send the request
             response = conn.getresponse() # get the response
             response_text = str(response.read(), "utf-8") # get response text
-        #}
-        except OSError as oserr:#{
+        except OSError as oserr:
             print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
             print( repr(err) )
             print("barapost will try to connect again in 30 seconds...\n")
             sleep(30)
-        #}
-        else:#{ if no exception occured
+        
+        # if no exception occured
+        else:
             error = False
-        #}
-    #}
+        # end try
+    # end while
 
-    try:#{
+    try:
         rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
         rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
-    #}
-    except AttributeError:#{
+    except AttributeError:
         print_error("seems, ncbi has denied your request.")
         print("Response is in file 'request_denial_response.html'")
-        with open("request_denial_response.html", 'w') as den_file:#{
+        with open("request_denial_response.html", 'w') as den_file:
             den_file.write(response_text)
-        #}
+        # end with
         exit(1)
-    #}
-    finally:#{
+    finally:
         conn.close()
-    #}
+    # end try
 
     # Save temporary data
     with open(tmp_fpath, 'a') as tmpfile:
         tmpfile.write("sent_packet_num: {}\n".format(pack_to_send))
         tmpfile.write("Request_ID: {}".format(rid))
+    # end with
 
     # /=== Wait for alignment results ===\
 
     return( wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename) )
-#}
+# end def send_request
 
 
 def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
@@ -1166,21 +1184,22 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     print("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
     rid, filename, pack_to_send, packs_at_all))
-    if rtoe > 0:#{ RTOE can be zero at the very beginning of continuation
+    # RTOE can be zero at the very beginning of continuation
+    if rtoe > 0:
         print("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
         print("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
         # Server migth be wrong -- we will give it 3 extra seconds
         sleep(rtoe + 3)
         print("{} - {} seconds have passed. Checking if alignment is accomplished...".format(get_work_time(), rtoe+3))
-    #}
+    # end if
 
     server = "blast.ncbi.nlm.nih.gov"
     wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
     there_are_hits = False
 
-    while True:#{
+    while True:
         error = True
-        while error:#{
+        while error:
             try:
                 conn = http.client.HTTPSConnection(server) # create connection
                 conn.request("GET", wait_url) # ask for if there areresults
@@ -1216,59 +1235,67 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
                 sleep(30)
             else:
                 error = False # if no exception ocured
-        #}
+            # end try
+        # end while
 
         response = conn.getresponse() # get the resonse
         resp_content = str(response.read(), "utf-8") # get response text
         conn.close()
 
-        if "[blastsrv4.REAL]" in resp_content:#{
+        if "[blastsrv4.REAL]" in resp_content:
             print("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
             print("Let's try to prune these sequences.")
             print("""All sequences in this packet will be shorten twice
+        # end if
+    # end while
     and the packet will be resent to BLAST server.""")
             return None
-        #}
 
-        if "Status=WAITING" in resp_content:#{ if server asks to wait
+        # if server asks to wait
+        if "Status=WAITING" in resp_content:
             printn("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
-            for i in range(1, 7):#{ indicate each 10 seconds with a dot
+            # indicate each 10 seconds with a dot
+            for i in range(1, 7):
                 sleep(10)
                 printn("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i))
-            #}
+            # end for
             print() # go to next line
             continue
-        #}
-        if "Status=FAILED" in resp_content:#{ if job failed
+        # end if
+        if "Status=FAILED" in resp_content:
+            # if job failed
             print('\n' + get_work_time() + " - Job failed\a\n")
             response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return response_text
-        #}
-        if "Status=UNKNOWN" in resp_content:#{ if job is expired
+        # end if
+        # if job expired
+        if "Status=UNKNOWN" in resp_content:
             print('\n' + get_work_time() + " - Job expired\a\n")
             respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
     Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
-        #}
-        if "Status=READY" in resp_content:#{ if results are ready
+        # end if
+        # if results are ready
+        if "Status=READY" in resp_content:
             there_are_hits = True
             print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
-            if "ThereAreHits=yes" in resp_content:#{ if there are hits
+            # if there are hits
+            if "ThereAreHits=yes" in resp_content:
                 for i in range(45, 0, -5):
                     print('-' * i)
+                # end for
                 print() # just print a blank line
                 break
-            #}
-            else:#{ if there are no hits
+            # if there are no hits
+            else:
                 print(get_work_time() + " - There are no hits. It happens.\n")
                 break
-            #}
-        #}
+            # end if
+        # end if
         # Execution should not reach here
         print('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
         platf_depend_exit(1)
-    #}
 
     # Retrieve XML result
     retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
@@ -1280,28 +1307,34 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     conn.close()
 
     # Retrieve human-readable text and put it into result directory
-    if there_are_hits:#{
+    if there_are_hits:
         save_txt_align_result(server, filename, pack_to_send, rid)
-    #}
+    # end if
 
     return respond_text
-#}
+# end def wait_for_align
 
 
-def prune_seqs_twice(packet):#{
-    
+def prune_seqs_twice(packet):
+    """
+    Function prunes all sequences in packet twice, leaving 5'-half of the sequence.
+
+    :param packet: FASTA data;
+    :type packet: str;
+    """
+
     lines = packet.splitlines()
 
-    for i in range(1, len(lines), 2):#{
+    for i in range(1, len(lines), 2):
         seq = lines[i]
         lines[i] = seq[: len(seq)//2]
-    #}
+    # end for
 
     return '\n'.join(lines).strip()
-#}
+# end def prune_seqs_twice
 
 
-def save_txt_align_result(server, filename, pack_to_send, rid):#{
+def save_txt_align_result(server, filename, pack_to_send, rid):
 
     global outdir_path
 
@@ -1314,11 +1347,12 @@ def save_txt_align_result(server, filename, pack_to_send, rid):#{
     # Write text result for a human to read
     with open(txt_hpath, 'w') as txt_file:
         txt_file.write(str(response.read(), "utf-8") + '\n')
+    # end with
     conn.close()
-#}
+# end def save_txt_align_result
 
 
-def parse_align_results_xml(xml_text, seq_names):#{
+def parse_align_results_xml(xml_text, seq_names):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -1335,10 +1369,13 @@ def parse_align_results_xml(xml_text, seq_names):#{
     Erroneous tsv lines that function may produce:
         1. "<query_name>\\tQuery has been lost: ERROR, Bad Gateway"
             if data packet has been lost.
+            # end if
         2. "<query_name>\\tQuery has been lost: BLAST ERROR"
             if BLAST error occured.
+            # end if
         3. "<query_name>\\tNo significant similarity found"
             if no significant similarity has been found
+            # end if
         Type of return object: list<str>.
     """
 
@@ -1346,42 +1383,38 @@ def parse_align_results_xml(xml_text, seq_names):#{
 
     # /=== Validation ===/
 
-    if "Bad Gateway" in xml_text:#{
+    if "Bad Gateway" in xml_text:
         print('\n' + '=' * 45)
         print(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
         print("It would be better if you restart the script.")
         print("Here are names of lost queries:")
-        for i, name in enumerate(seq_names):#{
+        for i, name in enumerate(seq_names):
             print("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
-        #}
-
+        # end for
         return result_tsv_lines
-    #}
+    # end if
 
-    if "Status=FAILED" in xml_text:#{
+    if "Status=FAILED" in xml_text:
         print('\n' + get_work_time() + "BLAST ERROR!: request failed")
-
         print("Here are names of lost queries:")
-        for i, name in enumerate(seq_names):#{
+        for i, name in enumerate(seq_names):
             print("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
-        #}
-
+        # end for
         return result_tsv_lines
-    #}
+    # end if
 
-    if "to start it again" in xml_text:#{
+    if "to start it again" in xml_text:
         print('\n' + get_work_time() + "BLAST ERROR!")
 
         print("Here are names of lost queries:")
-        for i, name in enumerate(seq_names):#{
+        for i, name in enumerate(seq_names):
             print("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
-        #}
-
+        # end for
         return result_tsv_lines
-    #}
+    # end if
 
     # /=== Parse BLAST XML response ===/
 
@@ -1391,30 +1424,27 @@ def parse_align_results_xml(xml_text, seq_names):#{
     global qual_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
-    for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):#{
-    
+    for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
         # "Iteration" node contains query name information
         query_name = intern(iter_elem.find("Iteration_query-def").text)
-
         query_len = iter_elem.find("Iteration_query-len").text
 
-        if not qual_dict is None:#{
+        if not qual_dict is None:
             ph33_qual = qual_dict[query_name]
             miscall_prop = round(10**(ph33_qual/-10), 3)
             accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
             qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
                 accuracy)
-        #}
-        else:#{
+        else:
             # If FASTA file is processing, print dashed in quality columns
             ph33_qual = "-"
             accuracy = "-" # expected percent of correctly called bases
             qual_info_to_print = ""
-        #}
+        # end if
 
         # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
         hit = iter_hit.find("Hit")
-        if hit is not None:#{
+        if hit is not None:
 
             # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
             hit_name = hit.find("Hit_def").text
@@ -1426,12 +1456,11 @@ def parse_align_results_xml(xml_text, seq_names):#{
             hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
             gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
             hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-            try:#{
+            try:
                 new_acc_dict[hit_acc][2] += 1
-            #}
-            except KeyError:#{
+            except KeyError:
                 new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
-            #}
+            # end try
 
             # Find the first HSP (we need only the first one)
             hsp = next(hit.find("Hit_hsps").iter("Hsp"))
@@ -1455,20 +1484,20 @@ def parse_align_results_xml(xml_text, seq_names):#{
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
                 align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
-        #}
-        else:#{
+        else:
             # If there is no hit for current sequence
             print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
-        #}
+        # end if
         printn(qual_info_to_print)
-    #}
+    # end for
+
     return result_tsv_lines
-#}
+# end def parse_align_results_xml
 
 
-def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir_path):#{
+def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir_path):
     """
     Function writes result of blasting to result tsv file.
 
@@ -1481,17 +1510,19 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     """
 
     # If there is no result tsv file -- create it and write a head of the table.
-    if not os.path.exists(tsv_res_path):#{
-        with open(tsv_res_path, 'w') as tsv_res_file:#{
+    if not os.path.exists(tsv_res_path):
+        with open(tsv_res_path, 'w') as tsv_res_file:
             tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
                 "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "AVG_PHRED33", "ACCURACY(%)"] ) + '\n')
-        #}
-    #}
+        # end with
+    # end if
+    
     # Write reslut tsv lines to this file
-    with open(tsv_res_path, 'a') as tsv_res_file:#{
+    with open(tsv_res_path, 'a') as tsv_res_file:
         for line in res_tsv_lines:
             tsv_res_file.write(line + '\n')
-    #}
+        # end for
+    # end with
 
     # === Write accession information ===
 
@@ -1500,7 +1531,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     global blast_algorithm
     acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
 
-    with open(acc_file_path, 'w') as acc_file:#{
+    with open(acc_file_path, 'w') as acc_file:
         acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
         acc_file.write("# Values in this file are delimited by tabs.\n")
         acc_file.write("# You are welcome to edit this file by adding,\n")
@@ -1509,28 +1540,29 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
         acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
         acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
         acc_file.write(DELIM.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
-    #}
+    # end with
 
-    for acc, other_info in new_acc_dict.items():#{
-        try:#{
+    for acc, other_info in new_acc_dict.items():
+        try:
             acc_dict[acc][2] += other_info[2]
-        #}
-        except KeyError:#{
+        
+        except KeyError:
             acc_dict[acc] = other_info
-        #}
-    #}
+        # end try
+    # end for
+    
     # Write accessions and record names
-    with open(acc_file_path, 'a') as acc_file:#{
+    with open(acc_file_path, 'a') as acc_file:
         for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
             acc_file.write(DELIM.join( (acc, other_info[0], other_info[1], str(other_info[2]))) + '\n')
-        #}
-    #}
-
+        # end for
+    # end with
+    
     new_acc_dict.clear()
-#}
+# end def write_result
 
 
-def create_result_directory(fq_fa_path, outdir_path):#{
+def create_result_directory(fq_fa_path, outdir_path):
     """
     Function creates a result directory named according 
         to how source FASTQor FASTA file is named.
@@ -1544,19 +1576,18 @@ def create_result_directory(fq_fa_path, outdir_path):#{
     # dpath means "directory path"
     new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
     new_dpath =re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
-    if not os.path.exists(new_dpath):#{
-        try:#{
+    if not os.path.exists(new_dpath):
+        try:
             os.makedirs(new_dpath)
-        #}
-        except OSError as oserr:#{
+        
+        except OSError as oserr:
             print_error("error while creating result directory")
             print( str(oserr) )
-        #}
-    #}
+        # end try
+    # end if
 
     return new_dpath
-#}
-
+# end def create_result_directory
 
 
 # =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
@@ -1605,16 +1636,19 @@ print(" - Probing batch size: {} sequences;".format(probing_batch_size))
 print(" - Packet size: {} sequences;".format(packet_size))
 print(" - BLAST algorithm: {};".format(blast_algorithm))
 print(" - Database: nt;")
-if len(organisms) > 0:#{
+if len(organisms) > 0:
     for db_slice in organisms:
         print("   {};".format(db_slice))
-#}
+    # end for
+# end if
+
 print()
 
 print(" Following files will be processed:")
-for i, path in enumerate(fq_fa_list):#{
+for i, path in enumerate(fq_fa_list):
     print("    {}. '{}'".format(i+1, path))
-#}
+# end for
+
 print('-'*30 + '\n')
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
@@ -1645,7 +1679,7 @@ omit_file= False
 
 
 # Iterate through found source FASTQ and FASTA files
-for i, fq_fa_path in enumerate(fq_fa_list):#{
+for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Configure quality dictionary
     qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
@@ -1666,13 +1700,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         blast_algorithm)
 
     # Omit completely processed files.
-    if omit_file:#{
+    if omit_file:
         omit_file = False
         continue
-    #}
+    # end if
 
-    if previous_data is None:#{ # If there is no data from previous run
-
+    if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
         saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
@@ -1680,9 +1713,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
         acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
-    #}
-    else:#{ # if there is data from previous run
-
+    else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
         saved_npack = previous_data["sv_npck"] # get number of last sent packet
         packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
@@ -1691,41 +1722,45 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
         contin_rtoe = 0 # we will not sleep at the very beginning of continuation
-    #}
+    # end if
 
     if num_done_reads != 0:
         seqs_processed = num_done_reads
+    # end if
 
     if (probing_batch_size - seqs_processed) <= curr_fasta["nreads"]:
         tmp_num = (probing_batch_size - seqs_processed)
     else:
         tmp_num = curr_fasta["nreads"]
+    # end if
     packs_at_all = tmp_num // packet_size # Calculate total number of packets sent from current FASTA file
 
     if tmp_num % packet_size > 0: # And this is ceiling (in order not to import 'math')
         packs_at_all += 1
+    # end if
     packs_received = int( num_done_reads / packet_size ) # number of successfully processed sequences
 
-    if is_gzipped(curr_fasta["fpath"]):#{
+    if is_gzipped(curr_fasta["fpath"]):
         fmt_func = lambda l: l.decode("utf-8")
         how_to_open = open_as_gzip
-    #}
-    else:#{
+    
+    else:
         fmt_func = lambda l: l
         how_to_open = open
-    #}
+    # end if
 
     reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
     packs_left = packs_at_all - packs_received # number of packets left to send
     pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
     # Iterate over packets left to send
-    for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):#{ 
+    for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):
 
-        if packet["fasta"] is "":#{   Just in case
+        # Just in case:
+        if packet["fasta"] is "":
             print("Recent packet is empty")
             break
-        #}
+        # end if
 
         print("\nGo to BLAST (" + blast_algorithm + ")!")
         print("Request number {} out of {}.".format(pack_to_send, packs_at_all))
@@ -1733,13 +1768,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         send = True
 
         # If current packet has been already send, we can try to get it and not to send it again
-        if pack_to_send == saved_npack and saved_RID is not None:#{
+        if pack_to_send == saved_npack and saved_RID is not None:
 
             align_xml_text = wait_for_align(saved_RID, contin_rtoe,
                 pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
 
             # If request is not expired get he result and not send it again
-            if align_xml_text != "expired":#{
+            if align_xml_text != "expired":
                 send = False
 
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
@@ -1749,13 +1784,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
                 # Write the result to tsv
                 write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
-            #}
-        #}
+            # end if
+        # end if
 
-        if send:#{
+        if send:
 
             align_xml_text = None
-            while align_xml_text is None:#{
+            while align_xml_text is None: # untill successfull attempt
 
                 request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
 
@@ -1768,7 +1803,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 #    shorten all sequences in packet twice and resend it.
                 if align_xml_text is None:
                     packet["fasta"] = prune_seqs_twice(packet["fasta"])
-            #}
+                # end if
+            # end while
 
             # Get result tsv lines
             result_tsv_lines = parse_align_results_xml(align_xml_text,
@@ -1778,19 +1814,20 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
 
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
-        #}
+        # end if
         pack_to_send += 1
 
-        if seqs_processed >= probing_batch_size:#{
+        if seqs_processed >= probing_batch_size:
             remove_tmp_files(tmp_fpath)
             stop = True
             break
-        #}
-    #}
+        # end if
+    # end for
     remove_tmp_files(tmp_fpath)
     if stop:
         break
-#}
+    # end if
+# end for
 
 print("\n {} sequences have been processed\n".format(seqs_processed))
 
@@ -1800,18 +1837,17 @@ print("They are sorted by their occurence in probing batch:")
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
 #   [2] -- get 3-rd element (occurence)
-for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):#{ 
+for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
     s_letter = "s" if other_info[2] > 1 else ""
     print(" {} sequence{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
-#}
+# end for
 
 # Print number of unkmown sequences, if there are any:
 unkn_num = probing_batch_size - sum( map(lambda x: x[2], acc_dict.values()) )
-if unkn_num > 0:#{
+if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
     print(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
-#}
-
+# end if
 
 print("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))

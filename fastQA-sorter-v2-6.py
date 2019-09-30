@@ -2,31 +2,30 @@
 # -*- coding: utf-8 -*-
 
 # Version 2.6
-# 20.09.2019 edition
+# 01.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
 from sys import version_info as verinf
 
-if verinf.major < 3:#{
+if verinf.major < 3:
     print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
     print("\tPlease, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
     exit(1)
-#}
+# end if
 
 print("\n |=== fastQA_sorter.py (version 2.6) ===|\n\n")
 
-def print_error(text):#{
+def print_error(text):
     """Function for printing error messages"""
     print("\n   \a!! - ERROR: " + text + '\n')
-#}
-
+# end def print_error
 
 from sys import stdout as sys_stdout
-def printn(text):#{
+def printn(text):
     """
     Function prints text to the console without adding '\n' in the end of the line.
     Why not just to use 'print(text, end="")'?
@@ -34,7 +33,7 @@ def printn(text):#{
         instead if awful error traceback.
     """
     sys_stdout.write(text)
-#}
+# end def printn
 
 # |===== Stuff for dealing with time =====|
 
@@ -42,9 +41,10 @@ from time import time, strftime, localtime, sleep, gmtime
 start_time = time()
 
 
-def get_work_time():#{
+def get_work_time():
     return strftime("%H:%M:%S", gmtime( time() - start_time ))
-#}
+# end def get_work_time
+
 
 # Get start time
 from datetime import datetime
@@ -53,7 +53,7 @@ now = datetime.now().strftime("%Y-%m-%d %H.%M.%S")
 
 from sys import platform
 
-def platf_depend_exit(exit_code):#{
+def platf_depend_exit(exit_code):
     """
     A function that asks to press ENTER on Windows
         and exits.
@@ -62,9 +62,9 @@ def platf_depend_exit(exit_code):#{
     """
     if platform.startswith("win"):
         input("Press ENTER to exit:")
+    # end if
     exit(exit_code)
-#}
-# -------------------
+# end def platf_depend_exit
 
 
 from gzip import open as open_as_gzip
@@ -75,7 +75,6 @@ from sys import argv
 from sys import intern
 # -------------------
 
-
 help_msg = """
 DESCRIPTION:\n
  fastQA_forter.py -- script designed for sorting FASTQ and FASTAfiles processed by barapost.py.\n
@@ -84,15 +83,13 @@ DESCRIPTION:\n
  - If -d (--indir) option is specified, all FASTQ and FASTA files in directory specified by this option will be sorted.
  - If no separate FASTQ or FASTA files and not input directory is specified,
        fastQA_sorter will process all FASTQ and FASTA files in current directory.
---------------------------------
-
+--------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
 - sorting sensitivity (see '-s' option): 'genus';
 - output directory ('-o' option): directory named '"fastQA_sorter_result_<date_and_time_of_run>"''
   nested in current directory;
---------------------------------
-
+--------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
     -r (--prober-result-dir) --- result directory genearted by script 'prober.py'
@@ -105,8 +102,7 @@ OPTIONS:\n
     -s (--sorting-sensitivity) --- sorting sensitivity,
         i.e. the lowest taxonomy rank that will be used in names of resut files;
         Available values: 'genus', 'species', 'strain'; Default is 'genus'.
---------------------------------
-
+--------------------------------\n
 EXAMPLES:\n
   1) Process one FASTQ file with default settings.
      File 'reads.fastq' has been already processed by 'barapost.py'.
@@ -121,19 +117,14 @@ EXAMPLES:\n
      Results of 'barapost.py' work are in directory 'prober_outdir':\n
         ./fastq_sorter.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
 """
-# -------------------
 
-
-try:#{
+try:
     opts, args = getopt.getopt(argv[1:], "hr:f:d:o:s:", ["help", "prober-result-dir=", "indir=", "outdir=",
         "sorting-sensitivity="])
-#}
-except getopt.GetoptError as gerr:#{
+except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
-#}
-# -------------------
-
+# end try
 
 is_fq_or_fa = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
 fq_fa_paths = list() # input FASTQ files paths
@@ -142,91 +133,95 @@ indir_path = None # path to input directory
 outdir_path = "fastQA_sorter_result_{}".format(now.replace(' ', '_')) # defalut value
 sens = "genus" # default value
 
-for opt, arg in opts:#{
+for opt, arg in opts:
 
-    if opt in ("-h", "--help"):#{
+    if opt in ("-h", "--help"):
         print(help_msg)
         platf_depend_exit(0)
-    #}
+    # end if
 
-    if opt in ("-f", "--infile"):#{
-        if not os.path.exists(arg):#{
+    if opt in ("-f", "--infile"):
+        if not os.path.exists(arg):
             print_error("file '{}' does not exist!".format(arg))
             platf_depend_exit(1)
-        if not is_fq_or_fa(arg):#{
+        # end if
+        if not is_fq_or_fa(arg):
             print(" !! - Warning: file '{}' is not '.fastq' and not '.fasta'!".format(arg))
             platf_depend_exit(1)
-        #}
+        # end if
         fq_fa_paths.append(os.path.abspath(arg))
-    #}
+    # end if
 
-    if opt in ("-d", "--indir"):#{
-        if not os.path.exists(arg):#{
+    if opt in ("-d", "--indir"):
+        if not os.path.exists(arg):
             print_error("directory '{}' does not exist!".format(arg))
             platf_depend_exit(1)
-        #}
-        if not os.path.isdir(arg):#{
+        # end if
+        
+        if not os.path.isdir(arg):
             print_error("'{}' is not a directory!".format(arg))
             platf_depend_exit(1)
-        #}
+        # end if
         indir_path = os.path.abspath(arg)
-    #}
+    # end if
 
-    if opt in ("-o", "--outdir"):#{
+    if opt in ("-o", "--outdir"):
         outdir_path = os.path.abspath(arg)
-    #}
+    # end if
 
-    if opt in ("-r", "--prober-result-dir"):#{
-        if not os.path.exists(arg):#{
+    if opt in ("-r", "--prober-result-dir"):
+        if not os.path.exists(arg):
             print_error("directory '{}' does not exist!".format(arg))
             platf_depend_exit(1)
-        #}
-        if not os.path.isdir(arg):#{
+        # end if
+        if not os.path.isdir(arg):
             print_error("'{}' is not a directory!".format(arg))
             platf_depend_exit(1)
-        #}
+        # end if
         prober_res_dir = arg
-    #}
+    # end if
 
-    if opt in ("-s", "--sorting-sensitivity"):#{
-        if arg not in ("genus", "species", "strain"):#{
+    if opt in ("-s", "--sorting-sensitivity"):
+        if arg not in ("genus", "species", "strain"):
             print_error("invalid value specified by '-s' option!\n")
             print("Available values: 'genus', 'species', 'strain'")
             print("\nType for help:\n    ./fastQA_forter.py -h")
             platf_depend_exit(1)
-        #}
+        # end if
         sens = arg
-    #}
-#}
+    # end if
+# end for
 
 # Check if "prober result" directory is specified
-if not os.path.exists(prober_res_dir):#{
+if not os.path.exists(prober_res_dir):
     print_error("file '{}' does not exist!".format(prober_res_dir))
     if prober_res_dir == "prober_result":
         print("""Maybe, output directory generated by 'prober.py' hasn't been named 'prober_result'
+    # end if
     and you have forgotten to specify '-r' option.""")
     platf_depend_exit(1)
-#}
+# end if
 
 # Collect FASTQ and FASTA files from input directory
-if indir_path is not None:#{
+if indir_path is not None:
     indir_fastqs = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
     fq_fa_paths.extend(indir_fastqs)
-#}
+# end if
 
 # If no FASTQ or FASTA file have been found
-if len(fq_fa_paths) == 0:#{
+if len(fq_fa_paths) == 0:
     # If input directory was specified -- exit
-    if not indir_path is None:#{
+    if not indir_path is None:
         print_error("no input FASTQ or FASTA files specified or there is no FASTQ or FASTA files in the input directory.\n")
         platf_depend_exit(1)
-    #}
+    
     # If input directory was not specified -- look for FASTQ and FASTA files in current directory
-    else:#{
+    else:
         currdir_fastqs = list( filter(is_fq_or_fa, os.listdir('.')) )
         fq_fa_paths.extend(currdir_fastqs)
-    #}
-#}
+    # end if
+# end if
+
 
 del help_msg # we do not need this large string object any more
 
@@ -242,7 +237,7 @@ a5_patt = r"(scaffold)_([0-9]+)"
 path_patt = r"\(_(.+)_\)"
 
 
-def format_taxonomy_name(hit_name, sens):#{
+def format_taxonomy_name(hit_name, sens):
     """
     Function formats taxonomy name according to chosen sensibiliry of sorting.
     :param hit_name: full_fit_name_of_the_subject_sequence;
@@ -257,18 +252,18 @@ def format_taxonomy_name(hit_name, sens):#{
     modif_hit_name = hit_name.strip()
 
     # If there is no hit -- we are sure what to do!
-    if modif_hit_name == "No significant similarity found":#{
+    if modif_hit_name == "No significant similarity found":
         return "unknown"
-    #}
+    # end if
 
     # Check if hit is a sequence from SPAdes or a5 assembly:
     spades_match_obj = re_search(spades_patt, modif_hit_name)
     a5_match_obj = re_search(a5_patt, modif_hit_name)
 
-    for match_obj in (spades_match_obj, a5_match_obj):#{
+    for match_obj in (spades_match_obj, a5_match_obj):
 
         # If hit is a sequence from SPAdes or a5 assembly
-        if not match_obj is None:#{
+        if not match_obj is None:
 
             # Find path to file with assembly:
             assm_path = re_search(path_patt, modif_hit_name).group(1)
@@ -276,82 +271,79 @@ def format_taxonomy_name(hit_name, sens):#{
             node_or_scaff = match_obj.group(1) # get word "NODE" or "scaffold"
             node_scaff_num = match_obj.group(2) # get it's number
 
-            if node_or_scaff == "NODE":#{ SPAdes generate "NODEs"
+            # SPAdes generate "NODEs"
+            if node_or_scaff == "NODE":
                 assmblr_name = "SPAdes"
-            #}
-            elif node_or_scaff == "scaffold":#{ a5 generates "scaffolds"
+            # a5 generates "scaffolds"
+            elif node_or_scaff == "scaffold":
                 assmblr_name = "a5"
-            #}
-            else:#{ There cannot be enything else
+            # There cannot be enything else
+            else:
                 print_error("signature of seq id from assembly not recognized: '{}'".format(hit_name))
                 platf_depend_exit(1)
-            #}
+            # end if
 
             # Include file path to sorted file name
             # Replace path separetor with underscore in order not to held a bacchanalia in file system.
-            if assm_path is not None:#{
-                if sens == "genus":#{
+            if assm_path is not None:
+                if sens == "genus":
                     # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
                     return '_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff) )
-                #}
-                else:#{
+                else:
                     # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
                     return '_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff,
                         node_scaff_num) )
-                #}
-            #}
-            else:#{
-
-                if sens == "genus":#{
+                # end if
+            else:
+                if sens == "genus":
                     # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
                     return assmblr_name + "_assembly_" + node_or_scaff
-                #}
-                else:#{
+                else:
                     # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
                     return '_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num ))
-                #}
-            #}
-        #}
-    #}
+                # end if
+            # end if
+        # end if
+    # end for
 
     # If structure of hit name is strange
-    if re_search(hit_name_patt, modif_hit_name) is None:#{
+    if re_search(hit_name_patt, modif_hit_name) is None:
         return modif_hit_name.strip().replace(' ', '_')   # return full name
-    #}
+    # end if
 
     taxa_name = modif_hit_name.partition(',')[0]
     taxa_splitnames = taxa_name.strip().split('_')
 
     # If hit is a phage sequence
-    if taxa_splitnames[1] == "phage":#{
+    if taxa_splitnames[1] == "phage":
         # Assumming that the man who sortes by genus or species isn't interested in phage strain name
         if sens == "genus" or sens == "species":
             return '_'.join( [taxa_splitnames[0], taxa_splitnames[1]] ) # return "<Host_name> phage"
         else:
             return taxa_name.replace(' ', '_')   # return full name if we sort by strain
-    #}
+        # end if
+    # end if
 
-    if sens == "genus":#{
+    if sens == "genus":
         return taxa_splitnames[0] # return genus
-    #}
-    elif sens == "species":#{
-        if taxa_splitnames[1] == "sp.":#{ if species is not specified
+    
+    elif sens == "species":
+        # if species is not specified
+        if taxa_splitnames[1] == "sp.":
             return taxa_name.replace(' ', '_')   # return full name
-        #}
-        else:#{
+        else:
             return '_'.join( [taxa_splitnames[0], taxa_splitnames[1]] ) # return genus and species
-        #}
-    #}
-    elif sens == "strain":#{
+        # end if
+    elif sens == "strain":
         return taxa_name.replace(' ', '_')   # return full name
-    #}
+    # end if
 
     # Execution should not reach here
     raise Exception("Taxonomy name formatting error!")
-#}
+# end def format_taxonomy_name
 
 
-def read_fastq_record(read_file, fmt_func):#{
+def read_fastq_record(read_file, fmt_func):
     """
     :param read_file: file instance of FASTQ file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
@@ -368,25 +360,23 @@ def read_fastq_record(read_file, fmt_func):#{
 
     fastq_rec = dict()
 
-    try:#{
+    try:
         fastq_rec = {                    #read all 4 lines of fastq-record
             "seq_id": fmt_func(read_file.readline()),
             "seq": fmt_func(read_file.readline()),
             "opt_id": fmt_func(read_file.readline()),
             "qual_line": fmt_func(read_file.readline())
         }
-    #}
-    except Exception as err:#{
+    except Exception as err:
         print("\nAn error occured while reading from infile")
         print( str(err) )
         platf_depend_exit(1)
-    #}
+    # end try
 
     return fastq_rec
-#}
+# end def read_fastq_record
 
-
-def read_fasta_record(fasta_file, fmt_func):#{
+def read_fasta_record(fasta_file, fmt_func):
     """
     :param fasta_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
@@ -401,8 +391,7 @@ def read_fasta_record(fasta_file, fmt_func):#{
 
     fasta_rec = dict()
 
-    try:#{
-
+    try:
         global next_id_line
         line = fmt_func(fasta_file.readline())
         packet = ""
@@ -410,44 +399,43 @@ def read_fasta_record(fasta_file, fmt_func):#{
         stop = False
         if not next_id_line is None:
             packet += next_id_line
+        # end if
         packet += line
 
-        while not stop:#{
-
+        while not stop:
             line = fmt_func(fasta_file.readline())
-            if line.startswith('>'):#{
+            if line.startswith('>'):
                 stop = True
-            #}
+            # end if
             if line == "":
                 break
+            # end if
             packet += line
-        #}
+        # end while
 
-        if line != "":#{
+        if line != "":
             next_id_line = packet.splitlines()[-1]+'\n'
             packet = '\n'.join(packet.splitlines()[:-1])
-        #}
-        else:#{
+        else:
             next_id_line = None
             packet = packet.strip()
-        #}
+        # end if
 
         fasta_rec = {                    #read all 2 lines of FASTA-record
             "seq_id": packet.splitlines()[0],
             "seq": '\n'.join( packet.splitlines()[1:] )+'\n'
         }
-    #}
-    except Exception as err:#{
+    except Exception as err:
         print("\nAn error occured while reading from infile")
         print( str(err) )
         platf_depend_exit(1)
-    #}
+    # end try
 
     return fasta_rec
-#}
+# end def read_fasta_record
 
 
-def write_fastq_record(outfile_path, fastq_record):#{
+def write_fastq_record(outfile_path, fastq_record):
     """
     :param outfile_path: file, which data from fastq_record is written in
     :type outfile_path: _io.TextIOWrapper
@@ -456,39 +444,41 @@ def write_fastq_record(outfile_path, fastq_record):#{
 
     Returns None
     """
-    try:#{
+    try:
         with open_as_gzip(outfile_path, 'ab') as sorted_file:
             sorted_file.write(bytes(fastq_record["seq_id"], "utf-8"))
             sorted_file.write(bytes(fastq_record["seq"], "utf-8"))
             sorted_file.write(bytes(fastq_record["opt_id"], "utf-8"))
             sorted_file.write(bytes(fastq_record["qual_line"], "utf-8"))
-    #}
-    except Exception as exc:#{
+        # end with
+    
+    except Exception as exc:
         print("\nAn error occured while writing to outfile")
         print( str(exc) )
         platf_depend_exit(1)
-    #}
-#}
+    # end try
+# end def write_fastq_record
 
 
-def write_fasta_record(outfile_path, fasta_record):#{
+def write_fasta_record(outfile_path, fasta_record):
     """
     :param outfile_path: file, which data from fasta_record is written in
     :type outfile_path: _io.TextIOWrapper
     :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
     :type fasta_record: dict<str: str>
     """
-    try:#{
+    try:
         with open_as_gzip(outfile_path, 'ab') as sorted_file:
             sorted_file.write(bytes(fasta_record["seq_id"]+'\n', "utf-8"))
             sorted_file.write(bytes(fasta_record["seq"], "utf-8"))
-    #}
-    except Exception as exc:#{
+        # end with
+    
+    except Exception as exc:
         print("\nAn error occured while writing to outfile")
         print( str(exc) )
         platf_depend_exit(1)
-    #}
-#}
+    # end try
+# end def write_fasta_record
 
 
 is_gzipped = lambda f: True if f.endswith(".gz") else False
@@ -503,19 +493,18 @@ FORMATTING_FUNCS = (
 
 
 # |===== Create output directory =====|
-if not os.path.exists(outdir_path):#{
-    try:#{
+if not os.path.exists(outdir_path):
+    try:
         os.makedirs(outdir_path)
-    #}
-    except Exception as err:#{
+    except Exception as err:
         print_error("unable to create output directory!")
         print( str(err) )
         platf_depend_exit(1)
-    #}
-#}
+    # end try
+# end if
 
 
-def get_curr_res_dir(fq_fa_path, prober_res_dir):#{
+def get_curr_res_dir(fq_fa_path, prober_res_dir):
     """
     Function returns path to current result directory. This current result directory corresponds to
         the file that is sorted now.
@@ -526,18 +515,18 @@ def get_curr_res_dir(fq_fa_path, prober_res_dir):#{
         Current result directory is it's subdirectory;
     :type prober_res_dir: str;
     """
-    
+
     # dpath means "directory path"
     new_dpath = os.path.join(prober_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
     new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
 
     return new_dpath
-#}
+# end def get_curr_res_dir
 
 
 # |=== Function for configuring dictionary containing information generated by barapost.py ===|
 
-def get_res_tsv_fpath(new_dpath):#{
+def get_res_tsv_fpath(new_dpath):
     """
     Function returns current TSV file. Sorting will be performad according to this file.
 
@@ -549,23 +538,23 @@ def get_res_tsv_fpath(new_dpath):#{
 
     is_similar_to_tsv_res = lambda f: True if not re_search(brpst_resfile_patt, f) is None else False
 
-    if not os.path.exists(new_dpath):#{
+    if not os.path.exists(new_dpath):
         print_error("directory '{}' does not exist!".format(new_dpath))
         print(""" Please make sure you have 'prober_result' directory and
     file '{}...' have been processed by 'barapost.py'""".format(os.path.basename(new_dpath)))
         print("""Also this error might occur if you forget to specify result directory
     generated by 'prober.py' with '-r' option.""")
         platf_depend_exit(0)
-    #}
+    # end if
 
     # Recent file will be the first in sorted list
     tsv_res_fpath = list( filter(is_similar_to_tsv_res, sorted(os.listdir(new_dpath))) )[0]
 
     return os.path.join(new_dpath, tsv_res_fpath)
-#}
+# end def get_res_tsv_fpath
 
 
-def configure_resfile_lines(tsv_res_fpath):#{
+def configure_resfile_lines(tsv_res_fpath):
     """
     Function returns dictionary, where keys are sequence (i.e. sequences meant to be sorted) IDs,
         and values are corresponding hit names.
@@ -576,36 +565,36 @@ def configure_resfile_lines(tsv_res_fpath):#{
 
     resfile_lines = dict()
 
-    with open(tsv_res_fpath, 'r') as brpst_resfile:#{
+    with open(tsv_res_fpath, 'r') as brpst_resfile:
 
         brpst_resfile.readline() # pass the head of the table
         line = brpst_resfile.readline().strip() # get the first informative line
 
-        while line is not "":#{
+        while line is not "":
             read_name = intern(line.split('\t')[0])
             hit_name = line.split('\t')[1]
             resfile_lines[read_name] = hit_name
-
             line = brpst_resfile.readline().strip() # get next line
-        #}
-    #}
+        # end while
+    # end with
 
     # |===== Format taxonomy names =====|
-    for read_name in resfile_lines.keys():#{
+    for read_name in resfile_lines.keys():
         resfile_lines[read_name] = format_taxonomy_name(resfile_lines[read_name], sens)
-    #}
+    # end for
 
     return resfile_lines
-#}
+# end def configure_resfile_lines
+
 
 print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 print(" - Sorting sensitivity: '{}';\n".format(sens))
 
 print("\nFollowing files will be processed:")
-for i, path in enumerate(fq_fa_paths):#{
+for i, path in enumerate(fq_fa_paths):
     print("  {}. {}".format(i+1, path))
-#}
+# end for
 print('-'*20 + '\n')
 
 
@@ -614,7 +603,7 @@ is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else
 num_files = len(fq_fa_paths)
 next_id_line = None
 
-for j, fq_fa_path in enumerate(fq_fa_paths):#{
+for j, fq_fa_path in enumerate(fq_fa_paths):
 
     print("{} - '{}' is sorting ...".format(get_work_time(), os.path.basename(fq_fa_path)))
 
@@ -623,48 +612,45 @@ for j, fq_fa_path in enumerate(fq_fa_paths):#{
     resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ] # get ready to open gzipped files
-    if is_fastq(fq_fa_path):#{
+    if is_fastq(fq_fa_path):
         num_reads = int (sum(1 for line in how_to_open(fq_fa_path)) / LINES_PER_READ_FASTQ) # count number of reads in file
-    #}
-    else:#{
+    else:
         num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path))
-    #}
+    # end if
 
     # Get function that will read one record -- FASTQ or FASTA, in dependence of your file
     read_fun = read_fastq_record if is_fastq(fq_fa_path) else read_fasta_record
     # Get function that will write one record -- FASTQ or FASTA, in dependence of your file
     write_fun = write_fastq_record if is_fastq(fq_fa_path) else write_fasta_record
     
-    with how_to_open(fq_fa_path) as source_fastq_file:#{
+    with how_to_open(fq_fa_path) as source_fastq_file:
 
         fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
-        for i in range(num_reads):#{
+        for i in range(num_reads):
 
             fastq_rec = read_fun(source_fastq_file, fmt_func) # get FASTQ or FASTA record
             read_name = intern(fastq_rec["seq_id"].partition(' ')[0][1:]) # get ID of the sequence
 
-            try:#{
+            try:
                 hit_name = resfile_lines[read_name] # find hit corresponding to this sequence
-            #}
-            except KeyError:#{
+            except KeyError:
                 print("\n\t\a !! - Warning: read '{}' not found in '{}' result file".format(read_name, prober_res_dir))
                 print("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
                 continue
-            #}
             # If read is found in TSV file:
-            else:#{
+            else:
                 # Get name of resilt FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast{}.gz".format(hit_name,
                     'q' if is_fastq(fq_fa_path) else 'a'))
                 write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
-            #}
+            # end try
 
             printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
-        #}
+        # end for
         print('\n' + '-'*20)
-    #}
-#}
+    # end with
+# end for
 
 end_time = time()
 print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Sorting is completed successfully!\n")

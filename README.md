@@ -24,7 +24,7 @@ Results are written in TSV file named `...results.tsv`.
 
 ## 1. prober-v1-8.py
 
-Version 1.8; 30.09.2019 edition;
+Version 1.8; 01.10.2019 edition;
 
 ### DESCRIPTION:
 
@@ -139,7 +139,7 @@ Search only among Escherichia and viral sequences:
 
 ## 2. barapost-v3-0.py
 
-Version 3.0; 30.09.2019 edition;
+Version 3.0; 01.10.2019 edition;
 
 ### DESCRIPTION:
 
@@ -256,7 +256,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## 3. fastQA-sorter-v2-6.py
 (fast**Q** and fast**A** sorter)
 
-Version 2.6; 20.09.2019 edition;
+Version 2.6; 01.10.2019 edition;
 
 ### DESCRIPTION:
 
