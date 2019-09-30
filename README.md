@@ -260,9 +260,9 @@ Version 2.6; 20.09.2019 edition;
 
 ### DESCRIPTION:
 
-**fastQA_forter_v2_6.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-0.py".
+**fastQA-sorter-v2-6.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-0.py".
 
-"fastQA_forter_v2_6.py" is meant to be used just after "barapost-v3-0.py".
+"fastQA_sorter-v2-6.py" is meant to be used just after "barapost-v3-0.py".
 
 - Separate FASTQ or FASTA files should be specified with `-f` option (see EXAMPLES below).
 - If no separate FASTQ or FASTA files and not input directory is specified,
