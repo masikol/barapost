@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.7
-# 20.09.2019 edition
+# Version 1.8
+# 30.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:#{
     exit(1)
 #}
 
-print("\n |=== prober.py (version 1.7) ===|\n")
+print("\n |=== prober.py (version 1.8) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -1715,17 +1715,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
         how_to_open = open
     #}
 
-    # # Go untill the last processed sequence
-    # get_packet(fasta_file, num_done_reads, fmt_func)
-
     reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
     packs_left = packs_at_all - packs_received # number of packets left to send
     pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
     # Iterate over packets left to send
     for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):#{ 
-
-        # packet = get_packet(fasta_file, packet_size, fmt_func) # form the packet
 
         if packet["fasta"] is "":#{   Just in case
             print("Recent packet is empty")
@@ -1765,9 +1760,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):#{
                 request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
 
                 # Send the request get BLAST XML response
+                # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
                 align_xml_text = send_request(request,
                     pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
 
+                # If NCBI BLAST server rejects the request due to too large amount of data in it --
+                #    shorten all sequences in packet twice and resend it.
                 if align_xml_text is None:
                     packet["fasta"] = prune_seqs_twice(packet["fasta"])
             #}

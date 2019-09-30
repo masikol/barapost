@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Version 3.0
-# 20.09.2019 edition
+# 30.09.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -359,15 +359,6 @@ if not os.path.exists(acc_fpath) and len(your_own_fasta_lst) == 0:#{
         platf_depend_exit(1)
 #}
 
-
-# Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
-# In order to provide full compatibility with 'prober.py' I will merely change values here.
-if blast_algorithm == "megaBlast":
-    blast_algorithm = "megablast"
-elif blast_algorithm == "discoMegablast":
-    blast_algorithm = "dc-megablast"
-
-
 print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -673,9 +664,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):#{
     #    path to FASTA file of actual FASTA data.
 
     # If 'fasta' is a path to FASTA file
-    if not re_search(r"\.(m)?f(fast)?a(\.gz)?$", fasta) is None:#{
-
-        print(u"АЛО!")
+    if not re_search(r"\.(m)?f(ast)?a(\.gz)?$", fasta) is None:#{
 
         how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
         fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
@@ -1158,6 +1147,15 @@ def launch_blastn(packet, blast_algorithm):#{
 
     # Indexed discontiguous searches are not supported:
     #    https://www.ncbi.nlm.nih.gov/books/NBK279668/#usermanual.Megablast_indexed_searches
+
+    # Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
+    # In order to provide full cli-interface compatibility with 'prober.py' I will merely change values here.
+    # I change these values in this function and not globally in order not to influence names of result files.
+    if blast_algorithm == "megaBlast":
+        blast_algorithm = "megablast"
+    elif blast_algorithm == "discoMegablast":
+        blast_algorithm = "dc-megablast"
+
     if blast_algorithm != "dc-megablast":
         use_index = "true"
     else:
