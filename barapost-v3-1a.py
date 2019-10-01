@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.0
+# Version 3.1.a
 # 01.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -10,14 +10,14 @@ from sys import version_info as verinf
 
 if verinf.major < 3:
     print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
-    print("\tPlease, use Python 3!\a")
+    print("   Please, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
     exit(1)
 # end if
 
-print("\n |=== barapost.py (version 3.0) ===|\n")
+print("\n |=== barapost.py (version 3.1.a) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -211,7 +211,8 @@ for opt, arg in opts:
         # end if
         indir_path = os.path.abspath(arg)
 
-        fq_fa_list.extend(list( filter(is_fq_or_fa, os.listdir(indir_path)) ))
+        paths_buff = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
+        fq_fa_list.extend(list(map(lambda f: os.path.join(indir_path, f), paths_buff)))
     # end if
 
     if opt in ("-p", "--packet-size"):
@@ -1541,26 +1542,17 @@ def spread_files_equally(fq_fa_list, n_thr):
     """
 
     sublist_size = len(fq_fa_list) // n_thr
-    if len(fq_fa_list) % n_thr != 0:
-        sublist_size += 1
-    # end if
 
-    i = 0
-    sublist = list()
-    for i, path in enumerate(fq_fa_list):
-
-        sublist.append(path)
-
-        if i+1 == sublist_size:
-            yield sublist
-            sublist = list()
-        # end if
-
-        if i+1 == len(fq_fa_list):
-            yield sublist
-            return
-        # end if
+    # Processes [0, (n_thr-1)] will obtain equally 'sublist_size' files:
+    start_pos = 0
+    for i in range(n_thr - 1):
+        yield fq_fa_list[start_pos : start_pos+sublist_size]
+        start_pos += sublist_size
     # end for
+
+    # Give the rest of data to the last unlucky process:
+    yield fq_fa_list[start_pos :]
+
 # end def spread_files_equally
 
 
@@ -1616,7 +1608,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         if parallel:
             with file_count_lock:
                 file_count.value += 1
-                print("\n }. '{}' ({} sequences) - start processing".format(file_count.value, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
+                print("\n {}. '{}' ({} sequences) - start processing".format(file_count.value, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
             # end with
         else:
             print("\n {}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))

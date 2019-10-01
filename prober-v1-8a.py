@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.8
+# Version 1.8.a
 # 01.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober.py (version 1.8) ===|\n")
+print("\n |=== prober.py (version 1.8.a) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -219,7 +219,8 @@ for opt, arg in opts:
         
         indir_path = os.path.abspath(arg)
 
-        fq_fa_list.extend(list( filter(is_fq_or_fa, os.listdir(indir_path)) ))
+        paths_buff = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
+        fq_fa_list.extend(list(map(lambda f: os.path.join(indir_path, f), paths_buff)))
     # end if
 
     if opt in ("-o", "--outdir"):
@@ -1853,7 +1854,7 @@ print("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))
 print("""\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
-  and used as local (on your local computer) database used by 'barapost.py'.""")
+  and used as local (i.e. on your local computer) database by 'barapost.py'.""")
 end_time = time()
 print('\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Probing task is completed successfully!\n")
 platf_depend_exit(0)

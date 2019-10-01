@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 2.6
+# Version 2.6.a
 # 01.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -10,14 +10,14 @@ from sys import version_info as verinf
 
 if verinf.major < 3:
     print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
-    print("\tPlease, use Python 3!\a")
+    print("   Please, use Python 3!\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
     exit(1)
 # end if
 
-print("\n |=== fastQA_sorter.py (version 2.6) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.6.a) ===|\n\n")
 
 def print_error(text):
     """Function for printing error messages"""
@@ -163,6 +163,9 @@ for opt, arg in opts:
             platf_depend_exit(1)
         # end if
         indir_path = os.path.abspath(arg)
+
+        paths_buff = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
+        fq_fa_paths.extend(list(map(lambda f: os.path.join(indir_path, f), paths_buff)))
     # end if
 
     if opt in ("-o", "--outdir"):
@@ -200,12 +203,6 @@ if not os.path.exists(prober_res_dir):
     # end if
     and you have forgotten to specify '-r' option.""")
     platf_depend_exit(1)
-# end if
-
-# Collect FASTQ and FASTA files from input directory
-if indir_path is not None:
-    indir_fastqs = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
-    fq_fa_paths.extend(indir_fastqs)
 # end if
 
 # If no FASTQ or FASTA file have been found
