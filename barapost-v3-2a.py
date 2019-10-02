@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.1.b
-# 02.10.2019 edition
+# Version 3.2.a
+# 03.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== barapost.py (version 3.1.b) ===|\n")
+print("\n |=== barapost.py (version 3.2.a) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -33,6 +33,7 @@ def get_work_time():
 import os
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 import multiprocessing as mp
+from shutil import get_terminal_size
 
 import http.client
 import urllib.request
@@ -477,7 +478,7 @@ def fastq2fasta(fq_fa_path, new_dpath):
         # end with
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
-        print("'{}' ({} reads) --> FASTA".format(os.path.basename(fq_fa_path), num_reads))
+        # print("'{}' ({} reads) --> FASTA".format(os.path.basename(fq_fa_path), num_reads))
     
     # IF FASTA file is already created
     # We need only number of sequences in it.
@@ -506,25 +507,32 @@ def rename_file_verbosely(file, pardir):
     :param pardir: parent directoy of file';
     :type pardir: str;
     """
-    # Count files in 'pardir' that have analogous names as 'file' has:
-    re_search(r"(.*)\..*$")
-    is_analog = lambda f: re_search(r"(.*)\..*$", file).group(1) in f
-    num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
-
+    
     # Directory is a file, so let's rename it too.
     if os.path.isdir(file):
+        # Count files in 'pardir' that have analogous names as 'file' has:
+        is_analog = lambda f: file in f
         word = "directory"
     else:
+        # Count files in 'pardir' that have analogous names as 'file' has:
+        is_analog = lambda f: re_search(r"(.*)\..*$", file).group(1) in f
         word = "file"
     # end if
 
+    num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
+
     try:
         print('\n' + get_work_time() + " - Renaming old {}:".format(word))
-        name_itself = re_search(r"(.*)\..*$", file).group(1)
-        ext = re_search(r".*\.(.*)$", file).group(1)
+        if not os.path.isdir(file):
+            name_itself = re_search(r"(.*)\..*$", file).group(1)
+            ext = re_search(r".*\.(.*)$", file).group(1)
+        else:
+            name_itself = file
+            ext = ""
+        # end if
         num_analog_files = str(num_analog_files)
         new_name = name_itself+"_old_"+num_analog_files+ext
-        print("\t'{}' --> '{}'".format(os.path.basename(file), new_name))
+        print("\t'{}' --> '{}'".format(file, new_name))
         os.rename(file, new_name)
     except Exception as err:
         # Anything (and not only strings) can be passed to the function
@@ -583,8 +591,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 return None
-            else:
-                print("Last processed sequence: " + last_seq_id)
             # end try
         # end with
     # end if
@@ -949,15 +955,15 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     # end for
 
                     # Find directories with results left from using old database (they will be renamed):
-                    old_dirs = list( filter(lambda f: True if os.path.isdir(f) and f != "local_database" else False, os.listdir(prober_res_dir)) )
+                    putative_dirs = list( map(lambda f: os.path.join(prober_res_dir, f), os.listdir(prober_res_dir)) )
+                    old_dirs = list( filter(lambda f: True if os.path.isdir(f) and not f.endswith("local_database") else False, putative_dirs) )
                     if len(old_dirs) > 0:
-                        print("\n Directories with results of using old database are found")
+                        print("\n Directories with results of using old database are found.")
                         print("Renaming them...")
                         for directory in old_dirs:
                             rename_file_verbosely(directory, prober_res_dir)
                         # end for
                     # end if
-                    
                     break
                 else:
                     # Ask again
@@ -1556,28 +1562,38 @@ def spread_files_equally(fq_fa_list, n_thr):
 # end def spread_files_equally
 
 
-def init_proc_many_files(print_lock_buff, file_count_buff, file_count_lock_buff):
+def init_proc_many_files(full_faq_list, print_lock_buff, perc_inc_lock_buff, 
+        perc_array_buff, path2idc_dict_buff):
     """
     Function that initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
     Function works when 'many_files'-parallel mode is running.
 
+    :param full_faq_list: complete list of files that are processing;
+    :type full_faq_list: list<str>;
     :param print_lock_buff: lock that synchronizes printing to the console;
     :type print_lock_buff: multiprocessing.Lock;
-    :param file_count_buff: integer number representing number of processed files;
-    :type file_count_buff: multiprocessing.Value;
-    :param file_count_lock_buff: lock that synchronizes incrementing 'file_count' variable;
-    :type file_count_lock_buff: multiprocessing.Lock;
+    :param perc_inc_lock_buff: lock that synchronizes updating 'perc_array';
+    :type perc_inc_lock_buff: multiprocessing.Lock;
+    :param perc_array_buff: array of integer numbers -- percents of processed sequences.
+        Indicies correspond to files that are processing.
+        Paths are mapped to these indicies.
+    :type perc_array_buff: multiprocessing.Array<int>;
+    ::
     """
 
     global print_lock
     print_lock = print_lock_buff
 
-    global file_count
-    file_count = file_count_buff
+    global perc_inc_lock
+    perc_inc_lock = perc_inc_lock_buff
 
-    global file_count_lock_lock
-    file_count_lock_lock = file_count_lock_buff
+    global perc_array
+    perc_array = perc_array_buff
+
+    global path2idc_dict
+    path2idc_dict = path2idc_dict_buff
+
 # end def init_proc_many_files
 
 
@@ -1589,9 +1605,13 @@ def process_multiple_files(fq_fa_list, parallel=False):
     :param fq_fa_list: list of paths to FASTA and FASTQ files meant to be processed;
     :type fq_fa_list: list<str>;
     :param parallel: flag indicating if parallel mode if enabled.
-        Influences onlyon printing to the console;
+        Influences only on printing to the console;
     :type parallel: bool;
     """
+
+    if parallel:
+        nfiles = len(path2idc_dict.keys())
+    # end if
 
     # Iterate over source FASTQ and FASTA files
     for i, fq_fa_path in enumerate(fq_fa_list):
@@ -1605,12 +1625,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
         curr_fasta = fastq2fasta(fq_fa_path, new_dpath)
 
-        if parallel:
-            with file_count_lock:
-                file_count.value += 1
-                print("\n {}. '{}' ({} sequences) - start processing".format(file_count.value, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
-            # end with
-        else:
+        if not parallel:
             print("\n {}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
         # end if
 
@@ -1636,17 +1651,13 @@ def process_multiple_files(fq_fa_list, parallel=False):
             tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         # end if
 
-        if parallel:
-            print_lock.acquire()
-        # end if
-        if num_done_reads > 0:
-            verb, s_letter = ("have", "s") if num_done_reads != 1 else ("has", "")
-            print("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
-        # end if
-        
-        print("Writing results to file:\n '{}'\n".format(tsv_res_path))
-        if parallel:
-            print_lock.release()
+
+        if not parallel:
+            if num_done_reads > 0:
+                verb, s_letter = ("have", "s") if num_done_reads != 1 else ("has", "")
+                print("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
+            # end if
+            print("Writing results to file:\n '{}'\n".format(tsv_res_path))
         # end if
 
         packs_at_all = (curr_fasta["nreads"] - num_done_reads) // packet_size # Calculate total number of packets sent from current FASTA file
@@ -1680,14 +1691,30 @@ def process_multiple_files(fq_fa_list, parallel=False):
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path)
 
+            if parallel:
+                with perc_inc_lock:
+                    perc_array[ path2idc_dict[intern(fq_fa_path)] ] = int( round(100 * (pack_i+1) / packs_at_all) )
+                # end with
+            # end if
+
             if not parallel:
                 printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_i+1, packs_at_all))
             
             elif parallel and (pack_i+1) / packs_at_all >= next_done_perc:
                 next_done_perc = round(next_done_perc + perc_step, 2)
                 with print_lock:
-                    print("'{}' - {}% done".format( os.path.basename(fq_fa_path),
-                        round(100.0 * (pack_i+1) / packs_at_all) ))
+                    print("\033[{}A".format(nfiles+1))
+                    i = 1
+                    for path, perc_i in path2idc_dict.items():
+                        path = os.path.basename(path)
+                        if len(path) + 12 >= get_terminal_size().columns:
+                            ncols = get_terminal_size().columns
+                            path = "{}...{}".format(path[: (ncols)//3], path[len(path)-((ncols)//3) :].strip('.'))
+                        # end if
+                        perc = perc_array[perc_i]
+                        print("{}. '{}' - {}%".format(i, path, perc))
+                        i += 1
+                    # end for
                 # end with
             # end if
         # end for
@@ -1896,10 +1923,29 @@ local_fasta = build_local_db(acc_dict, prober_res_dir)
 
 if n_thr <= len(fq_fa_list):
     if n_thr != 1:
-        print_lock = mp.Lock() # lock for printing to the console
-        file_count = mp.Value('i', 0)
-        file_count_lock = mp.Lock()
-        pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, file_count, file_count_lock))
+        for i, path in enumerate(fq_fa_list):
+            path = os.path.basename(path)
+            if len(path) + 12 >= get_terminal_size().columns:
+                ncols = get_terminal_size().columns
+                path = "{}...{}".format(path[: (ncols)//3], path[len(path)-((ncols)//3) :].strip('.'))
+            # end if
+            print("{}. '{}' - 0%".format(i+1, path))
+        # end for
+
+        print_lock = mp.Lock() # lock for printing
+        perc_inc_lock = mp.Lock() # lock for updating 'perc_array'
+
+        # Array that contains percents of processed sequences:
+        perc_array = mp.Array('i', len(fq_fa_list))
+
+        # Paths are mapped to these indicies in 'perc_array':
+        path2idc_dict = dict()
+        for i, path in enumerate(fq_fa_list):
+            path2idc_dict[intern(path)] = i
+        # end for
+
+        pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(fq_fa_list, print_lock,
+            perc_inc_lock, perc_array, path2idc_dict))
         pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
     else:
         # Single-thread mode do not differ much from 'many_files'-parallel mode.

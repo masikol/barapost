@@ -15,12 +15,12 @@ It is awful to to sit in front of the computer for hours sending all these seque
 ## The default workflow looks like:
 
 1. **prober-v1-8b.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-8b.py" saves information about the best hit of each sequence from probing batch.
-Process all sequences in this way takes too much time, what leads us to "barapost-v3-1b.py".
+Process all sequences in this way takes too much time, what leads us to "barapost-v3-2a.py".
 
-2. **barapost-v3-1b.py** -- this program firstly downloads best hits discovered by "prober-v1-8b.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
+2. **barapost-v3-2a.py** -- this program firstly downloads best hits discovered by "prober-v1-8b.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
 Results are written in TSV file named `...results.tsv`.
 
-3. **fastQA-sorter-v2-6b.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-8b.py" and "barapost-v3-1b.py"
+3. **fastQA-sorter-v2-6b.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-8b.py" and "barapost-v3-2a.py"
 
 ## Getting barapost:
 
@@ -41,21 +41,21 @@ of nucleotide sequences by sending each of them to NCBI BLAST server and regardi
 
 The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
-on your local machine by "barapost-v3-1b.py".
+on your local machine by "barapost-v3-2a.py".
 
 This program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
 Results of the work of this program are written to TSV files, that can be found in result directory:
 
 1) There is a file named `...acc_list.tsv`. It contains accessions and names of Genbank records that
-    can be used for building a database on your local machine by "barapost-v3-1b.py".
+    can be used for building a database on your local machine by "barapost-v3-2a.py".
 
 2) There is a file named `...result.tsv`. It contains full result of "BLASTing".
-    Results of barapost-v3-1b.py's work will be appended to this file.
+    Results of barapost-v3-2a.py's work will be appended to this file.
 
-FASTQ files processed by this program are meant to be processed afterwards by "barapost-v3-1b.py".
+FASTQ files processed by this program are meant to be processed afterwards by "barapost-v3-2a.py".
 
-If you have your own FASTA files that can be used as database to blast against, you can omit "prober-v1-8b.py" step and go to "barapost-v3-1b.py" (see `-l` option in "barapost-v3-1b.py" description).
+If you have your own FASTA files that can be used as database to blast against, you can omit "prober-v1-8b.py" step and go to "barapost-v3-2a.py" (see `-l` option in "barapost-v3-2a.py" description).
 
 
 ### Default parameters:
@@ -72,13 +72,13 @@ Dedication of this program is to send small batch (see `-b` option) of sequences
 It means that you should not process all your data by "prober-v1-8b.py' -- it would take long time.
 
 Instead of this you should process some sequences by "prober-v1-8b.py" -- it will determine,
-what Genbank records (genomes, if you want) are present in your data and then go to "barapost-v3-1b.py".
+what Genbank records (genomes, if you want) are present in your data and then go to "barapost-v3-2a.py".
 
-"barapost-v3-1b.py" will process the rest of you sequences in the same way like "prober-v1-8b.py", but on your local computer.
-"barapost-v3-1b.py" uses 'BLAST+' toolkit for this purpose. It will be much faster.
+"barapost-v3-2a.py" will process the rest of you sequences in the same way like "prober-v1-8b.py", but on your local computer.
+"barapost-v3-2a.py" uses 'BLAST+' toolkit for this purpose. It will be much faster.
 
 Obviously, a probing batch cannot cover all variety of a data set,
-so some sequences can be recognized as "unknown" while processing by "barapost-v3-1b.py".
+so some sequences can be recognized as "unknown" while processing by "barapost-v3-2a.py".
 But you always can run "prober-v1-8b.py" again on "unknown" sequences.
 
 ### OPTIONS:
@@ -145,25 +145,25 @@ Search only among Escherichia and viral sequences:
 
 `./prober-v1-8b.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir -b 300 -p 100`
 
-## 2. barapost-v3-1b.py
+## 2. barapost-v3-2a.py
 
 Version 3.0; 02.10.2019 edition;
 
 ### DESCRIPTION:
 
-**barapost-v3-1b.py** -- this program is designed for determinating the taxonomic position
+**barapost-v3-2a.py** -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by "BLASTing" each of them with 'blastn' program from "BLAST+" toolkit
 and regarding the best hit.
 
-"barapost-v3-1b.py" is meant to be used just after 'prober-v1-8b.py'.
+"barapost-v3-2a.py" is meant to be used just after 'prober-v1-8b.py'.
 
-"barapost-v3-1b.py" downloads records-hits from Genbank according to results (`...acc_list.tsv`)
+"barapost-v3-2a.py" downloads records-hits from Genbank according to results (`...acc_list.tsv`)
 of work of "prober-v1-8b.py", builds an indexed local database which consists of
 downloaded sequences, and continues aligning with "BLAST+" toolkit in order to save time.
 
 Program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
-"barapost-v3-1b.py" writes it's results in the same TSV file as "prober-v1-8b.py" does.
+"barapost-v3-2a.py" writes it's results in the same TSV file as "prober-v1-8b.py" does.
 
 FASTQ files processed by this program are meant to be sorted afterwards by 'fastQA_sorted.py'.
 
@@ -207,7 +207,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
         or used instead of it if you omit 'prober-v1-8b.py' step;
 
     -o (--outdir) --- output directory. Can be used only if '-l' option is specified.
-        The reason is that results of 'barapost-v3-1b.py' should be written to the directory that contains
+        The reason is that results of 'barapost-v3-2a.py' should be written to the directory that contains
         accession file generated by "prober-v1-8b.py". If you omit "prober-v1-8b.py" stage and specify your own FASTA
         files that are meant to be used as database, you may specify output directory with this option.
 
@@ -218,9 +218,9 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 
 1. Besides using `-l` option, you can specify your own FASTA files using accession TSV file generated by "prober-v1-8b.py". To do this, just write your FASTA file's path to this TSV file in new line.
 
-2. "makeblastdb" utility from "BLAST+" toolkit considers first word (it separates words by spaces) of sequence ID in FASTA file as sequence accession. Naturally, duplicated accessions are not allowed. Therefore, in order to avoid this duplication, "barapost-v3-1b.py" uses modified sequence IDs of your own sequences in FASTA files while database creating. It adds custom accession number in the beginning of sequence IDs. This custom accessions have following format: OWN_SEQ_<N>, where <N> is an integer number. Actually, it is order number of this sequence (I mean order of adding to database). Do not worry: these modified sequence IDs are used only in database -- your own FASTA files will be kept intact.
+2. "makeblastdb" utility from "BLAST+" toolkit considers first word (it separates words by spaces) of sequence ID in FASTA file as sequence accession. Naturally, duplicated accessions are not allowed. Therefore, in order to avoid this duplication, "barapost-v3-2a.py" uses modified sequence IDs of your own sequences in FASTA files while database creating. It adds custom accession number in the beginning of sequence IDs. This custom accessions have following format: OWN_SEQ_<N>, where <N> is an integer number. Actually, it is order number of this sequence (I mean order of adding to database). Do not worry: these modified sequence IDs are used only in database -- your own FASTA files will be kept intact.
 
-3. If you include SPAdes or a5 assembly FASTA file in the database with "barapost-v3-1b.py", sequence IDs will be modified in a specific (i.e. *ad hoc*) way. If there are **more than one** assembly file generated by **one** assembler (e.g. two files named "contigs.fasta" generated by SPAdes), paths to these "contigs.fasta" files will be added to sequence IDs while database creation. So, sequence IDs will look like, e.g. for SPAdes:
+3. If you include SPAdes or a5 assembly FASTA file in the database with "barapost-v3-2a.py", sequence IDs will be modified in a specific (i.e. *ad hoc*) way. If there are **more than one** assembly file generated by **one** assembler (e.g. two files named "contigs.fasta" generated by SPAdes), paths to these "contigs.fasta" files will be added to sequence IDs while database creation. So, sequence IDs will look like, e.g. for SPAdes:
 
     `OWN_SEQ_4 /some/happy/path/contigs.fasta_NODE_3_length_546787_cov_102.642226`
 
@@ -228,37 +228,37 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 
 ### EXAMPLES:
 
-Note for Windows users: `./barapost-v3-1b.py` won't work on Windows -- type `python barapost-v3-1b.py` instead.
+Note for Windows users: `./barapost-v3-2a.py` won't work on Windows -- type `python barapost-v3-2a.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost-v3-1b.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost-v3-2a.py`) and run it as it is shown in examples below.
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
-`./barapost-v3-1b.py`
+`./barapost-v3-2a.py`
 
   2. Process one FASTQ file with default settings.
      File `reads.fastq` has been already processed by "prober-v1-8b.py".
      Results of "prober-v1-8b.py" work are in directory `prober_outdir`:
 
-`./barapost-v3-1b.py -f reads.fastq -r prober_outdir`
+`./barapost-v3-2a.py -f reads.fastq -r prober_outdir`
 
   3. Process FASTQ file and FASTA file with discoMegablast, packet size of 100 sequences.
      Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "prober-v1-8b.py".
      Results of "prober-v1-8b.py" work are in directory `prober_outdir`:
 
-`./barapost-v3-1b.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -p 100 -r prober_outdir`
+`./barapost-v3-2a.py -f reads.fastq.gz -f another_sequences.fasta -a discoMegablast -p 100 -r prober_outdir`
 
   4. Process all FASTQ and FASTA files in directory named `some_dir`.
     All these files have been already processed by "prober-v1-8b.py".
     Results of "prober-v1-8b.py" work are in directory `prober_outdir`:
 
-`/barapost-v3-1b.py -d some_dir -r prober_outdir`
+`/barapost-v3-2a.py -d some_dir -r prober_outdir`
 
   5. Process file named `some_reads.fastq`. This file has been already processed by "prober-v1-8b.py".
      Results of "prober-v1-8b.py" work are in directory `prober_outdir`. Sequence from file `my_own_sequence.fasta` will be included to the database.
      Packet size is 50 sequences. Launch 4 threads.
 
-`./barapost-v3-1b.py -f some_reads.fastq -p 50 -l my_own_sequence.fasta -t 4 -r prober_outdir`
+`./barapost-v3-2a.py -f some_reads.fastq -p 50 -l my_own_sequence.fasta -t 4 -r prober_outdir`
 
 
 ## 3. fastQA-sorter-v2-6b.py
@@ -268,9 +268,9 @@ Version 2.6; 02.10.2019 edition;
 
 ### DESCRIPTION:
 
-**fastQA-sorter-v2-6b.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-1b.py".
+**fastQA-sorter-v2-6b.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-2a.py".
 
-"fastQA_sorter-v2-6.py" is meant to be used just after "barapost-v3-1b.py".
+"fastQA_sorter-v2-6.py" is meant to be used just after "barapost-v3-2a.py".
 
 - Separate FASTQ or FASTA files should be specified with `-f` option (see EXAMPLES below).
 - If no separate FASTQ or FASTA files and not input directory is specified,
@@ -334,20 +334,20 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 `./fastQA-sorter-v2-6b.py`
 
   2. Process one FASTQ file with default settings.
-     File `reads.fastq` has been already processed by "barapost-v3-1b.py".
-     Results of "barapost-v3-1b.py" work are in directory `prober_outdir`:
+     File `reads.fastq` has been already processed by "barapost-v3-2a.py".
+     Results of "barapost-v3-2a.py" work are in directory `prober_outdir`:
 
 `./fastQA-sorter-v2-6b.py -f reads.fastq.gz -r prober_outdir/`
 
   3. Process a FASTQ file and a FASTA file, place results in `outdir` directory.
-     Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "barapost-v3-1b.py".
-     Results of "barapost-v3-1b.py" work are in directory `prober_outdir`:
+     Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "barapost-v3-2a.py".
+     Results of "barapost-v3-2a.py" work are in directory `prober_outdir`:
 
 `./fastQA-sorter-v2-6b.py -f reads_1.fastq.gz -f some_sequences_2.fasta -o outdir -r prober_outdir/`
 
   4. Process all FASTQ and FASTA files in directory named `dir_with_seqs`. Sort by genus.
-     All these files have been already processed by "barapost-v3-1b.py".
-     Results of "barapost-v3-1b.py" work are in directory `prober_outdir`:
+     All these files have been already processed by "barapost-v3-2a.py".
+     Results of "barapost-v3-2a.py" work are in directory `prober_outdir`:
 
 `./fastQA-sorter-v2-6b.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus`
 
@@ -356,12 +356,12 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 
 1. You can place all .py-files provided with by this toolkit in a directory that contains some FASTA and FASTQ files and run whole "pipeline" with default settings:
 
-`./prober-v1-8b.py && ./barapost-v3-1b.py && ./fastQA-sorter-v2-6b.py`
+`./prober-v1-8b.py && ./barapost-v3-2a.py && ./fastQA-sorter-v2-6b.py`
 
 2. You can try this programs on test dataset named `some_reads.fastq` (there are 4 reads):
 
 `./prober-v1-8b.py -f some_reads.fastq -o some_outdir -g Escherichia,561+viruses,10239 -p 2 -b 2`
 
-`./barapost-v3-1b.py -f some_reads.fastq -r some_outdir`
+`./barapost-v3-2a.py -f some_reads.fastq -r some_outdir`
 
 `./fastQA-sorter-v2-6b.py -f some_reads.fastq -r some_outdir -o some_sorted_reads`
