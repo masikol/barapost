@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.1.a
-# 01.10.2019 edition
+# Version 3.1.b
+# 02.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== barapost.py (version 3.1.a) ===|\n")
+print("\n |=== barapost.py (version 3.1.b) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 

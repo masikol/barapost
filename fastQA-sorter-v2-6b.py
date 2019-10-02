@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 2.6.a
-# 01.10.2019 edition
+# Version 2.6.b
+# 02.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== fastQA_sorter.py (version 2.6.a) ===|\n\n")
+print("\n |=== fastQA_sorter.py (version 2.6.b) ===|\n\n")
 
 def print_error(text):
     """Function for printing error messages"""
