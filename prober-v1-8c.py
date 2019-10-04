@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.8.b
+# Version 1.8.c
 # 02.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober.py (version 1.8.b) ===|\n")
+print("\n |=== prober.py (version 1.8.c) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -1243,15 +1243,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         resp_content = str(response.read(), "utf-8") # get response text
         conn.close()
 
-        if "[blastsrv4.REAL]" in resp_content:
-            print("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
-            print("Let's try to prune these sequences.")
-            print("""All sequences in this packet will be shorten twice
-        # end if
-    # end while
-    and the packet will be resent to BLAST server.""")
-            return None
-
         # if server asks to wait
         if "Status=WAITING" in resp_content:
             printn("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
@@ -1297,6 +1288,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         # Execution should not reach here
         print('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
         platf_depend_exit(1)
+    # end while
 
     # Retrieve XML result
     retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
@@ -1306,6 +1298,14 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     respond_text = str(response.read(), "utf-8")
     conn.close()
+
+    if "[blastsrv4.REAL]" in respond_text:
+        print("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
+        print("Let's try to prune these sequences.")
+        print("""All sequences in this packet will be shorten twice
+and the packet will be resent to BLAST server.""")
+        return None
+    # end if
 
     # Retrieve human-readable text and put it into result directory
     if there_are_hits:
