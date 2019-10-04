@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.2.b
+# Version 3.3.a
 # 03.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== barapost.py (version 3.2.b) ===|\n")
+print("\n |=== barapost.py (version 3.3.a) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -65,9 +65,9 @@ def platf_depend_exit(exit_code):
 # end def platf_depend_exit
 
 
-def print_error(text):
-    "Function for printing error messages"
-    print("\n   \a!! - ERROR: " + text + '\n')
+def err_fmt(text):
+    """Function for configuring error messages"""
+    return "\n   \a!! - ERROR: " + text + '\n'
 # end def print_error
 
 
@@ -166,7 +166,7 @@ your_own_fasta_lst = list()
 n_thr = 1
 
 if len(args) != 0:
-    print_error("barapost.py does not take any positional arguments")
+    print(err_fmt("barapost.py does not take any positional arguments"))
     print("Here are positional arguments specified by you:")
     for a in args:
         print(' ' + a)
@@ -175,7 +175,7 @@ if len(args) != 0:
 # end if
 
 if ("-o" in argv or "--outdir" in argv) and not ("-l" in argv or "--local-fasta-to-bd" in argv):
-    print_error("'-o' option can't be specified without '-l' option!")
+    print(err_fmt("'-o' option can't be specified without '-l' option!"))
     print("For help type:\n python3 barapost.py -h")
     platf_depend_exit(1)
 # end if
@@ -189,11 +189,11 @@ for opt, arg in opts:
 
     if opt in ("-f", "--infile"):
         if not os.path.exists(arg):
-            print_error("file '{}' does not exist!".format(arg))
+            print(err_fmt("file '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
         if not is_fq_or_fa(arg):
-            print_error("file '{}' is not '.fastq' or '.fasta'!".format(arg))
+            print(err_fmt("file '{}' is not '.fastq' or '.fasta'!".format(arg)))
             platf_depend_exit(1)
         # end if
         
@@ -202,12 +202,12 @@ for opt, arg in opts:
 
     if opt in ("-d", "--indir"):
         if not os.path.exists(arg):
-            print_error("directory '{}' does not exist!".format(arg))
+            print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
         
         if not os.path.isdir(arg):
-            print_error("'{}' is not a directory!".format(arg))
+            print(err_fmt("'{}' is not a directory!".format(arg)))
             platf_depend_exit(1)
         # end if
         indir_path = os.path.abspath(arg)
@@ -223,14 +223,14 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print_error("packet_size (-p option) must be integer number from 1 to 500")
+            print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
             platf_depend_exit(1)
         # end try
     # end if
 
     if opt in ("-a", "--algorithm"):
         if not arg in ("megaBlast", "discoMegablast", "blastn"):
-            print_error("invalid value specified by '-a' option!")
+            print(err_fmt("invalid value specified by '-a' option!"))
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
             platf_depend_exit(1)
         # end if
@@ -240,12 +240,12 @@ for opt, arg in opts:
 
     if opt in ("-r", "--prober-result-dir"):
         if not os.path.exists(arg):
-            print_error("directory '{}' does not exist!".format(arg))
+            print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
         
         if not os.path.isdir(arg):
-            print_error("'{}' is not a directory!".format(arg))
+            print(err_fmt("'{}' is not a directory!".format(arg)))
             platf_depend_exit(1)
         # end if
         
@@ -255,7 +255,7 @@ for opt, arg in opts:
     if opt in ("-l", "--local-fasta-to-bd"):
 
         if not os.path.exists(arg):
-            print_error("fil '{}' does not exist!".format(arg))
+            print(err_fmt("file '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
 
@@ -272,28 +272,27 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print_error("number of threads must be positive integer number!")
+            print(err_fmt("number of threads must be positive integer number!"))
             print(" And here is your value: '{}'".format(arg))
             exit(1)
         # end try
         if n_thr > mp.cpu_count():
             print("""\n  Warning! You have specified {} threads to use
-        # end if
-    # end if
     while {} are available.\n""".format(n_thr, mp.cpu_count()))
             reply = input("""If this is just what you want, press ENTER
-    # end while
     or enter 'q' to exit:>>""")
             if reply == "":
                 pass
             else:
                 exit(0)
             # end if
+        # end if
+    # end if
 # end for
 
 
 if not os.path.exists(prober_res_dir) and len(your_own_fasta_lst) == 0:
-    print_error("file '{}' does not exist!".format(prober_res_dir))
+    print(err_fmt("file '{}' does not exist!".format(prober_res_dir)))
     if prober_res_dir == "prober_result":
         print("""Maybe, output directory generated by 'prober.py' hasn't been named 'prober_result'
     and you have forgotten to specify '-r' option.""")
@@ -306,18 +305,18 @@ if not os.path.exists(prober_res_dir) and len(your_own_fasta_lst) == 0:
 if len(fq_fa_list) == 0:
     # If input directory was specified -- exit
     if not indir_path is None:
-        print_error("""no input FASTQ or FASTA files specified
-    # end if
-    or there is no FASTQ and FASTA files in the input directory.\n""")
+        print(err_fmt("""no input FASTQ or FASTA files specified
+    or there is no FASTQ and FASTA files in the input directory.\n"""))
         platf_depend_exit(1)
     
     # If input directory was not specified -- look for FASTQ files in current directory
     else:
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
         if len(fq_fa_list) == 0:
-            print_error("there are no FASTQ or FASTA files found to process.")
+            print(err_fmt("there are no FASTQ or FASTA files found to process."))
             platf_depend_exit(1)
         # end if
+    # end if
 # end if
 
 del help_msg # we do not need it any more
@@ -355,13 +354,50 @@ for utility in ("blastn"+exe_ext, "makeblastdb"+exe_ext, "makembindex"+exe_ext):
 acc_fpath = os.path.join(prober_res_dir, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
 
 if not os.path.exists(acc_fpath) and len(your_own_fasta_lst) == 0:
-    print_error("accession file '{}' not found!".format(acc_fpath))
+    print(err_fmt("accession file '{}' not found!".format(acc_fpath)))
     if len(your_own_fasta_lst) == 0:
         platf_depend_exit(1)
     # end if
 # end if
 
-print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
+
+if not os.path.isdir(prober_res_dir):
+    try:
+        os.makedirs(prober_res_dir)
+    except OSError as oserr:
+        print(err_fmt("unable to create result directory"))
+        print( str(oserr) )
+        print("Prober just tried to create directory '{}' and crushed.".format(prober_res_dir))
+        platf_depend_exit(1)
+    # end try
+# end if
+
+# There some troubles with file extention on Windows, so let's make a .txt file for it:
+log_ext = ".log" if not platform.startswith("win") else ".txt"
+logfile_path = os.path.join(prober_res_dir, "barapost_log_{}{}".format(strftime("%d-%m-%Y_%H-%M-%S", localtime(start_time)), log_ext))
+logfile = open(logfile_path, 'w')
+
+def printl(text=""):
+    """
+    Function for printing text to console and to log file.
+    """
+    print(text)
+    logfile.write(str(text).strip('\r') + '\n')
+    logfile.flush()
+# end def printl
+
+def println(text=""):
+    """
+    Function for printing text to console and to log file.
+    The only difference from 'printl' -- text that is printed to console does not end with '\\n'
+    """
+    printn(text)
+    logfile.write(str(text).strip('\r') + '\n')
+    logfile.flush()
+# end def printl
+
+logfile.write((" |=== barapost.py (version 3.3.a) ===|\n\n"))
+printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # |===== Function for checking if 'https://ncbi.nlm.nih.gov' is available =====|
@@ -376,23 +412,22 @@ def check_connection():
         status_code = urllib.request.urlopen(ncbi_server).getcode()
         # Just in case
         if status_code != 200:
-            print('\n' + get_work_time() + " - Site '{}' is not available.".format(address))
+            printl('\n' + get_work_time() + " - Site '{}' is not available.".format(ncbi_server))
             print("Check your Internet connection.\a")
-            print("Status code: {}".format(status_code))
+            printl("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
         return
     except OSError as err:
 
-        print('\n' + get_work_time() + " - Site '{}' is not available.".format(address))
+        printl('\n' + get_work_time() + " - Site '{}' is not available.".format(ncbi_server))
         print("Check your Internet connection.\a")
-        print('\n' + '=/' * 20)
-        print( str(err) )
+        printl( str(err) )
 
         # 'urllib.request.HTTPError' can provide a user with information about the error
         if isinstance(err, HTTPError):
-            print("Status code: {}".format(err.code))
-            print(err.reason)
+            printl("Status code: {}".format(err.code))
+            printl(err.reason)
         # end if
         platf_depend_exit(-2)
     # end try
@@ -519,7 +554,7 @@ def rename_file_verbosely(file, pardir):
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
 
     try:
-        print('\n' + get_work_time() + " - Renaming old {}:".format(word))
+        printl('\n' + get_work_time() + " - Renaming old {}:".format(word))
         if not os.path.isdir(file):
             name_itself = re_search(r"(.*)\..*$", file).group(1)
             ext = re_search(r".*\.(.*)$", file).group(1)
@@ -529,12 +564,12 @@ def rename_file_verbosely(file, pardir):
         # end if
         num_analog_files = str(num_analog_files)
         new_name = name_itself+"_old_"+num_analog_files+ext
-        print("\t'{}' --> '{}'".format(file, new_name))
+        printl("  '{}' --> '{}'".format(file, new_name))
         os.rename(file, new_name)
     except Exception as err:
         # Anything (and not only strings) can be passed to the function
-        print("\n {} '{}' cannot be renamed:".format( word, str(file)) )
-        print( str(err) + '\n')
+        printl("\n {} '{}' cannot be renamed:".format( word, str(file)) )
+        printl( str(err) + '\n')
         platf_depend_exit(1)
     # end try
 # end def rename_file_verbosely
@@ -582,9 +617,9 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
                 last_line = lines[-1]
                 last_seq_id = last_line.split(DELIM)[0]
             except Exception as err:
-                print("\nData in result file '{}' is broken.".format(tsv_res_fpath))
-                print( str(err) )
-                print("Start from the beginning.")
+                printl("\nData in result file '{}' is broken. Exact reason:".format(tsv_res_fpath))
+                printl( str(err) )
+                printl("Start from the beginning.")
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 return None
@@ -605,7 +640,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
             temp_line = tmp_file.readline()
         # end with
         packet_size = int(re_search(r"packet_size: {}", temp_line).group(1).strip())
-        print("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
+        printl("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
     except Exception as err:
         pass
     finally:
@@ -783,7 +818,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
         # Just in case
         if packet is "":
-            print("Recent packet is empty")
+            printl("Recent packet is empty")
             return
         # end if
 
@@ -816,7 +851,7 @@ def get_gi_by_acc(acc):
     try:
         gi_num = acc_dict[acc][0]
     except KeyError:
-        print_error("GI number error. Please, contact the developer")
+        printl(err_fmt("GI number error. Please, contact the developer"))
         platf_depend_exit(1)
     # end try
     
@@ -869,9 +904,13 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
             sleep(1) # instant updates are not necessary
         # end while
         
-        # Print total size of downloaded file
-        fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
-        print("\r{} - {} MB downloaded \n".format(get_work_time(), fsize))
+        # Print total size of downloaded file (it can be deleted by this time)
+        try:
+            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
+        except OSError:
+            pass # we can pass this ecxeption -- we do delete this file if downloading crushes
+        # end try
+        printl("\r{} - {} MB downloaded \n".format(get_work_time(), fsize))
     # end def download_waiter
 
     error = True
@@ -880,12 +919,13 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
             waiter = threading.Thread(target=download_waiter) # create thread
             stop_wait = False # raise the flag
             waiter.start() # start waiting
-            print("\n{} - Downloading sequences for local database building started".format(get_work_time()))
+            printl("\n{} - Downloading sequences for local database building started".format(get_work_time()))
             urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
         except Exception as err:
-            print_error("error while downloading FASTA files")
-            print( str(err) )
-            print("'barapost.py' will try again in 30 seconds")
+            stop_wait = True
+            printl(err_fmt("error while downloading FASTA files"))
+            printl( str(err) )
+            printl("'barapost.py' will try again in 30 seconds")
             os.unlink(local_fasta)
             sleep(30)
         else:
@@ -896,7 +936,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
         # end try
     # end while
 
-    print("{} - Downloading is completed".format(get_work_time()))
+    printl("{} - Downloading is completed".format(get_work_time()))
 
     return local_fasta
 # end def retrieve_fastas_by_gi
@@ -922,17 +962,17 @@ def build_local_db(acc_dict, prober_res_dir):
         #If this directory exists
 
         while True:
-            print("Database directory exists.")
+            printl("Database directory exists.")
             if len(os.listdir(db_dir)) == 0:
                 # If it is empty -- nothing stops us. break and build a database
-                print("It is empty. Building a database...")
+                printl("It is empty, however. Building a database...")
                 break
             else:
                 # If there are some files, the user will decide, whether to use this database
                 # or to remove it and to build again (e.g. if the database haven't been builded successfully) .
-                print("Here are files located in this directory:")
+                printl("Here are files located in this directory:")
                 for i, file in enumerate(os.listdir(db_dir)):
-                    print("  {}. '{}'".format(i+1, file))
+                    printl("  {}. '{}'".format(i+1, file))
                 # end for
 
                 reply = input("""\nPress ENTER to continue aligning using this database.
@@ -940,14 +980,15 @@ Enter 'r' to remove all files in this directory and build the database from the 
 
                 if reply == "":
                     # Do not build a database, just return path to it.
-                    print() # just print blank line
+                    printl() # just print blank line
                     return os.path.join(db_dir, "local_seq_set.fasta")
                 
                 elif reply == 'r':
                     # Empty this directory and break from the loop in order to build a database.
                     for file in os.listdir(db_dir):
-                        if os.path.exists(file):
-                            os.unlink(file)
+                        full_path = os.path.join(db_dir, file)
+                        if os.path.exists(full_path):
+                            os.unlink(full_path)
                         # end if
                     # end for
 
@@ -955,8 +996,8 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     putative_dirs = list( map(lambda f: os.path.join(prober_res_dir, f), os.listdir(prober_res_dir)) )
                     old_dirs = list( filter(lambda f: True if os.path.isdir(f) and not f.endswith("local_database") else False, putative_dirs) )
                     if len(old_dirs) > 0:
-                        print("\n Directories with results of using old database are found.")
-                        print("Renaming them...")
+                        printl("\n Directories with results of using old database are found.")
+                        printl("Renaming them...")
                         for directory in old_dirs:
                             rename_file_verbosely(directory, prober_res_dir)
                         # end for
@@ -977,12 +1018,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
         check_connection()
         print("OK\n")
 
-        print("""Following sequences will be downloaded from Genbank
+        printl("""Following sequences will be downloaded from Genbank
     for further aligning on your local machine with 'blast+' toolkit:\n""")
         for i, acc in enumerate(acc_dict.keys()):
-            print(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
+            printl(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
         # end for
-        print()
+        printl()
     # end if
     
     # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
@@ -1056,7 +1097,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 # Add assembled sequences to database
                 fasta_db = open(local_fasta, 'a')
                 for assm_path in assm_lst:
-                    print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
+                    printl("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
 
                     how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
                     with how_to_open(assm_path) as fasta_file:
@@ -1081,7 +1122,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # No 'with open' here in order not to indent too much.
         fasta_db = open(local_fasta, 'a')
         for own_fasta_path in your_own_fasta_lst:
-            print("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(own_fasta_path)))
+            printl("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(own_fasta_path)))
 
             how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
             with how_to_open(own_fasta_path) as fasta_file:
@@ -1107,26 +1148,26 @@ Enter 'r' to remove all files in this directory and build the database from the 
     make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
     exit_code = os.system(make_db_cmd) # make a blast-format database
     if exit_code != 0:
-        print_error("error while making the database")
+        printl(err_fmt("error while making the database"))
         platf_depend_exit(exit_code)
     # end if
     
-    print("""{} - Database is successfully created:
-'{}'\n""".format(get_work_time(), local_fasta))
+    printl("""{} - Database is successfully created:
+  '{}'\n""".format(get_work_time(), local_fasta))
 
-    print("{} - Database index creating started".format(get_work_time()))
+    printl("{} - Database index creating started".format(get_work_time()))
     # Configure command line
     make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
     exit_code = os.system(make_index_cmd) # create an index for the database
     if exit_code != 0:
-        print_error("error while creating database index")
+        printl(err_fmt("error while creating database index"))
         platf_depend_exit(exit_code)
     # end if
     
-    print("{} - Database index has been successfully created\n".format(get_work_time()))
+    printl("{} - Database index has been successfully created\n".format(get_work_time()))
 
     # Gzip downloaded FASTA file in order to save space on disk
-    print("Gzipping downloaded FASTA file:\n '{}'".format(local_fasta))
+    printl("Gzipping downloaded FASTA file:\n '{}'".format(local_fasta))
 
     # GNU gzip utility is faster, but there can be presence of absence of it
     gzip_util = "gzip"
@@ -1148,7 +1189,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         os.unlink(local_fasta) # remove source FASTA file, not the database
     # end if
 
-    print() # just print blank line
+    printl() # just print blank line
     return local_fasta
 # end def build_local_db
 
@@ -1198,8 +1239,8 @@ def launch_blastn(packet, blast_algorithm):
     stdout_stderr = pipe.communicate()
 
     if pipe.returncode != 0:
-        print_error("error while aligning a sequence against local database")
-        print(stdout_stderr[1].decode("utf-8"))
+        printl(err_fmt("error while aligning a sequence against local database"))
+        printl(stdout_stderr[1].decode("utf-8"))
         exit(pipe.returncode)
     # end if
 
@@ -1298,12 +1339,12 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     # /=== Validation ===/
 
     if "Bad Gateway" in xml_text:
-        print('\n' + '=' * 45)
-        print(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
-        print("It would be better if you restart the script.")
-        print("Here are names of lost queries:")
+        printl('\n' + '=' * 45)
+        printl(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
+        printl("It would be better if you restart the script.")
+        printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            print("{}. '{}'".format(i+1, name))
+            printl("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
         # end for
         
@@ -1313,11 +1354,11 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     # end if
 
     if "to start it again" in xml_text:
-        print('\n' + get_work_time() + "BLAST ERROR!")
+        printl('\n' + get_work_time() + "BLAST ERROR!")
 
-        print("Here are names of lost queries:")
+        printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            print("{}. '{}'".format(i+1, name))
+            printl("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         # end for
 
@@ -1437,8 +1478,8 @@ def get_curr_res_dir(fq_fa_path, prober_res_dir):
         try:
             os.makedirs(new_dpath)
         except OSError as err:
-            print_error("error while creating directory '{}'".format(new_dpath))
-            print( str(err) )
+            printl(err_fmt("error while creating directory '{}'".format(new_dpath)))
+            printl( str(err) )
             platf_depend_exit(1)
         # end try
     # end if
@@ -1486,9 +1527,9 @@ def configure_acc_dict(acc_fpath):
                         acc_dict[acc] = (gi, name)
                     
                     except IndexError as inderr:
-                        print_error("invalid data in file '{}'!".format(acc_fpath))
-                        print("Seems, you have written path to file that does not exist or not a FASTA file.")
-                        print("Here is this invalid line:\n   '{}'".format(line))
+                        printl(err_fmt("invalid data in file '{}'!".format(acc_fpath)))
+                        printl("Seems, you have written path to file that does not exist or not a FASTA file.")
+                        printl("Here is this invalid line:\n   '{}'".format(line))
                         platf_depend_exit(1)
                     # end try
                 else:
@@ -1499,7 +1540,7 @@ def configure_acc_dict(acc_fpath):
     # end with
 
     if len(acc_dict) == 0:
-        print_error("no accession information found in file '{}".format(acc_fpath))
+        printl(err_fmt("no accession information found in file '{}".format(acc_fpath)))
         platf_depend_exit(1)
     # end if
 
@@ -1623,7 +1664,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         curr_fasta = fastq2fasta(fq_fa_path, new_dpath)
 
         if not parallel:
-            print("\n {}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
+            printl("\n {}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
         # end if
 
         # "hname" means human readable name (i.e. without file path and extention)
@@ -1648,13 +1689,27 @@ def process_multiple_files(fq_fa_list, parallel=False):
             tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         # end if
 
+        if num_done_reads == curr_fasta["nreads"]:
+            if not parallel:
+                printl("\nFile '{}' have been already completely processed.".format(fq_fa_path))
+                printl("Omitting it.")
+            else:
+                perc_array[ path2idc_dict[intern(fq_fa_path)] ] = 100
+                with print_lock:
+                    logfile.write("File '{}' have been already completely processed.\n".format(fq_fa_path))
+                    logfile.write("   Omitting it.\n")
+                    logfile.flush()
+                # end with
+            # end if
+            continue
+        # end if
 
         if not parallel:
             if num_done_reads > 0:
                 verb, s_letter = ("have", "s") if num_done_reads != 1 else ("has", "")
-                print("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
+                printl("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
             # end if
-            print("Writing results to file:\n '{}'\n".format(tsv_res_path))
+            printl("Writing results to file:\n '{}'\n".format(tsv_res_path))
         # end if
 
         packs_at_all = (curr_fasta["nreads"] - num_done_reads) // packet_size # Calculate total number of packets sent from current FASTA file
@@ -1665,7 +1720,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         packs_left = packs_at_all - packs_processed
 
         if not parallel:
-            printn("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
+            println("\r{} - (0/{}) sequence packets processed ".format(get_work_time(), packs_at_all))
         else:
             next_done_perc = 0.05
             perc_step = 0.05
@@ -1695,12 +1750,13 @@ def process_multiple_files(fq_fa_list, parallel=False):
             # end if
 
             if not parallel:
-                printn("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_i+1, packs_at_all))
+                println("\r{} - ({}/{}) sequence packets processed ".format(get_work_time(), pack_i+1, packs_at_all))
             
             elif parallel and (pack_i+1) / packs_at_all >= next_done_perc:
                 next_done_perc = round(next_done_perc + perc_step, 2)
                 with print_lock:
-                    print("\033[{}A".format(nfiles+1))
+                    print("\033[{}A".format(nfiles+2))
+                    print(" Time passed: {}".format(get_work_time()))
                     i = 1
                     for path, perc_i in path2idc_dict.items():
                         path = os.path.basename(path)
@@ -1717,7 +1773,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         # end for
         
         if not parallel:
-            print() # just print blank line
+            printl() # just print blank line
         # end if
         remove_tmp_files(tmp_fpath)
     # end for
@@ -1792,7 +1848,7 @@ def process_part_of_file(data, tsv_res_path, qual_dict, seqs_left):
         # end with
 
         with print_lock:
-            printn("\r{} - ({}/{}) sequences processed ".format(get_work_time(), pack_i.value, seqs_left))
+            println("\r{} - ({}/{}) sequences processed ".format(get_work_time(), pack_i.value, seqs_left))
         # end with
     # end for
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
@@ -1818,7 +1874,7 @@ def process_single_file_in_paral(fq_fa_path, i):
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, new_dpath)
 
-    print("\n{}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
+    printl("\n{}. '{}' ({} sequences) - start processing".format(i+1, os.path.basename(fq_fa_path), curr_fasta["nreads"]))
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
@@ -1839,12 +1895,18 @@ def process_single_file_in_paral(fq_fa_path, i):
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
     # end if
 
+    if num_done_reads == curr_fasta["nreads"]:
+        printl("\nFile '{}' have been already completely processed.".format(fq_fa_path))
+        printl("Omitting it.")
+        return
+    # end if
+
     if num_done_reads > 0:
         verb, s_letter = ("have", "s") if num_done_reads != 1 else ("has", "")
-        print("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
+        printl("{} sequence{} {} been already processed.".format(num_done_reads, s_letter, verb))
     # end if
     
-    print("Writing results to file:\n '{}'\n".format(tsv_res_path))
+    printl("Writing results to file:\n '{}'\n".format(tsv_res_path))
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -1865,11 +1927,11 @@ def process_single_file_in_paral(fq_fa_path, i):
     pool = mp.Pool(n_thr, initializer=init_proc_single_file_in_paral,
         initargs=(print_lock, write_lock, pack_i, pack_i_lock))
 
-    printn("\r{} - (0/{}) sequences processed ".format(get_work_time(), seqs_left))
+    println("\r{} - (0/{}) sequences processed ".format(get_work_time(), seqs_left))
 
     pool.starmap(process_part_of_file, [(file_part["fasta"], tsv_res_path, qual_dict, seqs_left) for file_part in fasta_packets(curr_fasta["fpath"],
         file_part_size, curr_fasta["nreads"], num_done_reads)])
-    print() # just print blank line
+    printl() # just print blank line
 # end def process_single_file_in_paral
 
 
@@ -1877,24 +1939,24 @@ def process_single_file_in_paral(fq_fa_path, i):
 # =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
 #                       |===== Proceed =====|
 
-print(" - Packet size: {} sequences;".format(packet_size))
-print(" - BLAST algorithm: {};".format(blast_algorithm))
-print(" - Threads: {};\n".format(n_thr))
+printl(" - Packet size: {} sequences;".format(packet_size))
+printl(" - BLAST algorithm: {};".format(blast_algorithm))
+printl(" - Threads: {};\n".format(n_thr))
 
-print(" Following files will be processed:")
+printl(" Following files will be processed:")
 for i, path in enumerate(fq_fa_list):
-    print("   {}. '{}'".format(i+1, path))
+    printl("   {}. '{}'".format(i+1, path))
 # end for
 
 if not len(your_own_fasta_lst) == 0:
     preposition = "besides" if os.path.exists(acc_fpath) else "instead of"
-    print("\n Following FASTA files will be added to database {} downloaded ones:".format(preposition))
+    printl("\n Following FASTA files will be added to database {} downloaded ones:".format(preposition))
     for i, path in enumerate(your_own_fasta_lst):
-        print("   {}. '{}'".format(i+1, path))
+        printl("   {}. '{}'".format(i+1, path))
     # end for
 # end if
 
-print('-'*30 + '\n')
+printl('-'*30 + '\n')
 
 # It is a dictionary of accessions and record names.
 # Accessions are keys, tuples of GI numbers record names are values.
@@ -1910,9 +1972,9 @@ if not os.path.isdir(queries_tmp_dir):
     try:
         os.makedirs(queries_tmp_dir)
     except OSError as oserr:
-        print_error("unable to create query directory")
-        print( str(oserr) )
-        print("Barapost just tried to create directory '{}' and crushed.".format(queries_tmp_dir))
+        printl(err_fmt("unable to create query directory"))
+        printl( str(oserr) )
+        printl("Barapost just tried to create directory '{}' and crushed.".format(queries_tmp_dir))
         platf_depend_exit(1)
     # end try
 # end if
@@ -1933,6 +1995,7 @@ if not os.path.isdir(queries_tmp_dir):
 
 if n_thr <= len(fq_fa_list):
     if n_thr != 1:
+        print(" Time passed: {}".format(get_work_time()))
         for i, path in enumerate(fq_fa_list):
             path = os.path.basename(path)
             if len(path) + 12 >= get_terminal_size().columns:
@@ -1969,16 +2032,17 @@ else:
 # end if
 
 # Directory with tmp query files must be empty now, therefore just 'os.rmdir' is used:
+from shutil import rmtree
 try:
-    os.rmdir(queries_tmp_dir)
+    rmtree(queries_tmp_dir)
 except OSError as oserr:
-    print_error("unable to delete directory '{}'".format(queries_tmp_dir))
-    print( str(oserr) )
-    print("Please, contact the developer.\n")
-    print("Don't worry -- barapost has completed it's job just fine,")
-    print("   the only thing that some temporary files are left in the directory mentioned above.\n")
+    printl(err_fmt("unable to delete directory '{}'".format(queries_tmp_dir)))
+    printl( str(oserr) )
+    printl("Please, contact the developer.\n")
+    printl("Don't worry -- barapost has completed it's job just fine,")
+    printl("   the only thing that some temporary files are left in the directory mentioned above.\n")
 # end try
 
 end_time = time()
-print( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Task is completed successfully!\n")
+printl( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
 platf_depend_exit(0)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.8.c
+# Version 1.9.a
 # 02.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober.py (version 1.8.c) ===|\n")
+print("\n |=== prober.py (version 1.9.a) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -63,9 +63,9 @@ def platf_depend_exit(exit_code):
 # end def platf_depend_exit
 
 
-def print_error(text):
-    """Function for printing error messages"""
-    print("\n   \a!! - ERROR: " + text + '\n')
+def err_fmt(text):
+    """Function for configuring error messages"""
+    return "\n   \a!! - ERROR: " + text + '\n'
 # end def print_error
 
 
@@ -177,7 +177,7 @@ blast_algorithm = "megaBlast"
 organisms = list() # default is whole 'nt' database
 
 if len(args) != 0:
-    print_error("prober.py does not take any positional arguments")
+    print(err_fmt("prober.py does not take any positional arguments"))
     print("Here are positional arguments specified by you:")
     for a in args:
         print(' ' + a)
@@ -194,12 +194,12 @@ for opt, arg in opts:
 
     if opt in ("-f", "--infile"):
         if not os.path.exists(arg):
-            print_error("file '{}' does not exist!".format(arg))
+            print(err_fmt("file '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
         
         if not is_fq_or_fa(arg):
-            print_error("file '{}' is not '.fastq' or '.fasta'!".format(arg))
+            print(err_fmt("file '{}' is not '.fastq' or '.fasta'!".format(arg)))
             platf_depend_exit(1)
         # end if
         
@@ -208,12 +208,12 @@ for opt, arg in opts:
     
     if opt in ("-d", "--indir"):
         if not os.path.exists(arg):
-            print_error("directory '{}' does not exist!".format(arg))
+            print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
         
         if not os.path.isdir(arg):
-            print_error("'{}' is not a directory!".format(arg))
+            print(err_fmt("'{}' is not a directory!".format(arg)))
             platf_depend_exit(1)
         # end if
         
@@ -234,14 +234,14 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print_error("packet_size (-p option) must be integer number from 1 to 500")
+            print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
             platf_depend_exit(1)
         # end try
     # end if
 
     if opt in ("-a", "--algorithm"):
         if not arg in ("megaBlast", "discoMegablast", "blastn"):
-            print_error("invalid value specified by '-a' option!")
+            print(err_fmt("invalid value specified by '-a' option!"))
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
             platf_depend_exit(1)
         # end if
@@ -274,11 +274,11 @@ for opt, arg in opts:
             # end for
         except ValueError:
             print("\n" + "=/"*20 + "\n")
-            print_error("TaxID should be positive integer number\a")
+            print(err_fmt("TaxID should be positive integer number\a"))
             platf_depend_exit(1)
         except Exception as err:
             print("\n" + "=/"*20 + "\n")
-            print_error("ERROR: invalid organisms (-g option) input format")
+            print(err_fmt("ERROR: invalid organisms (-g option) input format"))
             print( str(err) )
             platf_depend_exit(1)
         # end try
@@ -291,7 +291,7 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print_error("probing batch size ('-b' option) must be positive integer number!")
+            print(err_fmt("probing batch size ('-b' option) must be positive integer number!"))
             platf_depend_exit(1)
         # end try
     # end if
@@ -302,23 +302,19 @@ for opt, arg in opts:
 if len(fq_fa_list) == 0:
     # If input directory was specified -- exit
     if not indir_path is None:
-        print_error("""no input FASTQ or FASTA files specified
-    # end if
-    or there is no FASTQ and FASTA files in the input directory.\n""")
+        print(err_fmt("""no input FASTQ or FASTA files specified
+    or there is no FASTQ and FASTA files in the input directory.\n"""))
         platf_depend_exit(1)
     
     # If input directory was not specified -- look for FASTQ files in current directory
     else:
         fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
         if len(fq_fa_list) == 0:
-            print_error("there is no FASTQ or FASTA files to process found.")
+            print(err_fmt("there is no FASTQ or FASTA files to process found."))
             platf_depend_exit(1)
         # end if
+    # end if
 # end if
-
-del help_msg # we do not need this large string object any more
-
-print( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # |===== Functionality for proper processing of gzipped files =====|
@@ -338,10 +334,10 @@ FORMATTING_FUNCS = (
 # Delimiter for result tsv file:
 DELIM = '\t'
 
-
 # File format constants:
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
+
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
@@ -359,7 +355,6 @@ for file in fq_fa_list:
     # end if
 # end for
 
-
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
@@ -375,7 +370,7 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
         elif reply == 'q':
             platf_depend_exit(0)
         else:
-            print_error("invalid reply")
+            print(err_fmt("invalid reply"))
             continue
         # end if
     # end while
@@ -384,6 +379,47 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
 if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):
     probing_batch_size = seqs_at_all
 # end if
+
+del help_msg # we do not need this large string object any more
+
+
+if not os.path.isdir(outdir_path):
+    try:
+        os.makedirs(outdir_path)
+    except OSError as oserr:
+        print_error("unable to create result directory")
+        print( str(oserr) )
+        print("Prober just tried to create directory '{}' and crushed.".format(outdir_path))
+        platf_depend_exit(1)
+    # end try
+# end if
+
+# There some troubles with file extention on Windows, so let's make a .txt file for it:
+log_ext = ".log" if not platform.startswith("win") else ".txt"
+logfile_path = os.path.join(outdir_path, "prober_log_{}{}".format(strftime("%d-%m-%Y_%H-%M-%S", localtime(start_time)), log_ext))
+logfile = open(logfile_path, 'w')
+
+def printl(text=""):
+    """
+    Function for printing text to console and to log file.
+    """
+    print(text)
+    logfile.write(str(text).strip('\r') + '\n')
+    logfile.flush()
+# end def printl
+
+def println(text=""):
+    """
+    Function for printing text to console and to log file.
+    The only difference from 'printl' -- text that is printed to console does not end with '\\n'
+    """
+    printn(text)
+    logfile.write(str(text).strip('\r') + '\n')
+    logfile.flush()
+# end def printl
+
+logfile.write((" |=== prober.py (version 1.9.a) ===|\n\n"))
+printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
@@ -400,22 +436,21 @@ def check_connection():
         status_code = urllib.request.urlopen(ncbi_server).getcode()
         # Just in case
         if status_code != 200:
-            print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            printl('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
             print("Check your Internet connection.\a")
-            print("Status code: {}".format(status_code))
+            printl("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
         return
     except OSError as err:
-        print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        printl('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
-        print('\n' + '=/' * 20)
-        print( str(err) )
+        printl( str(err) )
 
         # 'urllib.request.HTTPError' can provide a user with information about the error
         if isinstance(err, HTTPError):
-            print("Status code: {}".format(err.code))
-            print(err.reason)
+            printl("Status code: {}".format(err.code))
+            printl(err.reason)
         # end if
         platf_depend_exit(-2)
     # end try
@@ -598,7 +633,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
         # end with
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
-        print("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
+        printl("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
     
     # IF FASTA file is already created
     # We need only number of sequences in it.
@@ -614,7 +649,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
         fasta_path = fq_fa_path
     # end if
 
-    print("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(fasta_path), num_reads))
+    printl("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(fasta_path), num_reads))
     return {"fpath": fasta_path, "nreads": num_reads}
 # end def fastq2fasta
 
@@ -627,13 +662,13 @@ def rename_file_verbosely(file, directory):
         is_analog = lambda f: file[:os.path.basename(file).rfind('.')] in f
         num_analog_files = len( list(filter(is_analog, os.listdir(directory))) )
 
-        print('\n' + get_work_time() + " - Renaming old file:")
+        printl('\n' + get_work_time() + " - Renaming old file:")
         name_itself = file[: file.rfind('.')]
         ext = file[file.rfind('.'):]
         num_analog_files = str(num_analog_files)
         new_name = name_itself+"_old_"+num_analog_files+ext
 
-        print("   '{}' --> '{}'".format(os.path.basename(file), new_name))
+        printl("   '{}' --> '{}'".format(os.path.basename(file), new_name))
         os.rename(file, new_name)
     # end if
 # end def rename_file_verbosely
@@ -680,8 +715,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     continuation = None
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
-        print('\n' + get_work_time() + " - The previous result file is found in the directory:")
-        print("   '{}'".format(new_dpath))
+        printl('\n' + get_work_time() + " - The previous result file is found in the directory:")
+        printl("   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
         continuation = is_continued()
         if not continuation:
@@ -693,7 +728,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     
     # Find the name of last successfull processed sequence
     if continuation == True:
-        print("Let's try to continue...")
+        printl("Let's try to continue...")
 
         # Collect information from result file
         if os.path.exists(tsv_res_fpath):
@@ -706,15 +741,15 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     last_seq_id = last_line.split(DELIM)[0]
                 # end with
             except Exception as err:
-                print("\nData in result file '{}' not found or broken.".format(tsv_res_fpath))
-                print( str(err) )
-                print("Start from the beginning.")
+                printl("\nData in result file '{}' not found or broken. Reason:".format(tsv_res_fpath))
+                printl( ' ' + str(err) )
+                printl("Start from the beginning.")
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 rename_file_verbosely(acc_fpath, new_dpath)
                 return None
             else:
-                print("Last sent sequence: " + last_seq_id)
+                printl("Last sent sequence: " + last_seq_id)
             # end try
         # end if
         
@@ -733,18 +768,18 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     # end for
                 # end with
             except Exception as err:
-                print("\nData in accession file '{}' not found or broken.".format(acc_fpath))
-                print( str(err) )
-                print("Start from the beginning.")
+                printl("\nData in accession file '{}' not found or broken. Reason:".format(acc_fpath))
+                printl( ' ' + str(err) )
+                printl("Start from the beginning.")
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
                 rename_file_verbosely(tmp_fpath, new_dpath)
                 rename_file_verbosely(acc_fpath, new_dpath)
                 return None
             else:
-                print("\nHere are Genbank records encountered during previous run:")
+                printl("\nHere are Genbank records encountered during previous run:")
                 for acc in acc_dict.keys():
                     s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    print(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
+                    printl(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
                 # end for
                 print()
             # end try
@@ -769,21 +804,20 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         
         except Exception as exc:
             total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path))
-            print("\n    Attention! Temporary file not found or broken!")
-            print( str(exc) )
-            print("{} sequences have been already processed.".format(num_done_reads))
-            print("There are {} sequences totally in file '{}'.".format(total_num_seqs, os.path.basename(fasta_path)))
-            print("Maybe you've already processed this file with 'prober.py'?\n")
+            printl("\n    Attention! Temporary file not found or broken! Reason:")
+            printl( ' ' + str(exc) )
+            printl("{} sequences have been already processed.".format(num_done_reads))
+            printl("There are {} sequences totally in file '{}'.".format(total_num_seqs, os.path.basename(fasta_path)))
+            printl("Maybe you've already processed this file with 'prober.py'?\n")
 
             reply = "BULLSHIT"
             global omit_file
             while True:
                 reply = input("Press ENTER to omit this file and go to the next one.\n \
- Or enter 'c' to to continue processing this file:>>")
+ Or enter 'c' to continue processing this file:>>")
                 if reply == 'c':
                     if num_done_reads >= total_num_seqs:
-                        print_error("there are no sequences left to process in this file")
-                        print("Omitting this file")
+                        printl("There are no sequences left to process in this file. Omitting it.")
                         omit_file = True
                         return
                     # end if
@@ -791,16 +825,16 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     break
                 elif reply == "":
                     omit_file = True
-                    global seqs_processed
-                    seqs_processed += num_done_reads
+                    # global seqs_processed
+                    # seqs_processed += num_done_reads
                     return
                 else:
-                    print_error("invalid reply")
+                    print(err_fmt("invalid reply"))
                 # end if
             # end while
 
-            print("{} reads have been already processed".format(num_done_reads))
-            print("{} reads left".format(total_num_seqs - num_done_reads))
+            printl("{} reads have been already processed".format(num_done_reads))
+            printl("{} reads left".format(total_num_seqs - num_done_reads))
             packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
                 "pack_size": packet_size,
@@ -833,69 +867,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     
     return None
 # end def look_around
-
-
-
-def get_packet(fasta_file, packet_size, fmt_func):
-    """
-    Function collects the packet of query sequences to send to BLAST server.
-
-    :param fasta_file: file instance of FASTA file to retrieve sequences from;
-    :type fasta_file: _io.TextIOWrapper;
-    :param packet_size: number of query sequences to send as a particular request;
-    :type packet_size: int;
-
-    Returns dict of the following structure:
-    {
-        "fasta": FASTA_data_containing_query_sequences (str),
-        "names": list_of_sequence_ids_from_fasta_file (list<str>)
-    }
-    """
-
-    global next_id_line
-    line = fmt_func(fasta_file.readline())
-    if line.startswith('>') and ' ' in line:
-        line = line.partition(' ')[0]+'\n'
-    # end if
-    
-    packet = ""
-
-    i = 0
-    if not next_id_line is None:
-        packet += next_id_line
-    # end if
-    packet += line
-
-    while i < packet_size:
-
-        line = fmt_func(fasta_file.readline())
-        if line.startswith('>'):
-            if ' ' in line:
-                line = line.partition(' ')[0]+'\n'
-            # end if
-            i += 1
-        # end if
-        
-        if line == "":
-            break
-        # end if
-        packet += line
-    # end while
-    
-    if line != "":
-        next_id_line = packet.splitlines()[-1]+'\n'
-        packet = '\n'.join(packet.splitlines()[:-1])
-    
-    else:
-        next_id_line = None
-        packet = packet.strip()
-    # end if
-    
-    names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-    names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
-
-    return {"fasta": packet.strip(), "names": names}
-# end def get_packet
 
 
 def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
@@ -1019,7 +990,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
             # Just in case
             if packet is "":
-                print("Recent packet is empty")
+                printl("Recent packet is empty")
                 return
             # end if
 
@@ -1127,9 +1098,9 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
             response = conn.getresponse() # get the response
             response_text = str(response.read(), "utf-8") # get response text
         except OSError as oserr:
-            print(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            print( repr(err) )
-            print("barapost will try to connect again in 30 seconds...\n")
+            printl(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            printl( repr(err) )
+            printl("barapost will try to connect again in 30 seconds...\n")
             sleep(30)
         
         # if no exception occured
@@ -1142,8 +1113,8 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
         rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
         rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
     except AttributeError:
-        print_error("seems, ncbi has denied your request.")
-        print("Response is in file 'request_denial_response.html'")
+        printl(err_fmt("seems, ncbi has denied your request."))
+        printl("Response is in file 'request_denial_response.html'")
         with open("request_denial_response.html", 'w') as den_file:
             den_file.write(response_text)
         # end with
@@ -1183,15 +1154,15 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     Returns XML response ('str').
     """
 
-    print("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
+    printl("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
     rid, filename, pack_to_send, packs_at_all))
     # RTOE can be zero at the very beginning of continuation
     if rtoe > 0:
-        print("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
-        print("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
+        printl("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
+        printl("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
         # Server migth be wrong -- we will give it 3 extra seconds
         sleep(rtoe + 3)
-        print("{} - {} seconds have passed. Checking if alignment is accomplished...".format(get_work_time(), rtoe+3))
+        printl("{} - {} seconds have passed. Checking if alignment is accomplished...".format(get_work_time(), rtoe+3))
     # end if
 
     server = "blast.ncbi.nlm.nih.gov"
@@ -1205,33 +1176,33 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
                 conn = http.client.HTTPSConnection(server) # create connection
                 conn.request("GET", wait_url) # ask for if there areresults
             except TimeoutError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             except http.client.RemoteDisconnected as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             except socket.gaierror as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             except ConnectionResetError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             except FileNotFoundError as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             except http.client.CannotSendRequest as err:
-                print("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                print("   " + str(err))
+                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+                printl("   " + str(err))
                 error = True
                 sleep(30)
             else:
@@ -1245,7 +1216,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
-            printn("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
+            println("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
             # indicate each 10 seconds with a dot
             for i in range(1, 7):
                 sleep(10)
@@ -1256,14 +1227,14 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         # end if
         if "Status=FAILED" in resp_content:
             # if job failed
-            print('\n' + get_work_time() + " - Job failed\a\n")
+            printl('\n' + get_work_time() + " - Job failed\a\n")
             response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return response_text
         # end if
         # if job expired
         if "Status=UNKNOWN" in resp_content:
-            print('\n' + get_work_time() + " - Job expired\a\n")
+            printl('\n' + get_work_time() + " - Job expired\a\n")
             respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
     Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
@@ -1271,22 +1242,22 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         # if results are ready
         if "Status=READY" in resp_content:
             there_are_hits = True
-            print("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
+            printl("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
             # if there are hits
             if "ThereAreHits=yes" in resp_content:
                 for i in range(45, 0, -5):
-                    print('-' * i)
+                    printl('-' * i)
                 # end for
                 print() # just print a blank line
                 break
             # if there are no hits
             else:
-                print(get_work_time() + " - There are no hits. It happens.\n")
+                printl(get_work_time() + " - There are no hits. It happens.\n")
                 break
             # end if
         # end if
         # Execution should not reach here
-        print('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
+        printl('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
         platf_depend_exit(1)
     # end while
 
@@ -1300,10 +1271,10 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     conn.close()
 
     if "[blastsrv4.REAL]" in respond_text:
-        print("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
-        print("Let's try to prune these sequences.")
-        print("""All sequences in this packet will be shorten twice
-and the packet will be resent to BLAST server.""")
+        printl("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
+        printl("Let's try to prune these sequences.")
+        printl("""All sequences in this packet will be halved
+  and the packet will be resent to BLAST server.""")
         return None
     # end if
 
@@ -1316,9 +1287,9 @@ and the packet will be resent to BLAST server.""")
 # end def wait_for_align
 
 
-def prune_seqs_twice(packet):
+def halve_seqs(packet):
     """
-    Function prunes all sequences in packet twice, leaving 5'-half of the sequence.
+    Function halves all sequences in packet, leaving 5'-half of the sequence.
 
     :param packet: FASTA data;
     :type packet: str;
@@ -1332,7 +1303,7 @@ def prune_seqs_twice(packet):
     # end for
 
     return '\n'.join(lines).strip()
-# end def prune_seqs_twice
+# end def halve_seqs
 
 
 def save_txt_align_result(server, filename, pack_to_send, rid):
@@ -1385,33 +1356,33 @@ def parse_align_results_xml(xml_text, seq_names):
     # /=== Validation ===/
 
     if "Bad Gateway" in xml_text:
-        print('\n' + '=' * 45)
-        print(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
-        print("It would be better if you restart the script.")
-        print("Here are names of lost queries:")
+        printl('\n' + '=' * 45)
+        printl(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
+        printl("It would be better if you restart the script.")
+        printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            print("{}. '{}'".format(i+1, name))
+            printl("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
         # end for
         return result_tsv_lines
     # end if
 
     if "Status=FAILED" in xml_text:
-        print('\n' + get_work_time() + "BLAST ERROR!: request failed")
-        print("Here are names of lost queries:")
+        printl('\n' + get_work_time() + "BLAST ERROR!: request failed")
+        printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            print("{}. '{}'".format(i+1, name))
+            printl("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         # end for
         return result_tsv_lines
     # end if
 
     if "to start it again" in xml_text:
-        print('\n' + get_work_time() + "BLAST ERROR!")
+        printl('\n' + get_work_time() + "BLAST ERROR!")
 
-        print("Here are names of lost queries:")
+        printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            print("{}. '{}'".format(i+1, name))
+            printl("{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         # end for
         return result_tsv_lines
@@ -1477,7 +1448,7 @@ def parse_align_results_xml(xml_text, seq_names):
             pident_ratio = round( float(pident) / int(align_len) * 100, 2)
             gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
 
-            print("""\n '{}' -- '{}';
+            printl("""\n '{}' -- '{}';
     Query length - {} nt;
     Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, hit_taxa_name,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
@@ -1487,7 +1458,7 @@ def parse_align_results_xml(xml_text, seq_names):
                 align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
         else:
             # If there is no hit for current sequence
-            print("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+            printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
         # end if
@@ -1582,8 +1553,8 @@ def create_result_directory(fq_fa_path, outdir_path):
             os.makedirs(new_dpath)
         
         except OSError as oserr:
-            print_error("error while creating result directory")
-            print( str(oserr) )
+            printl(err_fmt("error while creating result directory"))
+            printl( str(oserr) )
         # end try
     # end if
 
@@ -1633,24 +1604,24 @@ check_connection()
 print("OK\n\n")
 
 
-print(" - Probing batch size: {} sequences;".format(probing_batch_size))
-print(" - Packet size: {} sequences;".format(packet_size))
-print(" - BLAST algorithm: {};".format(blast_algorithm))
-print(" - Database: nt;")
+printl(" - Probing batch size: {} sequences;".format(probing_batch_size))
+printl(" - Packet size: {} sequences;".format(packet_size))
+printl(" - BLAST algorithm: {};".format(blast_algorithm))
+printl(" - Database: nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
-        print("   {};".format(db_slice))
+        printl("   {};".format(db_slice))
     # end for
 # end if
 
-print()
+printl()
 
-print(" Following files will be processed:")
+printl(" Following files will be processed:")
 for i, path in enumerate(fq_fa_list):
-    print("    {}. '{}'".format(i+1, path))
+    printl("    {}. '{}'".format(i+1, path))
 # end for
 
-print('-'*30 + '\n')
+printl('-'*30 + '\n')
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
@@ -1700,12 +1671,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     previous_data = look_around(outdir_path, new_dpath, curr_fasta["fpath"],
         blast_algorithm)
 
-    # Omit completely processed files.
-    if omit_file:
-        omit_file = False
-        continue
-    # end if
-
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
         saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
@@ -1723,6 +1688,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
         contin_rtoe = 0 # we will not sleep at the very beginning of continuation
+    # end if
+
+    # Omit completely processed files.
+    if omit_file:
+        omit_file = False
+        continue
     # end if
 
     if num_done_reads != 0:
@@ -1759,12 +1730,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Just in case:
         if packet["fasta"] is "":
-            print("Recent packet is empty")
+            printl("Recent packet is empty")
             break
         # end if
 
-        print("\nGo to BLAST (" + blast_algorithm + ")!")
-        print("Request number {} out of {}.".format(pack_to_send, packs_at_all))
+        printl("\nGo to BLAST (" + blast_algorithm + ")!")
+        printl("Request number {} out of {}.".format(pack_to_send, packs_at_all))
 
         send = True
 
@@ -1803,7 +1774,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --
                 #    shorten all sequences in packet twice and resend it.
                 if align_xml_text is None:
-                    packet["fasta"] = prune_seqs_twice(packet["fasta"])
+                    packet["fasta"] = halve_seqs(packet["fasta"])
                 # end if
             # end while
 
@@ -1830,31 +1801,32 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # end if
 # end for
 
-print("\n {} sequences have been processed\n".format(seqs_processed))
+printl("\n {} sequences have been processed\n".format(seqs_processed))
 
-print("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
-print("They are sorted by their occurence in probing batch:")
+printl("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
+printl("They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
 #   [2] -- get 3-rd element (occurence)
 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
     s_letter = "s" if other_info[2] > 1 else ""
-    print(" {} sequence{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
+    printl(" {} sequence{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
 # end for
 
 # Print number of unkmown sequences, if there are any:
 unkn_num = probing_batch_size - sum( map(lambda x: x[2], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
-    print(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
+    printl(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 # end if
 
-print("""\nThey are saved in following file:
+printl("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))
-print("""\nYou can edit this file before running 'barapost.py' in order to
+printl("""\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost.py'.""")
 end_time = time()
-print('\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Probing task is completed successfully!\n")
+printl('\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Probing task is completed\n")
+logfile.close()
 platf_depend_exit(0)
