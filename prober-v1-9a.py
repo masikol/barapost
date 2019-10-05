@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Version 1.9.a
-# 02.10.2019 edition
+# 04.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
