@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.9.a
-# 04.10.2019 edition
+# Version 1.9.b
+# 07.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober.py (version 1.9.a) ===|\n")
+print("\n |=== prober.py (version 1.9.b) ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -418,7 +418,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober.py (version 1.9.a) ===|\n\n"))
+logfile.write((" |=== prober.py (version 1.9.b) ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -1271,7 +1271,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     conn.close()
 
     if "[blastsrv4.REAL]" in respond_text:
-        printl("BLAST server error:\n  {}".format(re_search(r"<Iteration_message>(.+)</Iteration_message>", resp_content).group(1)))
+        printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", resp_content).group(1)))
         printl("Let's try to prune these sequences.")
         printl("""All sequences in this packet will be halved
   and the packet will be resent to BLAST server.""")
