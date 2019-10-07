@@ -158,8 +158,8 @@ from sys import argv
 import getopt
 
 try:
-    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:g:b:",
-        ["help", "infile=", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size="])
+    opts, args = getopt.gnu_getopt(argv[1:], "hd:o:p:a:g:b:",
+        ["help", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -173,37 +173,25 @@ indir_path = None
 outdir_path = "prober_result"
 packet_size = 100
 probing_batch_size = 200
+send_all = False
 blast_algorithm = "megaBlast"
 organisms = list() # default is whole 'nt' database
 
-if len(args) != 0:
-    print(err_fmt("prober.py does not take any positional arguments"))
-    print("Here are positional arguments specified by you:")
-    for a in args:
-        print(' ' + a)
-    # end for
-    platf_depend_exit(1)
-# end if
+# Add positional arguments to fq_fa_list
+for arg in args:
+    if not os.path.exists(arg) or not is_fq_or_fa(arg):
+        print(err_fmt("invalid positional argument: '{}'".format(arg)))
+        print("Only FAST(A/Q) files can be specified without an option in command line.")
+        platf_depend_exit(1)
+    # end if
+    fq_fa_list.append( os.path.abspath(arg) )
+# end for
 
 for opt, arg in opts:
     
     if opt in ("-h", "--help"):
         print(help_msg)
         platf_depend_exit(0)
-    # end if
-
-    if opt in ("-f", "--infile"):
-        if not os.path.exists(arg):
-            print(err_fmt("file '{}' does not exist!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        
-        if not is_fq_or_fa(arg):
-            print(err_fmt("file '{}' is not '.fastq' or '.fasta'!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        
-        fq_fa_list.append( os.path.abspath(arg) )
     # end if
     
     if opt in ("-d", "--indir"):
@@ -285,6 +273,11 @@ for opt, arg in opts:
     # end if
 
     if opt in ("-b", "--probing-batch-size"):
+        # Switch 'send_all' to True in order to process all sequences
+        if arg == "all":
+            send_all = True
+            continue
+        # end if
         try:
             probing_batch_size = int(arg)
             if probing_batch_size <= 0:
@@ -358,22 +351,26 @@ for file in fq_fa_list:
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
-    print('\n'+'-'*20)
-    print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
-    print(" Probing batch size specified by you is {}".format(probing_batch_size))
+    if send_all:
+        probing_batch_size = seqs_at_all
+    else:
+        print('\n'+'-'*20)
+        print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
+        print(" Probing batch size specified by you is {}".format(probing_batch_size))
 
-    while True:
-        reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
-        if reply == "":
-            probing_batch_size = seqs_at_all
-            break
-        elif reply == 'q':
-            platf_depend_exit(0)
-        else:
-            print(err_fmt("invalid reply"))
-            continue
-        # end if
-    # end while
+        while True:
+            reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
+            if reply == "":
+                probing_batch_size = seqs_at_all
+                break
+            elif reply == 'q':
+                platf_depend_exit(0)
+            else:
+                print(err_fmt("invalid reply"))
+                continue
+            # end if
+        # end while
+    # end if
 # end if
 
 if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):
@@ -1154,7 +1151,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     Returns XML response ('str').
     """
 
-    printl("\n{} - Requesting for alignment results: {}, '{}' ({}/{})".format(get_work_time(),
+    printl("\n{} - Requesting for alignment results: Request ID: {},\n '{}' ({}/{})".format(get_work_time(),
     rid, filename, pack_to_send, packs_at_all))
     # RTOE can be zero at the very beginning of continuation
     if rtoe > 0:
@@ -1462,7 +1459,7 @@ def parse_align_results_xml(xml_text, seq_names):
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
         # end if
-        printn(qual_info_to_print)
+        println(qual_info_to_print)
     # end for
 
     return result_tsv_lines

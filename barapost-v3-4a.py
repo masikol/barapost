@@ -146,8 +146,8 @@ from sys import argv
 import getopt
 
 try:
-    opts, args = getopt.getopt(argv[1:], "hf:d:o:p:a:r:l:o:t:",
-        ["help", "infile=", "indir=", "packet-size=", "algorithm=", "prober-result-dir=",
+    opts, args = getopt.gnu_getopt(argv[1:], "hd:o:p:a:r:l:o:t:",
+        ["help", "indir=", "packet-size=", "algorithm=", "prober-result-dir=",
         "local-fasta-to-bd=", "outdir=", "threads="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
@@ -165,14 +165,15 @@ prober_res_dir = "prober_result" # default
 your_own_fasta_lst = list()
 n_thr = 1
 
-if len(args) != 0:
-    print(err_fmt("barapost.py does not take any positional arguments"))
-    print("Here are positional arguments specified by you:")
-    for a in args:
-        print(' ' + a)
-    # end for
-    platf_depend_exit(1)
-# end if
+# Add positional arguments to fq_fa_list
+for arg in args:
+    if not os.path.exists(arg) or not is_fq_or_fa(arg):
+        print(err_fmt("invalid positional argument: '{}'".format(arg)))
+        print("Only FAST(A/Q) files can be specified without an option in command line.")
+        platf_depend_exit(1)
+    # end if
+    fq_fa_list.append( os.path.abspath(arg) )
+# end for
 
 if ("-o" in argv or "--outdir" in argv) and not ("-l" in argv or "--local-fasta-to-bd" in argv):
     print(err_fmt("'-o' option can't be specified without '-l' option!"))
@@ -185,19 +186,6 @@ for opt, arg in opts:
     if opt in ("-h", "--help"):
         print(help_msg)
         platf_depend_exit(0)
-    # end if
-
-    if opt in ("-f", "--infile"):
-        if not os.path.exists(arg):
-            print(err_fmt("file '{}' does not exist!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        if not is_fq_or_fa(arg):
-            print(err_fmt("file '{}' is not '.fastq' or '.fasta'!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        
-        fq_fa_list.append( os.path.abspath(arg) )
     # end if
 
     if opt in ("-d", "--indir"):
