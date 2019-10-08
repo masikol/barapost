@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 2.8.a
-# 07.10.2019 edition
+# Version 2.8.b
+# 08.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== fastQA-sorter-v2-8a.py ===|\n")
+print("\n |=== fastQA-sorter-v2-8b.py ===|\n")
 
 def err_fmt(text):
     """Function for configuring error messages"""
@@ -77,9 +77,9 @@ from sys import intern
 
 help_msg = """
 DESCRIPTION:\n
-fastQA-sorter-v2-8a.py -- this program is designed for sorting (dividing into separate files)
+fastQA-sorter-v2-8b.py -- this program is designed for sorting (dividing into separate files)
     FASTQ and FASTA files processed by "barapost-v3-4a.py".\n
-"fastQA-sorter-v2-8a.py" is meant to be used just after "barapost-v3-4a.py".
+"fastQA-sorter-v2-8b.py" is meant to be used just after "barapost-v3-4a.py".
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -87,9 +87,9 @@ Default parameters:\n
 - output directory ('-o' option): directory named '"fastQA_sorter_result_<date_and_time_of_run>"''
   nested in current directory;
 ----------------------------------------------------------\n
-Files that you want 'fastQA-sorter-v2-8a.py' to process should be
+Files that you want 'fastQA-sorter-v2-8b.py' to process should be
     specified as positional arguments (see EXAMPLE #2 below).
-Wildcards do work: './fastQA-sorter-v2-8a.py my_directory/*'' will process all files in 'my_directory'.
+Wildcards do work: './fastQA-sorter-v2-8b.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -109,22 +109,22 @@ OPTIONS:\n
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./fastQA-sorter-v2-8a.py\n
+    ./fastQA-sorter-v2-8b.py\n
   2. Process all files in the working directory that start with "some_my_fastq".
      Ignore reads with mean Phred33 quality < 15. The rest of settings are default:\n
-     ./fastQA-sorter-v2-8a.py some_my_fastq* -q 15\n
+     ./fastQA-sorter-v2-8b.py some_my_fastq* -q 15\n
   2. Process one FASTQ file with default settings.
      File 'reads.fastq' has been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory 'prober_outdir':\n
-     ./fastQA-sorter-v2-8a.py reads.fastq.gz -r prober_outdir/\n
+     ./fastQA-sorter-v2-8b.py reads.fastq.gz -r prober_outdir/\n
   3. Process a FASTQ file and a FASTA file, place results in 'outdir' directory.
      Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory 'prober_outdir':\n
-     ./fastQA-sorter-v2-8a.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
+     ./fastQA-sorter-v2-8b.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
   4. Process all FASTQ and FASTA files in directory named 'dir_with_seqs'. Sort by genus.
      All these files have been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory 'prober_outdir':\n
-     ./fastQA-sorter-v2-8a.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
+     ./fastQA-sorter-v2-8b.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
 """
 
 try:
@@ -272,7 +272,7 @@ log_ext = ".log" if not platform.startswith("win") else ".txt"
 logfile_path = os.path.join(outdir_path, "fastQA-sorter_log_{}{}".format(strftime("%d-%m-%Y_%H-%M-%S", localtime(start_time)), log_ext))
 logfile = open(logfile_path, 'w')
 
-logfile.write((" |=== fastQA-sorter-v2-8a.py ===|\n\n"))
+logfile.write((" |=== fastQA-sorter-v2-8b.py ===|\n\n"))
 
 def printl(text=""):
     """
@@ -757,6 +757,10 @@ for j, fq_fa_path in enumerate(fq_fa_list):
                         platf_depend_exit(1)
                     else:
                         if ph33_qual < min_ph33_qual:
+                            # Get name of resilt FASTQ file to write this read in
+                            sorted_file_path = os.path.join(outdir_path, "qual_less_than_Q{}.fastq.gz".format(int(min_ph33_qual)))
+                            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
+                            write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
                             continue
                         # end if
                     # end try
@@ -771,7 +775,7 @@ for j, fq_fa_path in enumerate(fq_fa_list):
             printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
         # end for
         print() # print space to console but not to log file
-        logfile.write("{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
+        logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
         printl('-'*20)
     # end with
 # end for

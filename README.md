@@ -14,13 +14,13 @@ It is awful to to sit in front of the computer for hours sending all these seque
 
 ## The default workflow looks like:
 
-1. **prober-v1-11a.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-11a.py" saves information about the best hit of each sequence from probing batch.
+1. **prober-v1-11b.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-11b.py" saves information about the best hit of each sequence from probing batch.
 Process all sequences in this way takes too much time, what leads us to "barapost-v3-4a.py".
 
-2. **barapost-v3-4a.py** -- this program firstly downloads best hits discovered by "prober-v1-11a.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
+2. **barapost-v3-4a.py** -- this program firstly downloads best hits discovered by "prober-v1-11b.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
 Results are written in TSV file named `...results.tsv`.
 
-3. **fastQA-sorter-v2-8a.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-11a.py" and "barapost-v3-4a.py"
+3. **fastQA-sorter-v2-8b.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-11b.py" and "barapost-v3-4a.py"
 
 ## Getting barapost:
 
@@ -30,13 +30,13 @@ Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git
 
 Way 2: download ZIP archive (green button at the top rigtht of this page "Clone or downlaod" -> "Download ZIP").
 
-## 1. prober-v1-11a.py
+## 1. prober-v1-11b.py
 
 Version 1.11.a; 08.10.2019 edition;
 
 ### DESCRIPTION:
 
-**prober-v1-11a.py** -- this program is designed for determinating the taxonomic position
+**prober-v1-11b.py** -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.
 
 The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
@@ -55,7 +55,7 @@ Results of the work of this program are written to TSV files, that can be found 
 
 Files processed by this program are meant to be processed afterwards by "barapost-v3-4a.py".
 
-If you have your own FASTA files that can be used as database to blast against, you can omit "prober-v1-11a.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
+If you have your own FASTA files that can be used as database to blast against, you can omit "prober-v1-11b.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
 
 
 ### Default parameters:
@@ -69,22 +69,22 @@ If you have your own FASTA files that can be used as database to blast against, 
   nested in current directory;
 
 Dedication of this program is to send small batch (see `-b` option) of sequences to NCBI BLAST server.
-It means that you should not process all your data by "prober-v1-11a.py' -- it would take long time.
+It means that you should not process all your data by "prober-v1-11b.py' -- it would take long time.
 
-Instead of this you should process some sequences by "prober-v1-11a.py" -- it will determine,
+Instead of this you should process some sequences by "prober-v1-11b.py" -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to "barapost-v3-4a.py".
 
-"barapost-v3-4a.py" will process the rest of you sequences in the same way like "prober-v1-11a.py", but on your local computer.
+"barapost-v3-4a.py" will process the rest of you sequences in the same way like "prober-v1-11b.py", but on your local computer.
 "barapost-v3-4a.py" uses 'BLAST+' toolkit for this purpose. It will be much faster.
 
 Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by "barapost-v3-4a.py".
-But you always can run "prober-v1-11a.py" again on "unknown" sequences.
+But you always can run "prober-v1-11b.py" again on "unknown" sequences.
 
 ### OPTIONS:
 
-- Files that you want "prober-v1-11a.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: `./prober-v1-11a.py my_directory/*` will process all files in `'my_directory'`.
+- Files that you want "prober-v1-11b.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: `./prober-v1-11b.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
     -h (--help) --- show help message;
@@ -109,8 +109,8 @@ But you always can run "prober-v1-11a.py" again on "unknown" sequences.
           Default is: full 'nt' database, i.e. no slices.
 
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-          during 'prober-v1-11a.py' work.
-          You can specify '-b all' to process all your sequeces by 'prober-v1-11a.py'.
+          during 'prober-v1-11b.py' work.
+          You can specify '-b all' to process all your sequeces by 'prober-v1-11b.py'.
           Value: positive integer number.
           Default value is 200;
 ```
@@ -122,13 +122,13 @@ But you always can run "prober-v1-11a.py" again on "unknown" sequences.
 
 ### EXAMPLES:
 
-Note for Windows users: `./prober-v1-11a.py` won't work on Windows -- type `python prober-v1-11a.py` instead.
+Note for Windows users: `./prober-v1-11b.py` won't work on Windows -- type `python prober-v1-11b.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober-v1-11a.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober-v1-11b.py`) and run it as it is shown in examples below.
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
-`./prober-v1-11a.py`
+`./prober-v1-11b.py`
 
   2. Process all files in the working directory that start with "some_my_fasta". Use default settings:
 
@@ -136,17 +136,17 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 
   3. Process one file with default settings:
 
-`./prober-v1-11a.py reads.fastq`
+`./prober-v1-11b.py reads.fastq`
 
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):
 
-`./prober-v1-11a.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551`
+`./prober-v1-11b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551`
 
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
-`./prober-v1-11a.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100`
+`./prober-v1-11b.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100`
 
 
 ## 2. barapost-v3-4a.py
@@ -159,15 +159,15 @@ Version 3.4.a; 07.10.2019 edition;
 of nucleotide sequences by "BLASTing" each of them with 'blastn' program from "BLAST+" toolkit
 and regarding the best hit.
 
-"barapost-v3-4a.py" is meant to be used just after 'prober-v1-11a.py'.
+"barapost-v3-4a.py" is meant to be used just after 'prober-v1-11b.py'.
 
 "barapost-v3-4a.py" downloads records-hits from Genbank according to results (`...acc_list.tsv`)
-of work of "prober-v1-11a.py", builds an indexed local database which consists of
+of work of "prober-v1-11b.py", builds an indexed local database which consists of
 downloaded sequences, and continues aligning with "BLAST+" toolkit in order to save time.
 
 Program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
-"barapost-v3-4a.py" writes it's results in the same TSV file as "prober-v1-11a.py" does.
+"barapost-v3-4a.py" writes it's results in the same TSV file as "prober-v1-11b.py" does.
 
 FASTQ files processed by this program are meant to be sorted afterwards by 'fastQA_sorted.py'.
 
@@ -190,10 +190,10 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 ```
     -h (--help) --- show help message;
 
-    -r (--prober-result-dir) --- result directory genearted by program "prober-v1-11a.py"
-        This is directory specified to "prober-v1-11a.py" by '-o' option.
+    -r (--prober-result-dir) --- result directory genearted by program "prober-v1-11b.py"
+        This is directory specified to "prober-v1-11b.py" by '-o' option.
         Default value is "prober_result", since it is the default name of
-        output directory generated by "prober-v1-11a.py".
+        output directory generated by "prober-v1-11b.py".
 
     -d (--indir) --- directory which contains FASTQ or FASTA files meant to be processed.
         I.e. all FASTQ and FASTA files in this direcory will be processed; Files might be gzipped.
@@ -206,11 +206,11 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
         Default is megaBlast;
 
     -l (--local-fasta-to-db) --- your own FASTA file that will be added to downloaded database
-        or used instead of it if you omit 'prober-v1-11a.py' step;
+        or used instead of it if you omit 'prober-v1-11b.py' step;
 
     -o (--outdir) --- output directory. Can be used only if '-l' option is specified.
         The reason is that results of 'barapost-v3-4a.py' should be written to the directory that contains
-        accession file generated by "prober-v1-11a.py". If you omit "prober-v1-11a.py" stage and specify your own FASTA
+        accession file generated by "prober-v1-11b.py". If you omit "prober-v1-11b.py" stage and specify your own FASTA
         files that are meant to be used as database, you may specify output directory with this option.
 
     -t (--threads) --- number of threads to launch;
@@ -218,7 +218,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 
 ### Notes about using your own FASTA files as database:
 
-1. Besides using `-l` option, you can specify your own FASTA files using accession TSV file generated by "prober-v1-11a.py". To do this, just write your FASTA file's path to this TSV file in new line.
+1. Besides using `-l` option, you can specify your own FASTA files using accession TSV file generated by "prober-v1-11b.py". To do this, just write your FASTA file's path to this TSV file in new line.
 
 2. "makeblastdb" utility from "BLAST+" toolkit considers first word (it separates words by spaces) of sequence ID in FASTA file as sequence accession. Naturally, duplicated accessions are not allowed. Therefore, in order to avoid this duplication, "barapost-v3-4a.py" uses modified sequence IDs of your own sequences in FASTA files while database creating. It adds custom accession number in the beginning of sequence IDs. This custom accessions have following format: OWN_SEQ_<N>, where <N> is an integer number. Actually, it is order number of this sequence (I mean order of adding to database). Do not worry: these modified sequence IDs are used only in database -- your own FASTA files will be kept intact.
 
@@ -243,40 +243,40 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 `./barapost-v3-4a.py some_my_fasta*`
 
   3. Process one FASTQ file with default settings.
-     File `reads.fastq` has been already processed by "prober-v1-11a.py".
-     Results of "prober-v1-11a.py" work are in directory `prober_outdir`:
+     File `reads.fastq` has been already processed by "prober-v1-11b.py".
+     Results of "prober-v1-11b.py" work are in directory `prober_outdir`:
 
 `./barapost-v3-4a.py reads.fastq -r prober_outdir`
 
   4. Process FASTQ file and FASTA file with discoMegablast, packet size of 100 sequences.
-     Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "prober-v1-11a.py".
-     Results of "prober-v1-11a.py" work are in directory `prober_outdir`:
+     Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "prober-v1-11b.py".
+     Results of "prober-v1-11b.py" work are in directory `prober_outdir`:
 
 `./barapost-v3-4a.py reads.fastq.gz another_sequences.fasta -a discoMegablast -p 100 -r prober_outdir`
 
   5. Process all FASTQ and FASTA files in directory named `some_dir`.
-    All these files have been already processed by "prober-v1-11a.py".
-    Results of "prober-v1-11a.py" work are in directory `prober_outdir`:
+    All these files have been already processed by "prober-v1-11b.py".
+    Results of "prober-v1-11b.py" work are in directory `prober_outdir`:
 
 `/barapost-v3-4a.py -d some_dir -r prober_outdir`
 
-  6. Process file named `some_reads.fastq`. This file has been already processed by "prober-v1-11a.py".
-     Results of "prober-v1-11a.py" work are in directory `prober_outdir`. Sequence from file `my_own_sequence.fasta` will be included to the database.
+  6. Process file named `some_reads.fastq`. This file has been already processed by "prober-v1-11b.py".
+     Results of "prober-v1-11b.py" work are in directory `prober_outdir`. Sequence from file `my_own_sequence.fasta` will be included to the database.
      Packet size is 50 sequences. Launch 4 threads.
 
 `./barapost-v3-4a.py some_reads.fastq -p 50 -l my_own_sequence.fasta -t 4 -r prober_outdir`
 
 
-## 3. fastQA-sorter-v2-8a.py
+## 3. fastQA-sorter-v2-8b.py
 (fast**Q** and fast**A** sorter)
 
 Version 2.8.a; 07.10.2019 edition;
 
 ### DESCRIPTION:
 
-**fastQA-sorter-v2-8a.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-4a.py".
+**fastQA-sorter-v2-8b.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-4a.py".
 
-"fastQA-sorter-v2-8a.py" is meant to be used just after "barapost-v3-4a.py".
+"fastQA-sorter-v2-8b.py" is meant to be used just after "barapost-v3-4a.py".
 
 ### Default parameters:
 
@@ -287,16 +287,16 @@ Version 2.8.a; 07.10.2019 edition;
 
 ### OPTIONS:
 
-- Files that you want "fastQA-sorter-v2-8a.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: `./fastQA-sorter-v2-8a.py my_directory/*` will process all files in `'my_directory'`.
+- Files that you want "fastQA-sorter-v2-8b.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: `./fastQA-sorter-v2-8b.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
     -h (--help) --- show help message;
 
-    -r (--prober-result-dir) --- result directory genearted by program "prober-v1-11a.py"
-        This is directory specified to "prober-v1-11a.py" with '-o' option.
+    -r (--prober-result-dir) --- result directory genearted by program "prober-v1-11b.py"
+        This is directory specified to "prober-v1-11b.py" with '-o' option.
         Default value is "prober_result", since it is the default name of
-        output directory generated by "prober-v1-11a.py".
+        output directory generated by "prober-v1-11b.py".
 
     -d (--indir) --- directory which contains FASTQ and/or FASTA files
         (files can be gzipped) meant to be sorted;
@@ -327,52 +327,52 @@ Version 2.8.a; 07.10.2019 edition;
 
     b) there **more than one** FASTA file with assembly generated by one assembler. For example, you have two SPAdes outputs: `"outdir_1/contigs.fasta"` and `"outdir_2/contigs.fasta"`. Paths to these files will be used to name sorted files. In this case if you sort your sequnces by genus, you'll get files named `"SPAdes_assembly__outdir_1_contigs.fasta_NODE.fastq.gz"` and `"SPAdes_assembly__outdir_2_contigs.fasta_NODE.fastq.gz"`. Situation with a5 is the same -- instead of "SPAdes" "a5" will be written (and "scaffold" instead of "NODE"). As you see, path separators are replaced by underscores in order not to held a bacchanalia in file system. If sorting sensitivity is "species" or "strain", you'll get separate files for each NODE (or scaffold, if you've used a5), just as in 'a)' section above, but paths will be included (e.g. `"SPAdes_assembly__outdir_1_contigs.fasta_NODE_3.fastq.gz"`)
 
-"fastQA_sorted.py" decides whether it is a SPAdes assembly file or a a5 one by looking at sequence IDs in these files. If ID is like `"NODE_1_length_245432_cov_23.5412"` -- probably it is SPAdes work. If ID is like `"scaffold_1"` -- it looks just like a5 output. "fastQA-sorter-v2-8a.py" regards only the first sequnce ID in file.
+"fastQA_sorted.py" decides whether it is a SPAdes assembly file or a a5 one by looking at sequence IDs in these files. If ID is like `"NODE_1_length_245432_cov_23.5412"` -- probably it is SPAdes work. If ID is like `"scaffold_1"` -- it looks just like a5 output. "fastQA-sorter-v2-8b.py" regards only the first sequnce ID in file.
 
 
 ### EXAMPLES:
 
-Note for Windows users: `./fastQA-sorter-v2-8a.py` won't work on Windows -- type `python fastQA-sorter-v2-8a.py` instead.
+Note for Windows users: `./fastQA-sorter-v2-8b.py` won't work on Windows -- type `python fastQA-sorter-v2-8b.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA-sorter-v2-8a.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA-sorter-v2-8b.py`) and run it as it is shown in examples below.
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
-`./fastQA-sorter-v2-8a.py`
+`./fastQA-sorter-v2-8b.py`
 
   2. Process all files in the working directory that start with "some_my_fastq". Ignore reads with mean Phred33 quality < 15. The rest of settings are default:
 
-`./fastQA-sorter-v2-8a.py some_my_fastq* -q 15`
+`./fastQA-sorter-v2-8b.py some_my_fastq* -q 15`
 
   2. Process one FASTQ file with default settings.
      File `reads.fastq` has been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8a.py reads.fastq.gz -r prober_outdir/`
+`./fastQA-sorter-v2-8b.py reads.fastq.gz -r prober_outdir/`
 
   3. Process a FASTQ file and a FASTA file, place results in `outdir` directory.
      Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8a.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/`
+`./fastQA-sorter-v2-8b.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/`
 
   4. Process all FASTQ and FASTA files in directory named `dir_with_seqs`. Sort by genus.
      All these files have been already processed by "barapost-v3-4a.py".
      Results of "barapost-v3-4a.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8a.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus`
+`./fastQA-sorter-v2-8b.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus`
 
 
 ## Examples of usage in combination:
 
 1. You can place all .py-files provided with by this toolkit in a directory that contains some FASTA and FASTQ files and run whole "pipeline" with default settings:
 
-`./prober-v1-11a.py && ./barapost-v3-4a.py && ./fastQA-sorter-v2-8a.py`
+`./prober-v1-11b.py && ./barapost-v3-4a.py && ./fastQA-sorter-v2-8b.py`
 
 2. You can try this programs on test dataset named `some_reads.fastq` (there are 4 reads):
 
-`./prober-v1-11a.py some_reads.fastq -o some_outdir -g Escherichia,561+viruses,10239 -p 2 -b 2`
+`./prober-v1-11b.py some_reads.fastq -o some_outdir -g Escherichia,561+viruses,10239 -p 2 -b 2`
 
 `./barapost-v3-4a.py some_reads.fastq -r some_outdir`
 
-`./fastQA-sorter-v2-8a.py some_reads.fastq -r some_outdir -o some_sorted_reads`
+`./fastQA-sorter-v2-8b.py some_reads.fastq -r some_outdir -o some_sorted_reads`
