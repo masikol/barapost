@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.10.b
+# Version 1.11.a
 # 08.10.2019 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-10b.py ===|\n")
+print("\n |=== prober-v1-11a.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -73,7 +73,7 @@ def printn(text):
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-10b.py -- this program is designed for determinating the taxonomic position
+  prober-v1-11a.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
@@ -86,7 +86,7 @@ on your local machine by "barapost-v3-4a.py".\n
     Results of barapost-v3-4a.py's work will be appended to this file\n
   Files processed by this program are meant to be processed afterwards by "barapost-v3-4a.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-10b.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
+"prober-v1-11a.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -97,17 +97,17 @@ Default parameters:\n
 - output directory ('-o' option): directory named "prober_result"
   nested in current directory;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-10b.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-10b.py' -- it will determine,
+It means that you should not process all your data by 'prober-v1-11a.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-11a.py' -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3.4a.py'.\n
-  'barapost-v3.4a.py' will process the rest of you sequences in the same way like 'prober-v1-10b.py', but on your local computer.
+  'barapost-v3.4a.py' will process the rest of you sequences in the same way like 'prober-v1-11a.py', but on your local computer.
 'barapost-v3.4a.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-10b.py' again on "unknown" sequences.
+But you always can run 'prober-v1-11a.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-10b.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-10b.py my_directory/*'' will process all files in 'my_directory'.
+Files that you want 'prober-v1-11a.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-11a.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -125,30 +125,30 @@ OPTIONS:\n
         on this BLASTn page:
          'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
         Format of value: 
-          <organism1_name>,<organism1_taxid>+<organism2_name>,<organism2_taxid>+...
+          <organism1_taxid>,<organism2_taxid>...
         See EXAMPLES #2 and #3 below.
-        Spaces are not allowed. Number of organisms can be from 1 to 5 (5 is maximum).
-        Default value is full 'nt' database.
+        Spaces are not allowed.
+        Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-10b.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-10b.py'.
+        during 'prober-v1-11a.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-11a.py'.
         Value: positive integer number.
         Default value is 200;\n
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-10b.py\n
+    ./prober-v1-11a.py\n
   2. Process all files in the working directory that start with "some_my_fasta". Use default settings:\n
     ./prober-v1-10.py some_my_fasta*\n
   3. Process one file with default settings:\n
-    ./prober-v1-10b.py reads.fastq\n
+    ./prober-v1-11a.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-10b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g Erwinia,551\n
+    ./prober-v1-11a.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
-Search only among Escherichia and viral sequences:\n
-    ./prober-v1-10b.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir -b 300 -p 100
+Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
+    ./prober-v1-11a.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
@@ -233,37 +233,18 @@ for opt, arg in opts:
     # end if
 
     if opt in ("-g", "--organisms"):
-        max_org = 5
+
+        taxid_list = arg.strip().split(',')
 
         try:
-            org_list = arg.strip().split('+')
-            org_list = list( map(str.strip, org_list) )
-            if len(org_list) > max_org:
-                raise Exception("\nYou can specify from 1 to {} organisms.\a".format(max_org))
-            # end if
-
-            for org in org_list:
-                name_and_taxid = org.strip().split(',')
-                name_and_taxid = list( map(str.strip, name_and_taxid) )
-                if len(name_and_taxid) != 2:
-                    raise Exception("""\nOrganism's name and it's taxid should be separated by comma (,),
-    and different organisms -- by plus (+).\n  Type for help: ./baparost.py -h\a""")
+            for taxid in taxid_list:
+                buff_var = int(taxid)
+                if buff_var < 0:
+                    raise ValueError
                 # end if
-                # Validate TaxID integer format: it will raise ValueError if taxid is invalid
-                tmp_taxid = int(name_and_taxid[1])
-                if tmp_taxid < 1:
-                    raise ValueError("\nTaxID should be positive integer number\a")
-                # end if
-                organisms.append("{} (taxid:{})".format(name_and_taxid[0], name_and_taxid[1]))
             # end for
         except ValueError:
-            print("\n" + "=/"*20 + "\n")
             print(err_fmt("TaxID should be positive integer number\a"))
-            platf_depend_exit(1)
-        except Exception as err:
-            print("\n" + "=/"*20 + "\n")
-            print(err_fmt("ERROR: invalid organisms (-g option) input format"))
-            print( str(err) )
             platf_depend_exit(1)
         # end try
     # end if
@@ -356,7 +337,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-10b.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-11a.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -421,7 +402,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-10b.py ===|\n\n"))
+logfile.write((" |=== prober-v1-11a.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -434,6 +415,12 @@ def check_connection():
     :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
     """
 
+    if not platform.startswith("win"):
+        check_mark = "\u2714"
+    else:
+        check_mark = "OK"
+    # end if
+
     try:
         ncbi_server = "https://blast.ncbi.nlm.nih.gov"
         status_code = urllib.request.urlopen(ncbi_server).getcode()
@@ -444,7 +431,6 @@ def check_connection():
             printl("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
-        return
     except OSError as err:
         printl('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
         print("Check your Internet connection.\a")
@@ -456,9 +442,61 @@ def check_connection():
             printl(err.reason)
         # end if
         platf_depend_exit(-2)
+    else:
+        print(check_mark)
     # end try
 # end def check_connection
 
+
+def verify_taxids(taxid_list):
+    """
+    Funciton verifies TaxIDs passed to 'prober' with -g option.
+    Function requests NCBI Taxonomy Browser and parses organism's name from HTML response.
+    What is more, this function configures 'oraganisms' list - it will be included to BLAST requests.
+
+    :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
+        during CL argument parsing;
+    :type taxid_list: list<str>;
+
+    Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
+    """
+    organisms = list()
+    if len(taxid_list) > 0:
+
+        printl("Verifing TaxIDs:")
+        if not platform.startswith("win"):
+            check_mark = "\u2714"
+            cross = "\u274c"
+        else:
+            check_mark = ""
+            cross = ""
+        # end if
+        for taxid in taxid_list:
+            println("   {} - ".format(taxid))
+            tax_url = "https://ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid)
+            try:
+                tax_resp = urllib.request.urlopen(tax_url)
+                tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp.read().decode("utf-8")).group(1)
+            except AttributeError:
+                println("\aError: TaxID not found")
+                print(cross)
+                print("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
+                platf_depend_exit(1)
+            except OSError as oserr:
+                printl(err_fmt("something is wrong with connection:"))
+                printl( str(oserr) )
+                platf_depend_exit(-2)
+            else:
+                println(tax_name)
+                print(check_mark)
+                organisms.append("{} (taxid:{})".format(tax_name, taxid))
+            # end try
+        # end for
+        printl('-'*30 + '\n')
+
+    # end if
+    return organisms
+# end def verify taxids
 
 # |===== Question funtions =====|
 
@@ -497,47 +535,47 @@ Enter the number (1 or 2):>> """)
     return(True if continuation == 1 else False)
 
 
-def get_packet_size(num_reads):
-    """
-    Function asks the user about how many query sequences will be sent 
-        to NCBI BLAST as a particular request.
+# def get_packet_size(num_reads):
+#     """
+#     Function asks the user about how many query sequences will be sent 
+#         to NCBI BLAST as a particular request.
 
-    :return: the number of query sequences;
-    :return type: int;
-    """
+#     :return: the number of query sequences;
+#     :return type: int;
+#     """
 
-    packet_size = None
-    # You cannot sent more query sequences than you have
-    limit = num_reads if num_reads <= 500 else 500
+#     packet_size = None
+#     # You cannot sent more query sequences than you have
+#     limit = num_reads if num_reads <= 500 else 500
 
-    while packet_size is None:
+#     while packet_size is None:
         
-        packet_size = input("""
-Please, specify the number of sequences that should be sent to the NCBI server in one request.
-E.g. if you have 10 sequences in your file, you can send 10 sequences as single
-    request -- in this case you should enter number 10. You may send 2 requests containing
-    5 sequences both -- in this case you should enter number 5.
+#         packet_size = input("""
+# Please, specify the number of sequences that should be sent to the NCBI server in one request.
+# E.g. if you have 10 sequences in your file, you can send 10 sequences as single
+#     request -- in this case you should enter number 10. You may send 2 requests containing
+#     5 sequences both -- in this case you should enter number 5.
 
 
-There are {} sequences left to process in current file.
-Enter the number (from 1 to {}):>> """.format(num_reads, limit))
-        # Check if entered value is integer number. If no, give another attempt.
-        try:
-            packet_size = int(packet_size)
-            # Check if input number is in [1, limit]
-            if packet_size < 1 or packet_size > limit:
-                print("\n   Not a VALID number entered!\a\n" + '~'*20)
-                packet_size = None
-            else:
-                print("You have chosen number " + str(packet_size) + '\n')
-            # end if
-        except ValueError:
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            packet_size = None
-        # end try
-    # end while
-    return(packet_size)
-# end def get_packet_size
+# There are {} sequences left to process in current file.
+# Enter the number (from 1 to {}):>> """.format(num_reads, limit))
+#         # Check if entered value is integer number. If no, give another attempt.
+#         try:
+#             packet_size = int(packet_size)
+#             # Check if input number is in [1, limit]
+#             if packet_size < 1 or packet_size > limit:
+#                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
+#                 packet_size = None
+#             else:
+#                 print("You have chosen number " + str(packet_size) + '\n')
+#             # end if
+#         except ValueError:
+#             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
+#             packet_size = None
+#         # end try
+#     # end while
+#     return(packet_size)
+# # end def get_packet_size
 
 
 # |===== End of question funtions =====|
@@ -799,7 +837,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            packet_size = int(re_search(r"packet_size: ([0-9]+)", temp_lines[0]).group(1).strip())
+            old_packet_size = int(re_search(r"packet_size: ([0-9]+)", temp_lines[0]).group(1).strip())
             saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[1]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[2]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
@@ -837,7 +875,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             printl("{} reads have been already processed".format(num_done_reads))
             printl("{} reads left".format(total_num_seqs - num_done_reads))
-            global packet_size
             # packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
                 "pack_size": packet_size,
@@ -851,7 +888,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                "pack_size": packet_size,
+                "pack_size": old_packet_size,
                 "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
@@ -1604,8 +1641,7 @@ def create_result_directory(fq_fa_path, outdir_path):
 
 print("Checking Internet connection...")
 check_connection()
-print("OK\n\n")
-
+organisms = verify_taxids(taxid_list)
 
 printl(" - Probing batch size: {} sequences;".format(probing_batch_size))
 printl(" - Packet size: {} sequences;".format(packet_size))
@@ -1617,9 +1653,7 @@ if len(organisms) > 0:
     # end for
 # end if
 
-printl()
-
-printl(" Following files will be processed:")
+printl("\n Following files will be processed:")
 for i, path in enumerate(fq_fa_list):
     printl("    {}. '{}'".format(i+1, path))
 # end for

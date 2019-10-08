@@ -293,8 +293,8 @@ if len( list( filter(is_fq_or_fa, os.listdir(outdir_path)) ) ) != 0:
     
     invalid_reply = True
     while invalid_reply:
-        reply = input("""Press ENTER to ovewrite all old sequence-containing files:
-    or enter 'r' to rename this directory:>>""")
+        reply = input("""Press ENTER to ovewrite all old sequence-containing files
+    or enter 'r' to rename old directory and to write current results to a new one:>>""")
 
         if reply == "":
             invalid_reply = False
