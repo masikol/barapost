@@ -103,7 +103,7 @@ But you always can run "prober-v1-11a.py" again on "unknown" sequences.
 
     -g (--organisms) --- 'nt' database slices, i.e. organisms that you expect to see in result files.
           Format of value (TaxIDs separated by comma): 
-            <organism1_name>,<organism2_taxid>+...
+            <organism1_name>,<organism2_taxid>...
           See EXAMPLES #4 and #5 below.
           Spaces are not allowed.
           Default is: full 'nt' database, i.e. no slices.
