@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.10.a
-# 07.10.2019 edition
+# Version 1.10.b
+# 08.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-10a.py ===|\n")
+print("\n |=== prober-v1-10b.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -73,7 +73,7 @@ def printn(text):
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-10a.py -- this program is designed for determinating the taxonomic position
+  prober-v1-10b.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
@@ -86,7 +86,7 @@ on your local machine by "barapost-v3-4a.py".\n
     Results of barapost-v3-4a.py's work will be appended to this file\n
   Files processed by this program are meant to be processed afterwards by "barapost-v3-4a.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-10a.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
+"prober-v1-10b.py" step and go to "barapost-v3-4a.py" (see `-l` option in "barapost-v3-4a.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -97,17 +97,17 @@ Default parameters:\n
 - output directory ('-o' option): directory named "prober_result"
   nested in current directory;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-10a.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-10a.py' -- it will determine,
+It means that you should not process all your data by 'prober-v1-10b.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-10b.py' -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3.4a.py'.\n
-  'barapost-v3.4a.py' will process the rest of you sequences in the same way like 'prober-v1-10a.py', but on your local computer.
+  'barapost-v3.4a.py' will process the rest of you sequences in the same way like 'prober-v1-10b.py', but on your local computer.
 'barapost-v3.4a.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-10a.py' again on "unknown" sequences.
+But you always can run 'prober-v1-10b.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-10a.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-10a.py my_directory/*'' will process all files in 'my_directory'.
+Files that you want 'prober-v1-10b.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-10b.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -131,24 +131,24 @@ OPTIONS:\n
         Default value is full 'nt' database.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-10a.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-10a.py'.
+        during 'prober-v1-10b.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-10b.py'.
         Value: positive integer number.
         Default value is 200;\n
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-10a.py\n
+    ./prober-v1-10b.py\n
   2. Process all files in the working directory that start with "some_my_fasta". Use default settings:\n
     ./prober-v1-10.py some_my_fasta*\n
   3. Process one file with default settings:\n
-    ./prober-v1-10a.py reads.fastq\n
+    ./prober-v1-10b.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-10a.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g Erwinia,551\n
+    ./prober-v1-10b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g Erwinia,551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia and viral sequences:\n
-    ./prober-v1-10a.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir -b 300 -p 100
+    ./prober-v1-10b.py -d some_dir -g Escherichia,561+viruses,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
@@ -356,7 +356,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-10a.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-10b.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -421,7 +421,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-10a.py ===|\n\n"))
+logfile.write((" |=== prober-v1-10b.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -767,7 +767,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     for line in local_files_filtered:
                         vals = line.split(DELIM)
                         acc = intern(vals[0].strip())
-                        acc_dict[acc] = (vals[1].strip(), vals[2].strip(), int(vals[3].strip()))
+                        acc_dict[acc] = [ vals[1].strip(), vals[2].strip(), int(vals[3].strip()) ]
                     # end for
                 # end with
             except Exception as err:
@@ -811,7 +811,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             printl( ' ' + str(exc) )
             printl("{} sequences have been already processed.".format(num_done_reads))
             printl("There are {} sequences totally in file '{}'.".format(total_num_seqs, os.path.basename(fasta_path)))
-            printl("Maybe you've already processed this file with 'prober-v1-10a.py'?\n")
 
             reply = "BULLSHIT"
             global omit_file
@@ -838,7 +837,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             printl("{} reads have been already processed".format(num_done_reads))
             printl("{} reads left".format(total_num_seqs - num_done_reads))
-            packet_size = get_packet_size(total_num_seqs - num_done_reads)
+            global packet_size
+            # packet_size = get_packet_size(total_num_seqs - num_done_reads)
             return {
                 "pack_size": packet_size,
                 "sv_npck": int(num_done_reads / packet_size),
@@ -1703,8 +1703,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         seqs_processed = num_done_reads
     # end if
 
-    if (probing_batch_size - seqs_processed) <= curr_fasta["nreads"]:
-        tmp_num = (probing_batch_size - seqs_processed)
+    if probing_batch_size <= curr_fasta["nreads"]:
+        tmp_num = probing_batch_size
     else:
         tmp_num = curr_fasta["nreads"]
     # end if
