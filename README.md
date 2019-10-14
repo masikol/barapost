@@ -3,11 +3,11 @@
 **"Barapost"** command line toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
 
 - [Motivation](#motivation)
-- [The default workflow](#the-default-workflow-looks-like:)
-- [Getting barapost](#getting-barapost:)
-- [1. prober-v1-12b.py](#1.-prober\-v1\-12b.py)
-- [2. barapost-v3-5a.py](#2.-barapost\-v3\-5a.py)
-- [3. fastQA-sorter-v2-8c.py](#3.-fastQA\-sorter\-v2\-8c.py)
+- [The default workflow](#the-default-workflow-looks-like)
+- [Getting barapost](#getting-barapost)
+- [1. prober-v1-12b.py](#1.-prober-v1-12b.py)
+- [2. barapost-v3-5a.py](#2.-barapost-v3-5a.py)
+- [3. fastQA-sorter-v2-8c.py](#3.-fastQA-sorter-v2-8c.py)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
@@ -20,7 +20,7 @@ It is awful to to sit in front of the computer for hours sending all these seque
 
 "Barapost" toolkit is the thing that can do it for you and **save your time**.
 
-## The default workflow looks like:
+## The default workflow looks like
 
 1. **prober-v1-12b.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-12b.py" saves information about the best hit of each sequence from probing batch.
 Process all sequences in this way takes too much time, what leads us to "barapost-v3-5a.py".
@@ -30,7 +30,7 @@ Results are written in TSV file named `...results.tsv`.
 
 3. **fastQA-sorter-v2-8c.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-12b.py" and "barapost-v3-5a.py"
 
-## Getting barapost:
+## Getting barapost
 
 Since current version is too raw to make a release, you can get "barapost" in the following ways:
 
