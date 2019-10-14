@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.11.b
-# 08.10.2019 edition
+# Version 1.12.b
+# 14.10.2019 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-12a.py ===|\n")
+print("\n |=== prober-v1-12b.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -75,7 +75,7 @@ def printn(text):
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-12a.py -- this program is designed for determinating the taxonomic position
+  prober-v1-12b.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
@@ -88,7 +88,7 @@ on your local machine by "barapost-v3-5a.py".\n
     Results of barapost-v3-5a.py's work will be appended to this file\n
   Files processed by this program are meant to be processed afterwards by "barapost-v3-5a.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-12a.py" step and go to "barapost-v3-5a.py" (see `-l` option in "barapost-v3-5a.py" description).
+"prober-v1-12b.py" step and go to "barapost-v3-5a.py" (see `-l` option in "barapost-v3-5a.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -100,17 +100,17 @@ Default parameters:\n
   nested in current directory;
 - no email information is send to NCBI;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-12a.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-12a.py' -- it will determine,
+It means that you should not process all your data by 'prober-v1-12b.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-12b.py' -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3-5a.py'.\n
-  'barapost-v3-5a.py' will process the rest of you sequences in the same way like 'prober-v1-12a.py', but on your local computer.
+  'barapost-v3-5a.py' will process the rest of you sequences in the same way like 'prober-v1-12b.py', but on your local computer.
 'barapost-v3-5a.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-12a.py' again on "unknown" sequences.
+But you always can run 'prober-v1-12b.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-12a.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-12a.py my_directory/*'' will process all files in 'my_directory'.
+Files that you want 'prober-v1-12b.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-12b.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -134,27 +134,27 @@ OPTIONS:\n
         Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-12a.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-12a.py'.
+        during 'prober-v1-12b.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-12b.py'.
         Value: positive integer number.
         Default value is 200;\n
-    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12a.py",
+    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12b.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-12a.py\n
+    ./prober-v1-12b.py\n
   2. Process all files in the working directory that start with "some_my_fasta".
      Provide NCBI with your email. Use default settings:\n
     ./prober-v1-10.py some_my_fasta* -e my.email@smth.com\n
   3. Process one file with default settings:\n
-    ./prober-v1-12a.py reads.fastq\n
+    ./prober-v1-12b.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-12a.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
+    ./prober-v1-12b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-    ./prober-v1-12a.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
+    ./prober-v1-12b.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
@@ -356,7 +356,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-12a.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-12b.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -421,7 +421,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-12a.py ===|\n\n"))
+logfile.write((" |=== prober-v1-12b.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -1066,7 +1066,7 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
     if user_email != "":
         payload["email"] = user_email # user's email
-        payload["tool"] = "barapost:_prober-v1-12a"
+        payload["tool"] = "barapost:_prober-v1-12b"
     # end if
     
 
@@ -1078,9 +1078,6 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["NUM_ORG"] = str( len(organisms) )
 
     payload = urllib.parse.urlencode(payload)
-
-    open("tmp.txt", 'w').write(payload)
-    exit(0)
 
     headers = { "Content-Type" : "application/x-www-form-urlencoded" }
 
@@ -1161,6 +1158,45 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
 # end def send_request
 
 
+def lingering_https_get_request(server, url):
+
+    error = True
+    while error:
+        try:
+            conn = http.client.HTTPSConnection(server) # create connection
+            conn.request("GET", url) # ask for if there areresults
+            response = conn.getresponse() # get the resonse
+            resp_content = str(response.read(), "utf-8") # get response text
+            conn.close()
+        except OSError as err:
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("   " + str(err))
+            error = True
+            sleep(30)
+        except http.client.RemoteDisconnected as err:
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("   " + str(err))
+            error = True
+            sleep(30)
+        except socket.gaierror as err:
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("   " + str(err))
+            error = True
+            sleep(30)
+        except http.client.CannotSendRequest as err:
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("   " + str(err))
+            error = True
+            sleep(30)
+        else:
+            error = False # if no exception ocured
+        # end try
+    # end while
+    return resp_content
+
+# end def lingering_https_get_request
+
+
 def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     """
     Function waits untill BLAST server accomplishes the request.
@@ -1196,39 +1232,40 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     there_are_hits = False
 
     while True:
-        error = True
-        while error:
-            try:
-                conn = http.client.HTTPSConnection(server) # create connection
-                conn.request("GET", wait_url) # ask for if there areresults
-            except OSError as err:
-                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                printl("   " + str(err))
-                error = True
-                sleep(30)
-            except http.client.RemoteDisconnected as err:
-                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                printl("   " + str(err))
-                error = True
-                sleep(30)
-            except socket.gaierror as err:
-                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                printl("   " + str(err))
-                error = True
-                sleep(30)
-            except http.client.CannotSendRequest as err:
-                printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-                printl("   " + str(err))
-                error = True
-                sleep(30)
-            else:
-                error = False # if no exception ocured
-            # end try
-        # end while
+        # error = True
+        # while error:
+        #     try:
+        #         conn = http.client.HTTPSConnection(server) # create connection
+        #         conn.request("GET", wait_url) # ask for if there areresults
+        #         response = conn.getresponse() # get the resonse
+        #         resp_content = str(response.read(), "utf-8") # get response text
+        #         conn.close()
+        #     except OSError as err:
+        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+        #         printl("   " + str(err))
+        #         error = True
+        #         sleep(30)
+        #     except http.client.RemoteDisconnected as err:
+        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+        #         printl("   " + str(err))
+        #         error = True
+        #         sleep(30)
+        #     except socket.gaierror as err:
+        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+        #         printl("   " + str(err))
+        #         error = True
+        #         sleep(30)
+        #     except http.client.CannotSendRequest as err:
+        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+        #         printl("   " + str(err))
+        #         error = True
+        #         sleep(30)
+        #     else:
+        #         error = False # if no exception ocured
+        #     # end try
+        # # end while
 
-        response = conn.getresponse() # get the resonse
-        resp_content = str(response.read(), "utf-8") # get response text
-        conn.close()
+        resp_content = lingering_https_get_request(server, wait_url)
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
@@ -1279,12 +1316,13 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     # Retrieve XML result
     retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
-    conn = http.client.HTTPSConnection(server)
-    conn.request("GET", retrieve_xml_url)
-    response = conn.getresponse()
+    respond_text= lingering_https_get_request(server, retrieve_xml_url)
 
-    respond_text = str(response.read(), "utf-8")
-    conn.close()
+    # conn = http.client.HTTPSConnection(server)
+    # conn.request("GET", retrieve_xml_url)
+    # response = conn.getresponse()
+    # respond_text = str(response.read(), "utf-8")
+    # conn.close()
 
     if "[blastsrv4.REAL]" in respond_text:
         printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
@@ -1327,16 +1365,19 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
     global outdir_path
 
     retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-    conn = http.client.HTTPSConnection(server)
-    conn.request("GET", retrieve_text_url)
-    response = conn.getresponse()
+    respond_text = lingering_https_get_request(server, retrieve_text_url)
+    # conn = http.client.HTTPSConnection(server)
+    # conn.request("GET", retrieve_text_url)
+    # response = conn.getresponse()
 
     txt_hpath = os.path.join(outdir_path, "blast_result_{}.txt".format(pack_to_send))
     # Write text result for a human to read
     with open(txt_hpath, 'w') as txt_file:
-        txt_file.write(str(response.read(), "utf-8") + '\n')
+        txt_file.write(respond_text + '\n')
     # end with
-    conn.close()
+
+    # conn.close()
+
 # end def save_txt_align_result
 
 
@@ -1618,6 +1659,9 @@ def create_result_directory(fq_fa_path, outdir_path):
 check_connection()
 organisms = verify_taxids(taxid_list)
 
+if user_email != "":
+    printl(" - Your email: {}".format(user_email))
+# end if
 printl(" - Probing batch size: {} sequences;".format(probing_batch_size))
 printl(" - Packet size: {} sequences;".format(packet_size))
 printl(" - BLAST algorithm: {};".format(blast_algorithm))
