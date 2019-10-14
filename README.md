@@ -5,9 +5,9 @@
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
 - [Getting barapost](#getting-barapost)
-- [1. prober-v1-12b.py](#1.-prober-v1-12b.py)
-- [2. barapost-v3-5a.py](#2.-barapost-v3-5a.py)
-- [3. fastQA-sorter-v2-8c.py](#3.-fastQA-sorter-v2-8c.py)
+- [1. prober-v1-12b.py](#1.-prober)
+- [2. barapost-v3-5a.py](#2.-barapost)
+- [3. fastQA-sorter-v2-8c.py](#3.-fastQA-sorter)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
@@ -38,7 +38,7 @@ Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git
 
 Way 2: download ZIP archive (green button at the top rigtht of this page "Clone or downlaod" -> "Download ZIP").
 
-## 1. prober-v1-12b.py
+## 1. prober
 
 Version 1.12.a; 14.10.2019 edition;
 
@@ -162,7 +162,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 `./prober-v1-12b.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100`
 
 
-## 2. barapost-v3-5a.py
+## 2. barapost
 
 Version 3.5.a; 10.10.2019 edition;
 
@@ -278,7 +278,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 `./barapost-v3-5a.py some_reads.fastq -p 50 -l my_own_sequence.fasta -t 4 -r prober_outdir`
 
 
-## 3. fastQA-sorter-v2-8c.py
+## 3. fastQA sorter
 (fast**Q** and fast**A** sorter)
 
 Version 2.8.c; 10.10.2019 edition;
