@@ -2,6 +2,14 @@
 
 **"Barapost"** command line toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
 
+- [Motivation](#motivation)
+- [The default workflow](#the-default-workflow-looks-like:)
+- [Getting barapost](#getting-barapost:)
+- [1. prober-v1-12b.py](#1.-prober\-v1\-12b.py)
+- [2. barapost-v3-5a.py](#2.-barapost\-v3\-5a.py)
+- [3. fastQA-sorter-v2-8c.py](#3.-fastQA\-sorter\-v2\-8c.py)
+- [Examples of usage in combination](#Examples-of-usage-in-combination)
+
 ## Motivation
 
 >*Rhodococcus* separately, *Pseudomonas* separately!

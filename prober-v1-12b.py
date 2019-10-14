@@ -1159,6 +1159,18 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
 
 
 def lingering_https_get_request(server, url):
+    """
+    Function performs a "lingering" HTTPS request.
+    It means that the function tries to get the response
+        again and again if the request fails.
+
+    :param server: server address;
+    :type server: str;
+    :param url: the rest of url;
+    :type url: str;
+
+    Returns obtained response decoded to UTF-8 ('str').
+    """
 
     error = True
     while error:
@@ -1232,39 +1244,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     there_are_hits = False
 
     while True:
-        # error = True
-        # while error:
-        #     try:
-        #         conn = http.client.HTTPSConnection(server) # create connection
-        #         conn.request("GET", wait_url) # ask for if there areresults
-        #         response = conn.getresponse() # get the resonse
-        #         resp_content = str(response.read(), "utf-8") # get response text
-        #         conn.close()
-        #     except OSError as err:
-        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-        #         printl("   " + str(err))
-        #         error = True
-        #         sleep(30)
-        #     except http.client.RemoteDisconnected as err:
-        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-        #         printl("   " + str(err))
-        #         error = True
-        #         sleep(30)
-        #     except socket.gaierror as err:
-        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-        #         printl("   " + str(err))
-        #         error = True
-        #         sleep(30)
-        #     except http.client.CannotSendRequest as err:
-        #         printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-        #         printl("   " + str(err))
-        #         error = True
-        #         sleep(30)
-        #     else:
-        #         error = False # if no exception ocured
-        #     # end try
-        # # end while
-
         resp_content = lingering_https_get_request(server, wait_url)
 
         # if server asks to wait
@@ -1318,12 +1297,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
     respond_text= lingering_https_get_request(server, retrieve_xml_url)
 
-    # conn = http.client.HTTPSConnection(server)
-    # conn.request("GET", retrieve_xml_url)
-    # response = conn.getresponse()
-    # respond_text = str(response.read(), "utf-8")
-    # conn.close()
-
     if "[blastsrv4.REAL]" in respond_text:
         printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
         printl("Let's try to prune these sequences.")
@@ -1366,17 +1339,12 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 
     retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
     respond_text = lingering_https_get_request(server, retrieve_text_url)
-    # conn = http.client.HTTPSConnection(server)
-    # conn.request("GET", retrieve_text_url)
-    # response = conn.getresponse()
 
     txt_hpath = os.path.join(outdir_path, "blast_result_{}.txt".format(pack_to_send))
     # Write text result for a human to read
     with open(txt_hpath, 'w') as txt_file:
         txt_file.write(respond_text + '\n')
     # end with
-
-    # conn.close()
 
 # end def save_txt_align_result
 
