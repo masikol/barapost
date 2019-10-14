@@ -5,9 +5,9 @@
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
 - [Getting barapost](#getting-barapost)
-- [1. prober-v1-12b.py](#1.-prober)
-- [2. barapost-v3-5a.py](#2.-barapost)
-- [3. fastQA-sorter-v2-8c.py](#3.-fastQA-sorter)
+- [1. prober](#1.-prober)
+- [2. barapost](#2.-barapost)
+- [3. fastQA sorter](#3.-fastQA-sorter)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
