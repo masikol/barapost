@@ -134,9 +134,10 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 
 `./prober-v1-12a.py`
 
-  2. Process all files in the working directory that start with "some_my_fasta". Use default settings:
+  2. Process all files in the working directory that start with "some_my_fasta".
+Provide NCBI with your email. Use default settings:
 
-`./prober-v1-10.py some_my_fasta* -e my.email@smth.com`
+`./prober-v1-12a.py some_my_fasta* -e my.email@smth.com`
 
   3. Process one file with default settings:
 
