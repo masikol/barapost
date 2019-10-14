@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-11b.py ===|\n")
+print("\n |=== prober-v1-12a.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -33,6 +33,7 @@ def get_work_time():
 
 import os
 from re import search as re_search
+from re import match as re_match
 
 # |===== Function that asks to press ENTER on Windows =====|
 
@@ -68,12 +69,13 @@ def printn(text):
         instead if awful error traceback.
     """
     sys_stdout.write(text)
+    sys_stdout.flush() # display text immediately
 # end def printn
 
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-11b.py -- this program is designed for determinating the taxonomic position
+  prober-v1-12a.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
@@ -86,7 +88,7 @@ on your local machine by "barapost-v3-5a.py".\n
     Results of barapost-v3-5a.py's work will be appended to this file\n
   Files processed by this program are meant to be processed afterwards by "barapost-v3-5a.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-11b.py" step and go to "barapost-v3-5a.py" (see `-l` option in "barapost-v3-5a.py" description).
+"prober-v1-12a.py" step and go to "barapost-v3-5a.py" (see `-l` option in "barapost-v3-5a.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -95,19 +97,20 @@ Default parameters:\n
 - algorithm (see '-a' option): 'megaBlast';
 - organisms (see '-g' option): full 'nt' database, i.e. no slices;
 - output directory ('-o' option): directory named "prober_result"
-  nested in current directory;\n
+  nested in current directory;
+- no email information is send to NCBI;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-11b.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-11b.py' -- it will determine,
+It means that you should not process all your data by 'prober-v1-12a.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-12a.py' -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3-5a.py'.\n
-  'barapost-v3-5a.py' will process the rest of you sequences in the same way like 'prober-v1-11b.py', but on your local computer.
+  'barapost-v3-5a.py' will process the rest of you sequences in the same way like 'prober-v1-12a.py', but on your local computer.
 'barapost-v3-5a.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-11b.py' again on "unknown" sequences.
+But you always can run 'prober-v1-12a.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-11b.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-11b.py my_directory/*'' will process all files in 'my_directory'.
+Files that you want 'prober-v1-12a.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-12a.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -131,31 +134,35 @@ OPTIONS:\n
         Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-11b.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-11b.py'.
+        during 'prober-v1-12a.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-12a.py'.
         Value: positive integer number.
         Default value is 200;\n
+    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12a.py",
+        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-11b.py\n
-  2. Process all files in the working directory that start with "some_my_fasta". Use default settings:\n
-    ./prober-v1-10.py some_my_fasta*\n
+    ./prober-v1-12a.py\n
+  2. Process all files in the working directory that start with "some_my_fasta".
+     Provide NCBI with your email. Use default settings:\n
+    ./prober-v1-10.py some_my_fasta* -e my.email@smth.com\n
   3. Process one file with default settings:\n
-    ./prober-v1-11b.py reads.fastq\n
+    ./prober-v1-12a.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-11b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
+    ./prober-v1-12a.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-    ./prober-v1-11b.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
+    ./prober-v1-12a.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(argv[1:], "hd:o:p:a:g:b:",
-        ["help", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size="])
+    opts, args = getopt.gnu_getopt(argv[1:], "hd:o:p:a:g:b:e:",
+        ["help", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size=",
+        "email="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -172,6 +179,7 @@ probing_batch_size = 200
 send_all = False
 blast_algorithm = "megaBlast"
 organisms = list() # default is whole 'nt' database
+user_email = ""
 
 # Add positional arguments to fq_fa_list
 for arg in args:
@@ -265,6 +273,16 @@ for opt, arg in opts:
             platf_depend_exit(1)
         # end try
     # end if
+
+    if opt in ("-e", "--email"):
+        if arg != "" and re_match(r".+@.+\..+", arg) is None:
+            print("Your email does not seem like an email.")
+            print("Please check it and, if you are sure that your email is right, \
+\n   but prober still refuses it  -- contact the developer.")
+            platf_depend_exit(1)
+        # end if
+        user_email = arg
+    # end if
 # end for
 
 
@@ -286,6 +304,7 @@ if len(fq_fa_list) == 0:
     # end if
 # end if
 
+# Sort list of files that will be processed -- process them in alphabetical order.
 fq_fa_list.sort()
 
 from gzip import open as open_as_gzip # input files might be gzipped
@@ -337,7 +356,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-11b.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-12a.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -402,7 +421,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-11b.py ===|\n\n"))
+logfile.write((" |=== prober-v1-12a.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -414,6 +433,7 @@ def check_connection():
 
     :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
     """
+    printn("Checking Internet connection...")
 
     if not platform.startswith("win"):
         check_mark = "\u2714"
@@ -443,7 +463,7 @@ def check_connection():
         # end if
         platf_depend_exit(-2)
     else:
-        print(check_mark)
+        print("\rChecking Internet connection... {}".format(check_mark))
     # end try
 # end def check_connection
 
@@ -465,8 +485,8 @@ def verify_taxids(taxid_list):
 
         printl("Verifing TaxIDs:")
         if not platform.startswith("win"):
-            check_mark = "\u2714"
-            cross = "\u274c"
+            check_mark = " \u2714"
+            cross = " \u274c"
         else:
             check_mark = ""
             cross = ""
@@ -533,49 +553,6 @@ Enter the number (1 or 2):>> """)
         # end try
 
     return(True if continuation == 1 else False)
-
-
-# def get_packet_size(num_reads):
-#     """
-#     Function asks the user about how many query sequences will be sent 
-#         to NCBI BLAST as a particular request.
-
-#     :return: the number of query sequences;
-#     :return type: int;
-#     """
-
-#     packet_size = None
-#     # You cannot sent more query sequences than you have
-#     limit = num_reads if num_reads <= 500 else 500
-
-#     while packet_size is None:
-        
-#         packet_size = input("""
-# Please, specify the number of sequences that should be sent to the NCBI server in one request.
-# E.g. if you have 10 sequences in your file, you can send 10 sequences as single
-#     request -- in this case you should enter number 10. You may send 2 requests containing
-#     5 sequences both -- in this case you should enter number 5.
-
-
-# There are {} sequences left to process in current file.
-# Enter the number (from 1 to {}):>> """.format(num_reads, limit))
-#         # Check if entered value is integer number. If no, give another attempt.
-#         try:
-#             packet_size = int(packet_size)
-#             # Check if input number is in [1, limit]
-#             if packet_size < 1 or packet_size > limit:
-#                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
-#                 packet_size = None
-#             else:
-#                 print("You have chosen number " + str(packet_size) + '\n')
-#             # end if
-#         except ValueError:
-#             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-#             packet_size = None
-#         # end try
-#     # end while
-#     return(packet_size)
-# # end def get_packet_size
 
 
 # |===== End of question funtions =====|
@@ -1087,6 +1064,11 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["DATABASE"] = "nt" # db
     payload["QUERY"] = packet # FASTA data
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
+    if user_email != "":
+        payload["email"] = user_email # user's email
+        payload["tool"] = "barapost:_prober-v1-12a"
+    # end if
+    
 
     # 'nt' database slices:
     for i, org in enumerate(organisms):
@@ -1096,6 +1078,10 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["NUM_ORG"] = str( len(organisms) )
 
     payload = urllib.parse.urlencode(payload)
+
+    open("tmp.txt", 'w').write(payload)
+    exit(0)
+
     headers = { "Content-Type" : "application/x-www-form-urlencoded" }
 
     return {"payload":payload, "headers": headers}
@@ -1629,7 +1615,6 @@ def create_result_directory(fq_fa_path, outdir_path):
 
 #                   |===== Kernel loop =====|
 
-print("Checking Internet connection...")
 check_connection()
 organisms = verify_taxids(taxid_list)
 
@@ -1797,6 +1782,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
                 align_xml_text = send_request(request,
                     pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
+
+                if align_xml_text == "expired":
+                    printl("Job expired. Trying to send it once again.\n")
+                    continue
+                # end if
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --
                 #    shorten all sequences in packet twice and resend it.
