@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-12b.py ===|\n")
+print("\n |=== prober-v1-12c.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -34,6 +34,7 @@ def get_work_time():
 import os
 from re import search as re_search
 from re import match as re_match
+from glob import glob
 
 # |===== Function that asks to press ENTER on Windows =====|
 
@@ -75,20 +76,20 @@ def printn(text):
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-12b.py -- this program is designed for determinating the taxonomic position
+  prober-v1-12c.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
-on your local machine by "barapost-v3-5a.py".\n
+on your local machine by "barapost-v3-5b.py".\n
   This program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
   Results of the work of this program are written to TSV files, that can be found in result directory:\n
 1) There is a file named `...acc_list.tsv`. It contains accessions and names of Genbank records that
-    can be used for building a database on your local machine by "barapost-v3-5a.py".\n
+    can be used for building a database on your local machine by "barapost-v3-5b.py".\n
 2) There is a file named `...result.tsv`. It contains full result of "BLASTing".\n
-    Results of barapost-v3-5a.py's work will be appended to this file\n
-  Files processed by this program are meant to be processed afterwards by "barapost-v3-5a.py".\n
+    Results of barapost-v3-5b.py's work will be appended to this file\n
+  Files processed by this program are meant to be processed afterwards by "barapost-v3-5b.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-12b.py" step and go to "barapost-v3-5a.py" (see `-l` option in "barapost-v3-5a.py" description).
+"prober-v1-12c.py" step and go to "barapost-v3-5b.py" (see `-l` option in "barapost-v3-5b.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -100,17 +101,17 @@ Default parameters:\n
   nested in current directory;
 - no email information is send to NCBI;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-12b.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-12b.py' -- it will determine,
-what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3-5a.py'.\n
-  'barapost-v3-5a.py' will process the rest of you sequences in the same way like 'prober-v1-12b.py', but on your local computer.
-'barapost-v3-5a.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
+It means that you should not process all your data by 'prober-v1-12c.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-12c.py' -- it will determine,
+what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3-5b.py'.\n
+  'barapost-v3-5b.py' will process the rest of you sequences in the same way like 'prober-v1-12c.py', but on your local computer.
+'barapost-v3-5b.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-12b.py' again on "unknown" sequences.
+But you always can run 'prober-v1-12c.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-12b.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-12b.py my_directory/*'' will process all files in 'my_directory'.
+Files that you want 'prober-v1-12c.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-12c.py my_directory/*' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -134,27 +135,27 @@ OPTIONS:\n
         Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-12b.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-12b.py'.
+        during 'prober-v1-12c.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-12c.py'.
         Value: positive integer number.
         Default value is 200;\n
-    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12b.py",
+    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12c.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-12b.py\n
+    ./prober-v1-12c.py\n
   2. Process all files in the working directory that start with "some_my_fasta".
      Provide NCBI with your email. Use default settings:\n
     ./prober-v1-10.py some_my_fasta* -e my.email@smth.com\n
   3. Process one file with default settings:\n
-    ./prober-v1-12b.py reads.fastq\n
+    ./prober-v1-12c.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-12b.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
+    ./prober-v1-12c.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-    ./prober-v1-12b.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
+    ./prober-v1-12c.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
@@ -211,8 +212,7 @@ for opt, arg in opts:
         
         indir_path = os.path.abspath(arg)
 
-        paths_buff = list( filter(is_fq_or_fa, os.listdir(indir_path)) )
-        fq_fa_list.extend(list(map(lambda f: os.path.join(indir_path, f), paths_buff)))
+        fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
     # end if
 
     if opt in ("-o", "--outdir"):
@@ -296,7 +296,7 @@ if len(fq_fa_list) == 0:
     
     # If input directory was not specified -- look for FASTQ files in current directory
     else:
-        fq_fa_list = list( filter(is_fq_or_fa, os.listdir('.')) )
+        fq_fa_list = list(filter( is_fq_or_fa, glob("{}{}*".format(os.getcwd(), os.sep)) ))
         if len(fq_fa_list) == 0:
             print(err_fmt("there is no FASTQ or FASTA files to process found."))
             platf_depend_exit(1)
@@ -356,7 +356,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-12b.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-12c.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -421,7 +421,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-12b.py ===|\n\n"))
+logfile.write((" |=== prober-v1-12c.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -1066,7 +1066,7 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
     if user_email != "":
         payload["email"] = user_email # user's email
-        payload["tool"] = "barapost:_prober-v1-12b"
+        payload["tool"] = "barapost:_prober-v1-12c"
     # end if
     
 
@@ -1529,12 +1529,12 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
 
     with open(acc_file_path, 'w') as acc_file:
-        acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost-v3-5a.py'\n")
+        acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost-v3-5b.py'\n")
         acc_file.write("# Values in this file are delimited by tabs.\n")
         acc_file.write("# You are welcome to edit this file by adding,\n")
         acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")
-        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost-v3-5a.py'.\n")
-        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost-v3-5a.py'.\n")
+        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost-v3-5b.py'.\n")
+        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost-v3-5b.py'.\n")
         acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
         acc_file.write(DELIM.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
     # end with
@@ -1832,7 +1832,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
 printl("\n {} sequences have been processed\n".format(seqs_processed))
 
-printl("Here are Genbank records that can be used for further sorting by 'barapost-v3-5a.py'.")
+printl("Here are Genbank records that can be used for further sorting by 'barapost-v3-5b.py'.")
 printl("They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence
@@ -1852,9 +1852,9 @@ if unkn_num > 0:
 
 printl("""\nThey are saved in following file:
     '{}'""".format(acc_fpath))
-printl("""\nYou can edit this file before running 'barapost-v3-5a.py' in order to
+printl("""\nYou can edit this file before running 'barapost-v3-5b.py' in order to
   modify list of sequences that will be downloaded from Genbank
-  and used as local (i.e. on your local computer) database by 'barapost-v3-5a.py'.""")
+  and used as local (i.e. on your local computer) database by 'barapost-v3-5b.py'.""")
 end_time = time()
 printl('\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Probing task is completed\n")
 logfile.close()
