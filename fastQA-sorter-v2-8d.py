@@ -153,6 +153,7 @@ for arg in args:
     fq_fa_list.append( os.path.abspath(arg) )
 # end for
 
+
 for opt, arg in opts:
 
     if opt in ("-h", "--help"):
@@ -262,6 +263,56 @@ if not os.path.isdir(outdir_path):
         platf_depend_exit(1)
     # end try
 # end if
+
+
+def get_checkstr(fast5_fpath):
+
+    try:
+        filename_payload = re_search(r"([a-z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
+    except AttributeError:
+        return os.path.basename(fast5_fpath).replace(".fast5", "")
+    else:
+        return filename_payload
+    # end try
+# end def get_checkstr
+
+for fpath in fq_fa_list:
+
+    if fpath.endswith("fast5"):
+
+        put_fast5_resdirs_num = len( glob("{}{}*{}*".format(prober_res_dir, os.sep, get_checkstr(path))) )
+
+        if len(put_fast5_resdirs_num) == 1:
+            continue
+        elif len(put_fast5_resdirs_num) == 0:
+            print(err_fmt("""directory that may be considered as valid for
+  sorting of file '{}' is not found in the directory '{}'""".format(path, prober_res_dir)))
+            print("\nTo solve this issue, please follow these steps:")
+            print("""  1. Make sure that FASTQ file that is the result of
+'{}' basecaling has been processed by 'prober-v1-12c.py' and 'barapost-v3-5b.py'.
+Then try to sort this FAST5 file again.""".format(path))
+            print("""  2. If you are sure that step 1 doesn't work for you,
+but this error still occurs, then you should make sure that
+results of processing this FASTQ file by programs mentioned above are located in the directory '{}'.
+Then try to sort this FAST5 file again.""".format(prober_res_dir))
+            print("""  3. If you are sure that steps 1 and 2 do not work for you,
+but this error still occurs, then you should make sure that
+names of corresponding FAST5 and FASTQ files are "analoguous".
+Frankly speaking, make sure that you have NOT renamed FASTQ file after basecalling.
+For the full definition of "analoguous" FAST5 and FASTQ files see REAMDE file in Barapost repository:
+https://github.com/masikol/barapost
+Then try to sort this FAST5 file again.""")
+            print("""  4. If you are sure that steps 1, 2 and 3 do not work for you,
+but this error still occurs, then you should contact the developer.""")
+            platf_depend_exit(1)
+        else:
+            print(err_fmt("multiple result directories match FAST5 file meant to be sorted"))
+            print("  Please, contact the developer -- it is his mistake.")
+            platf_depend_exit(1)
+        # end if
+    # end if
+# end for
+
 
 del help_msg # we do not need this large string object any more
 
@@ -663,7 +714,7 @@ def sort_fast5_file(f5_path):
     global seqs_pass
     global seqs_qual_fail
 
-    new_dpath = get_curr_res_dir(f5_path, prober_res_dir)
+    new_dpath = glob("{}{}*{}*".format(prober_res_dir, os.sep, get_checkstr(path)))[0]
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
