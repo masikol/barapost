@@ -36,7 +36,7 @@ Since current version is too raw to make a release, you can get "barapost" in th
 
 Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git`
 
-Way 2: download ZIP archive (green button at the top rigtht of this page "Clone or downlaod" -> "Download ZIP").
+Way 2: download ZIP archive (green button at the top right of this page "Clone or downlaod" -> "Download ZIP").
 
 ## prober
 
