@@ -1,4 +1,4 @@
-# barapost toolkit
+# Barapost toolkit
 
 **"Barapost"** command line toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
 
@@ -8,6 +8,7 @@
 - [1. prober](#prober)
 - [2. barapost](#barapost)
 - [3. fastQA sorter](#fastQA-sorter)
+- [FAST5 sorting](#FAST5-sorting)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
@@ -22,13 +23,15 @@ It is awful to to sit in front of the computer for hours sending all these seque
 
 ## The default workflow looks like
 
-1. **prober-v1-12c.py** -- this program sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-12c.py" saves information about the best hit of each sequence from probing batch.
+**!** - these scripts cannot be executed by Python interpreter version < 3.0. They are tested on Python interpreter version 3.8.0.
+
+1. **prober-v1-12c.py** -- this script sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober-v1-12c.py" saves information about the best hit of each sequence from probing batch.
 Process all sequences in this way takes too much time, what leads us to "barapost-v3-5b.py".
 
-2. **barapost-v3-5b.py** -- this program firstly downloads best hits discovered by "prober-v1-12c.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
+2. **barapost-v3-5b.py** -- this script firstly downloads best hits discovered by "prober-v1-12c.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
 Results are written in TSV file named `...results.tsv`.
 
-3. **fastQA-sorter-v2-8d.py** -- this program performs sorting (dividing into separate files) of your data set according to results of "prober-v1-12c.py" and "barapost-v3-5b.py"
+3. **fastQA5-sorter-v3-0a.py** -- this script performs sorting (dividing into separate files) of your data set according to results of "prober-v1-12c.py" and "barapost-v3-5b.py"
 
 ## Getting barapost
 
@@ -40,20 +43,20 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.a; 14.10.2019 edition;
+Version 1.12.c; 14.10.2019 edition;
 
 ### DESCRIPTION:
 
-**prober-v1-12c.py** -- this program is designed for determinating the taxonomic position
+**prober-v1-12c.py** -- this script is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.
 
-The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
+The main goal of this script is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
 on your local machine by "barapost-v3-5b.py".
 
-This program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
+This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
-Results of the work of this program are written to TSV files, that can be found in result directory:
+Results of the work of this script are written to TSV files, that can be found in result directory:
 
 1) There is a file named `...acc_list.tsv`. It contains accessions and names of Genbank records that
     can be used for building a database on your local machine by "barapost-v3-5b.py".
@@ -61,7 +64,7 @@ Results of the work of this program are written to TSV files, that can be found 
 2) There is a file named `...result.tsv`. It contains full result of "BLASTing".
     Results of barapost-v3-5b.py's work will be appended to this file.
 
-Files processed by this program are meant to be processed afterwards by "barapost-v3-5b.py".
+Files processed by this script are meant to be processed afterwards by "barapost-v3-5b.py".
 
 If you have your own FASTA files that can be used as database to blast against, you can omit "prober-v1-12c.py" step and go to "barapost-v3-5b.py" (see `-l` option in "barapost-v3-5b.py" description).
 
@@ -77,7 +80,7 @@ If you have your own FASTA files that can be used as database to blast against, 
   nested in current directory;
 - no email information (`-e` option) is send to NCBI;
 
-Dedication of this program is to send small batch (see `-b` option) of sequences to NCBI BLAST server.
+Dedication of this script is to send small batch (see `-b` option) of sequences to NCBI BLAST server.
 It means that you should not process all your data by "prober-v1-12c.py' -- it would take long time.
 
 Instead of this you should process some sequences by "prober-v1-12c.py" -- it will determine,
@@ -164,12 +167,12 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.5.a; 10.10.2019 edition;
+Version 3.5.b; 10.10.2019 edition;
 
 ### DESCRIPTION:
 
-**barapost-v3-5b.py** -- this program is designed for determinating the taxonomic position
-of nucleotide sequences by "BLASTing" each of them with 'blastn' program from "BLAST+" toolkit
+**barapost-v3-5b.py** -- this script is designed for determinating the taxonomic position
+of nucleotide sequences by "BLASTing" each of them with 'blastn' script from "BLAST+" toolkit
 and regarding the best hit.
 
 "barapost-v3-5b.py" is meant to be used just after 'prober-v1-12c.py'.
@@ -178,11 +181,11 @@ and regarding the best hit.
 of work of "prober-v1-12c.py", builds an indexed local database which consists of
 downloaded sequences, and continues aligning with "BLAST+" toolkit in order to save time.
 
-Program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
+script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
 "barapost-v3-5b.py" writes it's results in the same TSV file as "prober-v1-12c.py" does.
 
-FASTQ files processed by this program are meant to be sorted afterwards by 'fastQA_sorted.py'.
+FASTQ files processed by this script are meant to be sorted afterwards by 'fastQA_sorted.py'.
 
 `BLAST+` toolkit (including blastn, makeblastdb and makembindex) can
 be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
@@ -203,7 +206,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 ```
     -h (--help) --- show help message;
 
-    -r (--prober-result-dir) --- result directory generated by program "prober-v1-12c.py".
+    -r (--prober-result-dir) --- result directory generated by script "prober-v1-12c.py".
         This is directory specified to 'prober-v1-12c.py' by '-o' option.
         If you omit 'prober-v1-12c.py' and use your own FASTA files
         to create a database, this directory may not exist before start of 'barapost-v3-5b.py'
@@ -278,16 +281,16 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 `./barapost-v3-5b.py some_reads.fastq -p 50 -l my_own_sequence.fasta -t 4 -r prober_outdir`
 
 
-## fastQA sorter
-(fast**Q** and fast**A** sorter)
+## fastQA5 sorter
+(fast**Q**, fast**A** and fast**5** sorter)
 
-Version 2.8.c; 10.10.2019 edition;
+Version 3.0.a; 22.10.2019 edition;
 
 ### DESCRIPTION:
 
-**fastQA-sorter-v2-8d.py** -- this program is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-5b.py".
+**fastQA5-sorter-v3-0a.py** -- this script is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost-v3-5b.py".
 
-"fastQA-sorter-v2-8d.py" is meant to be used just after "barapost-v3-5b.py".
+"fastQA5-sorter-v3-0a.py" is meant to be used just after "barapost-v3-5b.py".
 
 ### Default parameters:
 
@@ -298,13 +301,13 @@ Version 2.8.c; 10.10.2019 edition;
 
 ### OPTIONS:
 
-- Files that you want "fastQA-sorter-v2-8d.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: `./fastQA-sorter-v2-8d.py my_directory/*` will process all files in `'my_directory'`.
+- Files that you want "fastQA5-sorter-v3-0a.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: `./fastQA5-sorter-v3-0a.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
     -h (--help) --- show help message;
 
-    -r (--prober-result-dir) --- result directory genearted by program "prober-v1-12c.py"
+    -r (--prober-result-dir) --- result directory genearted by script "prober-v1-12c.py"
         This is directory specified to "prober-v1-12c.py" with '-o' option.
         Default value is "prober_result", since it is the default name of
         output directory generated by "prober-v1-12c.py".
@@ -338,52 +341,113 @@ Version 2.8.c; 10.10.2019 edition;
 
     b) there **more than one** FASTA file with assembly generated by one assembler. For example, you have two SPAdes outputs: `"outdir_1/contigs.fasta"` and `"outdir_2/contigs.fasta"`. Paths to these files will be used to name sorted files. In this case if you sort your sequnces by genus, you'll get files named `"SPAdes_assembly__outdir_1_contigs.fasta_NODE.fastq.gz"` and `"SPAdes_assembly__outdir_2_contigs.fasta_NODE.fastq.gz"`. Situation with a5 is the same -- instead of "SPAdes" "a5" will be written (and "scaffold" instead of "NODE"). As you see, path separators are replaced by underscores in order not to held a bacchanalia in file system. If sorting sensitivity is "species" or "strain", you'll get separate files for each NODE (or scaffold, if you've used a5), just as in 'a)' section above, but paths will be included (e.g. `"SPAdes_assembly__outdir_1_contigs.fasta_NODE_3.fastq.gz"`)
 
-"fastQA_sorted.py" decides whether it is a SPAdes assembly file or a a5 one by looking at sequence IDs in these files. If ID is like `"NODE_1_length_245432_cov_23.5412"` -- probably it is SPAdes work. If ID is like `"scaffold_1"` -- it looks just like a5 output. "fastQA-sorter-v2-8d.py" regards only the first sequnce ID in file.
-
+"fastQA_sorted.py" decides whether it is a SPAdes assembly file or a a5 one by looking at sequence IDs in these files. If ID is like `"NODE_1_length_245432_cov_23.5412"` -- probably it is SPAdes work. If ID is like `"scaffold_1"` -- it looks just like a5 output. "fastQA5-sorter-v3-0a.py" regards only the first sequnce ID in file.
 
 ### EXAMPLES:
 
-Note for Windows users: `./fastQA-sorter-v2-8d.py` won't work on Windows -- type `python fastQA-sorter-v2-8d.py` instead.
+Note for Windows users: `./fastQA5-sorter-v3-0a.py` won't work on Windows -- type `python fastQA5-sorter-v3-0a.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA-sorter-v2-8d.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA5-sorter-v3-0a.py`) and run it as it is shown in examples below.
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
-`./fastQA-sorter-v2-8d.py`
+`./fastQA5-sorter-v3-0a.py`
 
   2. Process all files in the working directory that start with "some_my_fastq". Ignore reads with mean Phred33 quality < 15. The rest of settings are default:
 
-`./fastQA-sorter-v2-8d.py some_my_fastq* -q 15`
+`./fastQA5-sorter-v3-0a.py some_my_fastq* -q 15`
 
   2. Process one FASTQ file with default settings.
      File `reads.fastq` has been already processed by "barapost-v3-5b.py".
      Results of "barapost-v3-5b.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8d.py reads.fastq.gz -r prober_outdir/`
+`./fastQA5-sorter-v3-0a.py reads.fastq.gz -r prober_outdir/`
 
   3. Process a FASTQ file and a FASTA file, place results in `outdir` directory.
      Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "barapost-v3-5b.py".
      Results of "barapost-v3-5b.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8d.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/`
+`./fastQA5-sorter-v3-0a.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/`
 
   4. Process all FASTQ and FASTA files in directory named `dir_with_seqs`. Sort by genus.
      All these files have been already processed by "barapost-v3-5b.py".
      Results of "barapost-v3-5b.py" work are in directory `prober_outdir`:
 
-`./fastQA-sorter-v2-8d.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus`
+`./fastQA5-sorter-v3-0a.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus`
 
+
+## FAST5 sorting
+
+FAST5 files can be sorted by fastQA5-sorter-v3-0a.py.
+
+**!** - Barapost toolkit does **not** perform basecalling of nanopore data.
+
+Since it is recommended to keep your FAST5 files in order to re-basecall them later, with more accurate (e.g. more sensible for base modifications) basecall algorithms, it worth following the pipeline below:
+
+1. Basecall FAST5 files and get FASTQ.
+2. Perform taxonomical annotation of obtained FASTQ files.
+3. Sort source FAST5 files according to this taxonomical annotation.
+4. Keep sorted FAST5 files in order to re-basecall them later.
+
+Therefore, you can pass FAST5 files to "fastQA5-sorter-v3-0a.py" just as FASTQ or FASTA files and they will be sorted as well.
+
+### Pre-requirements:
+
+Sorting of FAST5 files have been tested only on Linux.
+
+[h5py](https://www.h5py.org/) Python package is used to perform this feature. To build it, `libhdf5-dev` is in turn required. To install these soft, run following commands (assumming that your packet manager is `apt` and you use `pip3` to install Python side packages):
+
+```
+apt install libhdf5-dev
+pip3 install h5py
+```
+
+### The constraint on names of FAST5 and FASTQ files
+
+The short and reliable rule souds so: **do not rename your FASTQ and FAST5 files after basecalling** if you intend to sort these FAST5 files with "fastQA5-sorter-v3-0a.py".
+
+Details:
+
+- Software that drives nanopore sequencing devices (like MinKNOW) yields FAST5 files named as follows:
+  `FAK94973_e6f2851ddd414655574208c18f2f51e590bf4b27_1.fast5`
+  (at least, MinKNOW does so, I am not sure about other programs).
+
+- Basecallers (Guppy, for instance), can drop `FAK94973` part of file name or replace it with some other string (e.g. `fastq_runid`), but `e6f2851ddd414655574208c18f2f51e590bf4b27_1` part is kept intact. Therefore the second one (let's call it "check string") can be used to identify basecalled FASTQ file and associate it with source FAST5 file unambiguously.
+
+- Experience tells that check string (more precisely, it's hash-like part before the underscore) has length of 41. Assuming that this situation can vary from case to case, "fastQA5-sorter-v3-0a.py" will match check string that contains hash-like part with length at least 30 characters (or more). Also I have not seen uppercase letters in such hash-like character sequences, but it is better to assume and forsee their existance.
+
+Algorithm of finding taxonomical annotation infornation for a particular FAST5 file sorting:
+
+1. "fastQA5-sorter-v3-0a.py" tries to match the pattern described above with regex. Exact pattern: `[a-zA-Z0-9]{30,}_[0-9]+`.
+  
+2. If mathing string is substring of the name of directory with results of taxonomic annotation, FAST5 file of our interest will be associated with this directory and will be sorted according to TSV file in it.
+
+3. If there is no match (for example, the user renames his/her FAST5 files just after sequesing) whole FAST5 file name will be used to find corresponding directory with results of taxonomic annotation. For example, if FAST5 file is named `my_favorite_reads_324egf.fast5`, then `my_favorite_reads_324egf` will be used as check string. Again, a directory which name contains check string is considered as corresponding to this FAST5 file.
+
+### Example:
+
+Assuming you have already performed basecalling of file "some_reads.fast5" and have file "some_reads.fastq". You may act as follows to sort source FAST5 file:
+
+Taxonomical annotation:
+```
+./prober-v1-12c.py some_reads.fastq
+./barapost-v3-5b.py some_reads.fastq
+```
+Sorting:
+```
+./fastQA5-sorter-v3-0a.py some_reads.fast5
+```
 
 ## Examples of usage in combination:
 
 1. You can place all .py-files provided with by this toolkit in a directory that contains some FASTA and FASTQ files and run whole "pipeline" with default settings:
 
-`./prober-v1-12c.py && ./barapost-v3-5b.py && ./fastQA-sorter-v2-8d.py`
+`./prober-v1-12c.py && ./barapost-v3-5b.py && ./fastQA5-sorter-v3-0a.py`
 
-2. You can try this programs on test dataset named `some_reads.fastq` (there are 4 reads):
+2. You can try these scripts on test dataset named `some_reads.fastq` (there are 4 reads):
 
 `./prober-v1-12c.py some_reads.fastq -o some_outdir -g Escherichia,561+viruses,10239 -p 2 -b 2`
 
 `./barapost-v3-5b.py some_reads.fastq -r some_outdir`
 
-`./fastQA-sorter-v2-8d.py some_reads.fastq -r some_outdir -o some_sorted_reads`
+`./fastQA5-sorter-v3-0a.py some_reads.fastq -r some_outdir -o some_sorted_reads`
