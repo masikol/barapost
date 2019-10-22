@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Version 3.0.a
-# 22.10.2019 edition
+# 2019.10.22 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== fastQA5-sorter-v3-0a.py ===|\n")
+print("\n |=== fastQA5-sorter-v3-1a.py ===|\n")
 
 def err_fmt(text):
     """Function for configuring error messages"""
@@ -78,12 +78,12 @@ from sys import intern
 
 help_msg = """
 DESCRIPTION:\n
-fastQA5-sorter-v3-0a.py -- this program is designed for sorting (dividing into separate files)
-    FASTQ and FASTA files processed by "barapost-v3-5b.py".\n
+fastQA5-sorter-v3-1a.py -- this program is designed for sorting (dividing into separate files)
+    FASTQ and FASTA files processed by "barapost-v3-5c.py".\n
 Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ files,
     that are result of basecalling these FAST5 files. For details, see README.md
     on github page ('FAST5 sorting' section): https://github.com/masikol/barapost\n
-"fastQA5-sorter-v3-0a.py" is meant to be used just after "barapost-v3-5b.py".
+"fastQA5-sorter-v3-1a.py" is meant to be used just after "barapost-v3-5c.py".
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ, FASTA and FAST5 files in current directory will be processed;
@@ -91,9 +91,9 @@ Default parameters:\n
 - output directory ('-o' option): directory named '"fastQA5_sorter_result_<date_and_time_of_run>"''
   nested in current directory;
 ----------------------------------------------------------\n
-Files that you want 'fastQA5-sorter-v3-0a.py' to process should be
+Files that you want 'fastQA5-sorter-v3-1a.py' to process should be
     specified as positional arguments (see EXAMPLE #2 below).
-Wildcards do work: './fastQA5-sorter-v3-0a.py my_directory/*'' will process all files in 'my_directory'.
+Wildcards do work: './fastQA5-sorter-v3-1a.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -113,27 +113,27 @@ OPTIONS:\n
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./fastQA5-sorter-v3-0a.py\n
+    ./fastQA5-sorter-v3-1a.py\n
   2. Process all files in the working directory that start with "some_my_fastq".
      Ignore reads with mean Phred33 quality < 15. The rest of settings are default:\n
-     ./fastQA5-sorter-v3-0a.py some_my_fastq* -q 15\n
+     ./fastQA5-sorter-v3-1a.py some_my_fastq* -q 15\n
   2. Process one FASTQ file with default settings.
-     File 'reads.fastq' has been already processed by "barapost-v3-5b.py".
-     Results of "barapost-v3-5b.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-0a.py reads.fastq.gz -r prober_outdir/\n
+     File 'reads.fastq' has been already processed by "barapost-v3-5c.py".
+     Results of "barapost-v3-5c.py" work are in directory 'prober_outdir':\n
+     ./fastQA5-sorter-v3-1a.py reads.fastq.gz -r prober_outdir/\n
   3. Process a FASTQ file and a FASTA file, place results in 'outdir' directory.
-     Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already processed by "barapost-v3-5b.py".
-     Results of "barapost-v3-5b.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-0a.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
+     Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already processed by "barapost-v3-5c.py".
+     Results of "barapost-v3-5c.py" work are in directory 'prober_outdir':\n
+     ./fastQA5-sorter-v3-1a.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
   4. Process all FASTQ and FASTA files in directory named 'dir_with_seqs'. Sort by genus.
-     All these files have been already processed by "barapost-v3-5b.py".
-     Results of "barapost-v3-5b.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-0a.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
+     All these files have been already processed by "barapost-v3-5c.py".
+     Results of "barapost-v3-5c.py" work are in directory 'prober_outdir':\n
+     ./fastQA5-sorter-v3-1a.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
 """
 
 try:
-    opts, args = getopt.gnu_getopt(argv[1:], "hr:d:o:s:q:", ["help", "prober-result-dir=", "indir=", "outdir=",
-        "sorting-sensitivity=", "min-ph33-qual="])
+    opts, args = getopt.gnu_getopt(argv[1:], "hr:d:o:s:q:m:", ["help", "prober-result-dir=", "indir=", "outdir=",
+        "sorting-sensitivity=", "min-ph33-qual=", "min-seq-len="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -141,11 +141,12 @@ except getopt.GetoptError as gerr:
 
 is_fastQA5 = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q|5)(\.gz)?$", f) is None else False
 fq_fa_list = list() # input FASTQ files paths
-prober_res_dir = "prober_result" # path to result TSV file generated by barapost-v3-5b.py
+prober_res_dir = "prober_result" # path to result TSV file generated by barapost-v3-5c.py
 indir_path = None # path to input directory
 outdir_path = "fastQA5_sorter_result_{}".format(now.replace(' ', '_')) # defalut value
 sens = "genus" # default value
-min_ph33_qual = 20
+min_ph33_qual = 20 # minimum mean read quality to keep
+min_qlen = 1000 # minimum seqeunce length to keep
 
 # This varible will be True if at least one FAST5 file is meant to be processed.
 # It is necessary in order not to import 'h5py' module if it is not needed.
@@ -216,7 +217,7 @@ for opt, arg in opts:
         if arg not in ("genus", "species", "strain"):
             print(err_fmt("invalid value specified by '-s' option!\n"))
             print("Available values: 'genus', 'species', 'strain'")
-            print("\nType for help:\n    ./fastQA5-sorter-v3-0a.py -h")
+            print("\nType for help:\n    ./fastQA5-sorter-v3-1a.py -h")
             platf_depend_exit(1)
         # end if
         sens = arg
@@ -230,6 +231,19 @@ for opt, arg in opts:
             # end if
         except ValueError:
             print(err_fmt("min Phred33 quality must be positive number!"))
+            print("You've specified '{}'".format(arg))
+            platf_depend_exit(1)
+        # end try
+    # end if
+
+    if opy in ("-m", "--min_seq_len"):
+        try:
+            min_qlen = int(arg)
+            if min_qlen < 0:
+                raise ValueError
+            # end if
+        except ValueError:
+            print(err_fmt("minimum length of the sequence must be positive integer number!"))
             print("You've specified '{}'".format(arg))
             platf_depend_exit(1)
         # end try
@@ -328,7 +342,7 @@ for fpath in fq_fa_list:
     '{}'\n    is not found in the directory '{}'""".format(fpath, prober_res_dir)))
             print("\nTo SOLVE this issue, please follow these steps:\n")
             print("""  1. Make sure that FASTQ file that is the result of
-'{}'\n  basecaling has been processed by 'prober-v1-12c.py' and 'barapost-v3-5b.py'.
+'{}'\n  basecaling has been processed by 'prober-v1-12d.py' and 'barapost-v3-5c.py'.
 Then try to sort this FAST5 file again.\n""".format(fpath))
             print("""  2. If you are sure that step 1 doesn't work for you,
 but this error still occurs, then you should make sure that
@@ -372,10 +386,10 @@ if fast5_in_inp_files:
 
 # There some troubles with file extention on Windows, so let's make a .txt file for it:
 log_ext = ".log" if not platform.startswith("win") else ".txt"
-logfile_path = os.path.join(outdir_path, "fastQA5-sorter_log_{}{}".format(strftime("%d-%m-%Y_%H-%M-%S", localtime(start_time)), log_ext))
+logfile_path = os.path.join(outdir_path, "fastQA5-sorter_log_{}{}".format(strftime("%Y-%m-%d_%H-%M-%S", localtime(start_time)), log_ext))
 logfile = open(logfile_path, 'w')
 
-logfile.write((" |=== fastQA5-sorter-v3-0a.py ===|\n\n"))
+logfile.write((" |=== fastQA5-sorter-v3-1a.py ===|\n\n"))
 
 def printl(text=""):
     """
@@ -643,49 +657,31 @@ def read_fasta_record(fasta_file, fmt_func):
 # end def read_fasta_record
 
 
-def write_fastq_record(outfile_path, fastq_record):
+def write_fastq_record(sorted_file, fastq_record):
     """
-    :param outfile_path: file, which data from fastq_record is written in
-    :type outfile_path: _io.TextIOWrapper
+    :param sorted_file: file, which data from fastq_record is written in
+    :type sorted_file: _io.TextIOWrapper
     :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ
     :type fastq_record: dict<str: str>
-
-    Returns None
     """
-    try:
-        with open_as_gzip(outfile_path, 'ab') as sorted_file:
-            sorted_file.write(bytes(fastq_record["seq_id"], "utf-8"))
-            sorted_file.write(bytes(fastq_record["seq"], "utf-8"))
-            sorted_file.write(bytes(fastq_record["opt_id"], "utf-8"))
-            sorted_file.write(bytes(fastq_record["qual_line"], "utf-8"))
-        # end with
-    
-    except Exception as exc:
-        printl("\nAn error occured while writing to outfile")
-        printl( str(exc) )
-        platf_depend_exit(1)
-    # end try
+
+    sorted_file.write(bytes(fastq_record["seq_id"], "utf-8"))
+    sorted_file.write(bytes(fastq_record["seq"], "utf-8"))
+    sorted_file.write(bytes(fastq_record["opt_id"], "utf-8"))
+    sorted_file.write(bytes(fastq_record["qual_line"], "utf-8"))
 # end def write_fastq_record
 
 
-def write_fasta_record(outfile_path, fasta_record):
+def write_fasta_record(sorted_file, fasta_record):
     """
-    :param outfile_path: file, which data from fasta_record is written in
-    :type outfile_path: _io.TextIOWrapper
+    :param sorted_file: file, which data from fasta_record is written in
+    :type sorted_file: _io.TextIOWrapper
     :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
     :type fasta_record: dict<str: str>
     """
-    try:
-        with open_as_gzip(outfile_path, 'ab') as sorted_file:
-            sorted_file.write(bytes(fasta_record["seq_id"]+'\n', "utf-8"))
-            sorted_file.write(bytes(fasta_record["seq"], "utf-8"))
-        # end with
-    
-    except Exception as exc:
-        printl("\nAn error occured while writing to outfile")
-        printl( str(exc) )
-        platf_depend_exit(1)
-    # end try
+
+    sorted_file.write(bytes(fasta_record["seq_id"]+'\n', "utf-8"))
+    sorted_file.write(bytes(fasta_record["seq"], "utf-8"))
 # end def write_fasta_record
 
 
@@ -732,7 +728,7 @@ def get_curr_res_dir(fq_fa_path, prober_res_dir):
 # end def get_curr_res_dir
 
 
-# |=== Function for configuring dictionary containing information generated by barapost-v3-5b.py ===|
+# |=== Function for configuring dictionary containing information generated by barapost-v3-5c.py ===|
 
 def get_res_tsv_fpath(new_dpath):
     """
@@ -749,7 +745,7 @@ def get_res_tsv_fpath(new_dpath):
     if not os.path.exists(new_dpath):
         printl(err_fmt("directory '{}' does not exist!".format(new_dpath)))
         printl(""" Please make sure you have 'prober_result' directory and
-    file '{}...' have been processed by 'barapost-v3-5b.py'""".format(os.path.basename(new_dpath)))
+    file '{}...' have been processed by 'barapost-v3-5c.py'""".format(os.path.basename(new_dpath)))
         printl("""Also this error might occur if you forget to specify result directory
     generated by 'prober.py' with '-r' option.""")
         platf_depend_exit(0)
@@ -762,11 +758,26 @@ def get_res_tsv_fpath(new_dpath):
 # end def get_res_tsv_fpath
 
 
+def update_file_dict(srt_file_dict, new_fpath):
+    if new_fpath not in srt_file_dict.keys():
+        try:
+            srt_file_dict[intern(new_fpath)] = open_as_gzip(new_fpath, 'wb')
+        except OSError as oserr:
+            printl(err_fmt("error while opening one of result files"))
+            printl("Errorneous file: '{}'".format(new_fpath))
+            printl( str(oserr) )
+            platf_depend_exit(1)
+        # end try
+    # end def
+    return srt_file_dict
+# end def update_file_dict
+
+
 def sort_fastqa_file(fq_fa_path):
     """
     Function for sorting FASTQ and FASTA files.
     It stays separately from analoguous code from the kernel loop because
-        interaction with HDF5 files and platin text ones have rather different interfases.
+        interaction with HDF5 files and plain text ones have rather different interfases.
     It would be an ad hoc trick to implement a context manager wrapping for HDF5 files
         in order only to create an interface that would look like plain text files' one.
 
@@ -775,7 +786,7 @@ def sort_fastqa_file(fq_fa_path):
     """
 
     global seqs_pass
-    global seqs_qual_fail
+    global seqs_fail
 
     new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
@@ -803,38 +814,33 @@ def sort_fastqa_file(fq_fa_path):
             read_name = intern(fastq_rec["seq_id"].partition(' ')[0][1:]) # get ID of the sequence
 
             try:
-                hit_name, ph33_qual = resfile_lines[read_name] # find hit corresponding to this sequence
+                hit_name, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
             except KeyError:
-                printl("\n\t\a !! - Warning: read '{}' not found in '{}' result file".format(read_name, prober_res_dir))
-                printl("Make sure that this read has been already processed by 'prober-v1-12c.py' and 'barapost-v3-5b.py'.")
-                continue
+                printl(err_fmt("read '{}' not found in '{}' result file".format(read_name, prober_res_dir)))
+                printl("Make sure that this read has been already processed by 'prober-v1-12d.py' and 'barapost-v3-5c.py'.")
+                platf_depend_exit(1)
             # If read is found in TSV file:
             else:
-
-                if ph33_qual != '-':
-                    try:
-                        ph33_qual = float(ph33_qual)
-                    except ValueError as verr:
-                        printl(err_rmt("Phred33 quality of a read is not a float number!"))
-                        printl(" Please, contact the developer.")
-                        platf_depend_exit(1)
+                if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
+                    # Get name of result FASTQ file to write this read in
+                    if ph33_qual != '-':
+                        sorted_file_path = os.path.join(outdir_path, "qual_less_Q{}_len_less_{}.fast{}.gz".format(int(min_ph33_qual),
+                            min_qlen, 'q' if is_fastq(fq_fa_path) else 'a'))
                     else:
-                        if ph33_qual < min_ph33_qual:
-                            # Get name of resilt FASTQ file to write this read in
-                            sorted_file_path = os.path.join(outdir_path, "qual_less_than_Q{}.fastq.gz".format(int(min_ph33_qual)))
-                            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
-                            write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
-                            seqs_qual_fail += 1
-                            continue
-                        # end if
-                    # end try
+                        sorted_file_path = os.path.join(outdir_path, "len_less_{}.fast{}.gz".format(int(min_ph33_qual),
+                            min_qlen, 'q' if is_fastq(fq_fa_path) else 'a'))
+                    # end if
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                    write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
+                    seqs_fail += 1
+                else:
+                    # Get name of result FASTQ file to write this read in
+                    sorted_file_path = os.path.join(outdir_path, "{}.fast{}.gz".format(hit_name,
+                        'q' if is_fastq(fq_fa_path) else 'a'))
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                    write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
+                    seqs_pass += 1
                 # end if
-
-                # Get name of resilt FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}.fast{}.gz".format(hit_name,
-                    'q' if is_fastq(fq_fa_path) else 'a'))
-                write_fun(sorted_file_path, fastq_rec) # write current read to sorted file
-                seqs_pass += 1
             # end try
 
             printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
@@ -860,7 +866,7 @@ def sort_fast5_file(f5_path):
     """
 
     global seqs_pass
-    global seqs_qual_fail
+    global seqs_fail
 
     new_dpath = glob("{}{}*{}*".format(prober_res_dir, os.sep, get_checkstr(f5_path)))[0]
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
@@ -881,34 +887,23 @@ def sort_fast5_file(f5_path):
             hit_name, ph33_qual = resfile_lines[read_name[5:]] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
             printl(err_fmt("read '{}' not found in '{}' result file".format(read_name, prober_res_dir)))
-            printl("Make sure that this read has been already processed by 'prober-v1-12c.py' and 'barapost-v3-5b.py'.")
+            printl("Make sure that this read has been already processed by 'prober-v1-12d.py' and 'barapost-v3-5c.py'.")
             platf_depend_exit(1)
+        # If read is found in TSV file:
         else:
-            if ph33_qual != '-':
-                try:
-                    ph33_qual = float(ph33_qual)
-                except ValueError as verr:
-                    printl(err_rmt("Phred33 quality of a read is not a float number!"))
-                    printl(" Please, contact the developer.")
-                    platf_depend_exit(1)
-                else:
-                    if ph33_qual < min_ph33_qual:
-                        # Get name of resilt FASTQ file to write this read in
-                        sorted_file_path = os.path.join(outdir_path, "qual_less_than_Q{}.fast5".format(int(min_ph33_qual)))
-                        printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
-                        to_f5 = h5py.File(sorted_file_path, 'a')
-                        from_f5.copy(read_name, to_f5)
-                        seqs_qual_fail += 1
-                        continue
-                    # end if
-                # end try
+            if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+                # Get name of result FASTQ file to write this read in
+                sorted_file_path = os.path.join(outdir_path, "qual_less_Q{}_len_less_{}.fast5".format(int(min_ph33_qual), min_qlen))
+                to_f5 = h5py.File(sorted_file_path, 'a')
+                from_f5.copy(read_name, to_f5)
+                seqs_fail += 1
+            else:
+                # Get name of result FASTQ file to write this read in
+                sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                to_f5 = h5py.File(sorted_file_path, 'a')
+                from_f5.copy(read_name, to_f5)
+                seqs_pass += 1
             # end if
-
-            # Get name of resilt FASTQ file to write this read in
-            sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-            to_f5 = h5py.File(sorted_file_path, 'a')
-            from_f5.copy(read_name, to_f5)
-            seqs_pass += 1
         # end try
         printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
     # end for
@@ -939,8 +934,29 @@ def configure_resfile_lines(tsv_res_fpath):
             splt = line.split('\t')
             read_name = intern(splt[0])
             hit_name = splt[1]
-            phred33 = splt[8]
-            resfile_lines[read_name] = [hit_name, phred33]
+            try:
+                query_len = int(splt[3])  # we will filter by length
+            except ValueError as verr:
+                printl(err_fmt("query length parsing error"))
+                printl( str(verr) )
+                printl("Please, contact the developer.")
+                platf_depend_exit(1)
+            # end try
+            try:
+                phred33 = float(splt[8]) # we will filter by quality
+            except ValueError as verr:
+                if splt[8] == '-':
+                    # Keep minus as quality if there is no quality information.
+                    # Error will not be raised.
+                    phred33 = splt[8]
+                else:
+                    printl(err_fmt("query quality parsing error"))
+                    printl( str(verr) )
+                    printl("Please, contact the developer.")
+                    platf_depend_exit(1)
+                # end if
+            # end try
+            resfile_lines[read_name] = [hit_name, phred33, query_len]
             line = brpst_resfile.readline().strip() # get next line
         # end while
     # end with
@@ -956,7 +972,7 @@ def configure_resfile_lines(tsv_res_fpath):
 
 # |===== Proceed =====|
 
-printl( get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(start_time))) + "- Start working\n")
+printl( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 printl(" - Sorting sensitivity: '{}';".format(sens))
 printl(" - Minimum mean Phred33 quality of a read to keep: {};\n".format(min_ph33_qual))
@@ -972,14 +988,15 @@ LINES_PER_READ_FASTQ = 4
 is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
 num_files = len(fq_fa_list)
 next_id_line = None
+srt_file_dict = dict()
 
-seqs_pass, seqs_qual_fail = 0, 0
+seqs_pass, seqs_fail = 0, 0
 
 for j, fq_fa_path in enumerate(fq_fa_list):
 
     printl("{} - '{}': start sorting".format(get_work_time(), os.path.basename(fq_fa_path)))
 
-    # Interface of interactiong with HDF5 files are quite different from platin text ones.
+    # Interface of interactiong with HDF5 files are quite different from plain text ones.
     # So it is beter to write a separate function for them.
     if not fq_fa_path.endswith(".fast5"):
         sort_fastqa_file(fq_fa_path)
@@ -988,11 +1005,25 @@ for j, fq_fa_path in enumerate(fq_fa_list):
     # end if
 # end for
 
-printl("\n{} sequences have been processed.".format(seqs_pass + seqs_qual_fail))
-if seqs_qual_fail:
-    printl("{} of them have passed quality controle (Q{}).".format(seqs_pass, int(min_ph33_qual)))
+# Close all sorted files
+for file_obj in srt_file_dict.values():
+    file_obj.close()
+# end for
+
+def get_undr_sep_number(number):
+    undr_sep_num = str(number)
+    for i in range(len(undr_sep_num)-4, -1, -4):
+        undr_sep_num = undr_sep_num[: i+1] + '_' + undr_sep_num[i+1: ]
+    # end for
+    return undr_sep_num
+# end def get_undr_sep_number
+
+printl("\n{} sequences have been processed.".format(get_undr_sep_number(seqs_pass + seqs_fail)))
+if seqs_fail > 0:
+    printl("{} of them have passed quality (Q{}) and length ({}) controle.".format(get_undr_sep_number(seqs_fail),
+        int(min_ph33_qual), min_qlen))
 # end if
 
 end_time = time()
-printl( '\n'+get_work_time() + " ({}) ".format(strftime("%d.%m.%Y %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
+printl( '\n'+get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
 platf_depend_exit(0)
