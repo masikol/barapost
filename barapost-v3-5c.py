@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.5.a
+# Version 3.5.c
 # 2019.10.22 edition
 
 # |===== Check python interpreter version =====|

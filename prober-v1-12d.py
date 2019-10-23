@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.12.b
-# 2019.10.22 edition
+# Version 1.12.d
+# 2019.10.23 edition
 
 # |===== Check python interpreter version =====|
 
@@ -1831,11 +1831,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # end if
 # end for
 
-printl("\n {} sequences have been processed\n".format(seqs_processed))
-
-printl("Here are Genbank records that can be used for further sorting by 'barapost-v3-5c.py'.")
-printl("They are sorted by their occurence in probing batch:")
-
 def get_undr_sep_number(number):
     undr_sep_num = str(number)
     for i in range(len(undr_sep_num)-4, -1, -4):
@@ -1843,6 +1838,12 @@ def get_undr_sep_number(number):
     # end for
     return undr_sep_num
 # end def get_undr_sep_number
+
+printl("\n {} sequences have been processed\n".format(get_undr_sep_number(seqs_processed)))
+
+printl("Here are Genbank records that can be used for further sorting by 'barapost-v3-5c.py'.")
+printl("They are sorted by their occurence in probing batch:")
+
 
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",

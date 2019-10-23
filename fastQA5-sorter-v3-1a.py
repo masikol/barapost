@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.0.a
+# Version 3.1.a
 # 2019.10.22 edition
 
 # |===== Check python interpreter version =====|
@@ -90,6 +90,8 @@ Default parameters:\n
 - sorting sensitivity (see '-s' option): 'genus';
 - output directory ('-o' option): directory named '"fastQA5_sorter_result_<date_and_time_of_run>"''
   nested in current directory;
+- minimum mean quality of a read to keep ('-q' option): 20 (Phred33);
+- miminum length of a sequence to keep ('-m' option): 1000 bp;
 ----------------------------------------------------------\n
 Files that you want 'fastQA5-sorter-v3-1a.py' to process should be
     specified as positional arguments (see EXAMPLE #2 below).
@@ -109,7 +111,10 @@ OPTIONS:\n
         Available values: 'genus', 'species', 'strain'; Default is 'genus'.\n
     -q (--min-ph33-qual) --- minimum mean Phred33 quality of a read to keep;
         Reads of lower quality will be ignored;
-        Default value: 20;
+        Default value: 20;\n
+    -m (--min_seq_len) --- minimum length of a sequence to keep.
+        Shorter sequences will be written to separate file.
+        Default value: 1000;
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
@@ -236,7 +241,7 @@ for opt, arg in opts:
         # end try
     # end if
 
-    if opy in ("-m", "--min_seq_len"):
+    if opt in ("-m", "--min_seq_len"):
         try:
             min_qlen = int(arg)
             if min_qlen < 0:
@@ -787,6 +792,7 @@ def sort_fastqa_file(fq_fa_path):
 
     global seqs_pass
     global seqs_fail
+    global srt_file_dict
 
     new_dpath = get_curr_res_dir(fq_fa_path, prober_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
