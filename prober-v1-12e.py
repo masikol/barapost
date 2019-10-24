@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 1.12.d
-# 2019.10.23 edition
+# Version 1.12.e
+# 2019.10.24 edition
 
 # |===== Check python interpreter version =====|
 
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== prober-v1-12d.py ===|\n")
+print("\n |=== prober-v1-12e.py ===|\n")
 
 # |===== Stuff for dealing with time =====|
 
@@ -76,7 +76,7 @@ def printn(text):
 # |===== Handle command line arguments =====|
 help_msg = """
 DESCRIPTION:\n
-  prober-v1-12d.py -- this program is designed for determinating the taxonomic position
+  prober-v1-12e.py -- this program is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
   The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
@@ -89,7 +89,7 @@ on your local machine by "barapost-v3-5c.py".\n
     Results of barapost-v3-5c.py's work will be appended to this file\n
   Files processed by this program are meant to be processed afterwards by "barapost-v3-5c.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober-v1-12d.py" step and go to "barapost-v3-5c.py" (see `-l` option in "barapost-v3-5c.py" description).
+"prober-v1-12e.py" step and go to "barapost-v3-5c.py" (see `-l` option in "barapost-v3-5c.py" description).
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
@@ -101,17 +101,17 @@ Default parameters:\n
   nested in current directory;
 - no email information is send to NCBI;\n
   Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober-v1-12d.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober-v1-12d.py' -- it will determine,
+It means that you should not process all your data by 'prober-v1-12e.py' -- it would take long time.\n
+  Instead of this you should process some sequences by 'prober-v1-12e.py' -- it will determine,
 what Genbank records (genomes, if you want) are present in your data and then go to 'barapost-v3-5c.py'.\n
-  'barapost-v3-5c.py' will process the rest of you sequences in the same way like 'prober-v1-12d.py', but on your local computer.
+  'barapost-v3-5c.py' will process the rest of you sequences in the same way like 'prober-v1-12e.py', but on your local computer.
 'barapost-v3-5c.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
   Obviously, a probing batch cannot cover all variety of a data set,
 so some sequences can be recognized as "unknown" while processing by 'barapost-v3-4.py'.
-But you always can run 'prober-v1-12d.py' again on "unknown" sequences.
+But you always can run 'prober-v1-12e.py' again on "unknown" sequences.
 ----------------------------------------------------------\n
-Files that you want 'prober-v1-12d.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober-v1-12d.py my_directory/*' will process all files in 'my_directory'.
+Files that you want 'prober-v1-12e.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
+  Wildcards do work: './prober-v1-12e.py my_directory/*' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -135,27 +135,27 @@ OPTIONS:\n
         Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
     -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober-v1-12d.py' work.
-        You can specify '-b all' to process all your sequeces by 'prober-v1-12d.py'.
+        during 'prober-v1-12e.py' work.
+        You can specify '-b all' to process all your sequeces by 'prober-v1-12e.py'.
         Value: positive integer number.
         Default value is 200;\n
-    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12d.py",
+    -e (--email) --- your email. Please, specify your email when you run "prober-v1-12e.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober-v1-12d.py\n
+    ./prober-v1-12e.py\n
   2. Process all files in the working directory that start with "some_my_fasta".
      Provide NCBI with your email. Use default settings:\n
     ./prober-v1-10.py some_my_fasta* -e my.email@smth.com\n
   3. Process one file with default settings:\n
-    ./prober-v1-12d.py reads.fastq\n
+    ./prober-v1-12e.py reads.fastq\n
   4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
 Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober-v1-12d.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
+    ./prober-v1-12e.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
   5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
 Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-    ./prober-v1-12d.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
+    ./prober-v1-12e.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
 """
 from sys import argv
 import getopt
@@ -356,7 +356,7 @@ for file in fq_fa_list:
 # end for
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober-v1-12d.py' with default batch size.
+# And do not disturb him if he has run 'prober-v1-12e.py' with default batch size.
 if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
     if send_all:
         probing_batch_size = seqs_at_all
@@ -382,6 +382,10 @@ if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" 
 
 if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):
     probing_batch_size = seqs_at_all
+# end if
+
+if seqs_at_all < packet_size:
+    packet_size = seqs_at_all
 # end if
 
 del help_msg # we do not need this large string object any more
@@ -421,7 +425,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-logfile.write((" |=== prober-v1-12d.py ===|\n\n"))
+logfile.write((" |=== prober-v1-12e.py ===|\n\n"))
 printl( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -1066,7 +1070,7 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
     if user_email != "":
         payload["email"] = user_email # user's email
-        payload["tool"] = "barapost:_prober-v1-12d"
+        payload["tool"] = "barapost:_prober-v1-12e"
     # end if
     
 
