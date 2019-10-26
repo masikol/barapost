@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Version 3.2.b
+# Version 3.2.c
 # 2019.10.26 edition
 
 # |===== Check python interpreter version =====|
@@ -17,7 +17,7 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-print("\n |=== fastQA5-sorter-v3-2b.py ===|\n")
+print("\n |=== fastQA5-sorter-v3-2c.py ===|\n")
 
 def err_fmt(text):
     """Function for configuring error messages"""
@@ -78,12 +78,12 @@ from sys import intern
 
 help_msg = """
 DESCRIPTION:\n
-fastQA5-sorter-v3-2b.py -- this program is designed for sorting (dividing into separate files)
+fastQA5-sorter-v3-2c.py -- this program is designed for sorting (dividing into separate files)
     FASTQ and FASTA files processed by "barapost-v3-5f.py".\n
 Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ files,
     that are result of basecalling these FAST5 files. For details, see README.md
     on github page ('FAST5 sorting' section): https://github.com/masikol/barapost\n
-"fastQA5-sorter-v3-2b.py" is meant to be used just after "barapost-v3-5f.py".
+"fastQA5-sorter-v3-2c.py" is meant to be used just after "barapost-v3-5f.py".
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ, FASTA and FAST5 files in current directory will be processed;
@@ -93,9 +93,9 @@ Default parameters:\n
 - minimum mean quality of a read to keep ('-q' option): 20 (Phred33);
 - length filtering ('-m' option) is disabled;
 ----------------------------------------------------------\n
-Files that you want 'fastQA5-sorter-v3-2b.py' to process should be
+Files that you want 'fastQA5-sorter-v3-2c.py' to process should be
     specified as positional arguments (see EXAMPLE #2 below).
-Wildcards do work: './fastQA5-sorter-v3-2b.py my_directory/*'' will process all files in 'my_directory'.
+Wildcards do work: './fastQA5-sorter-v3-2c.py my_directory/*'' will process all files in 'my_directory'.
 ----------------------------------------------------------\n
 OPTIONS:\n
     -h (--help) --- show help message;\n
@@ -118,22 +118,22 @@ OPTIONS:\n
 ----------------------------------------------------------\n
 EXAMPLES:\n
   1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./fastQA5-sorter-v3-2b.py\n
+    ./fastQA5-sorter-v3-2c.py\n
   2. Process all files in the working directory that start with "some_my_fastq".
      Ignore reads with mean Phred33 quality < 15. The rest of settings are default:\n
-     ./fastQA5-sorter-v3-2b.py some_my_fastq* -q 15\n
+     ./fastQA5-sorter-v3-2c.py some_my_fastq* -q 15\n
   2. Process one FASTQ file with default settings.
      File 'reads.fastq' has been already processed by "barapost-v3-5f.py".
      Results of "barapost-v3-5f.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-2b.py reads.fastq.gz -r prober_outdir/\n
+     ./fastQA5-sorter-v3-2c.py reads.fastq.gz -r prober_outdir/\n
   3. Process a FASTQ file and a FASTA file, place results in 'outdir' directory.
      Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already processed by "barapost-v3-5f.py".
      Results of "barapost-v3-5f.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-2b.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
+     ./fastQA5-sorter-v3-2c.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n
   4. Process all FASTQ and FASTA files in directory named 'dir_with_seqs'. Sort by genus.
      All these files have been already processed by "barapost-v3-5f.py".
      Results of "barapost-v3-5f.py" work are in directory 'prober_outdir':\n
-     ./fastQA5-sorter-v3-2b.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
+     ./fastQA5-sorter-v3-2c.py -d dir_with_seqs -o outdir -r prober_outdir/ -s genus
 """
 
 try:
@@ -222,7 +222,7 @@ for opt, arg in opts:
         if arg not in ("genus", "species", "strain"):
             print(err_fmt("invalid value specified by '-s' option!\n"))
             print("Available values: 'genus', 'species', 'strain'")
-            print("\nType for help:\n    ./fastQA5-sorter-v3-2b.py -h")
+            print("\nType for help:\n    ./fastQA5-sorter-v3-2c.py -h")
             platf_depend_exit(1)
         # end if
         sens = arg
@@ -423,7 +423,7 @@ log_ext = ".log" if not platform.startswith("win") else ".txt"
 logfile_path = os.path.join(outdir_path, "fastQA5-sorter_log_{}{}".format(strftime("%Y-%m-%d_%H-%M-%S", localtime(start_time)), log_ext))
 logfile = open(logfile_path, 'w')
 
-logfile.write((" |=== fastQA5-sorter-v3-2b.py ===|\n\n"))
+logfile.write((" |=== fastQA5-sorter-v3-2c.py ===|\n\n"))
 
 def printl(text=""):
     """
@@ -446,7 +446,8 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
     invalid_reply = True
     while invalid_reply:
         reply = input("""Press ENTER to ovewrite all old sequence-containing files
-    or enter 'r' to rename old directory and to write current results to a new one:>>""")
+    or enter 'r' to rename old directory and to write current results to a new one
+    or enter 'a' to append new data to the existing one:>>""")
 
         if reply == "":
             invalid_reply = False
@@ -475,6 +476,8 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
                 platf_depend_exit(1)
             # end try
             print()
+        elif reply == 'a':
+            invalid_reply = False
         else:
             print("Invalid reply!\n")
         # end if
@@ -914,6 +917,37 @@ def sort_fastqa_file(fq_fa_path):
 # end def sort_fastqa_file
 
 
+def copy_read_f5_2_f5(from_f5, read_name, to_fpath):
+    """
+    Function copies a read with ID 'read_name'
+        from 'from_f5' FAST5 file to to_fpath one.
+
+    :param from_f5: FAST5 file object to copy a read from;
+    :type from_f5: h5py.File;
+    :param read_name: ID of a read to copy;
+    :type read_name: str;
+    :param to_fpath: path to destination FAST5 file;
+    :type to_fpath: str;
+    """
+    try:
+        to_f5 = h5py.File(to_fpath, 'a')
+        from_f5.copy(read_name, to_f5)
+    except OSError as oserr:
+        printl(err_fmt("cannot open FAST5 file"))
+        printl("Sorter crushed while opening file '{}'".format(os.path.basename(to_f5)))
+        printl( "Reason: {}".format( str(oserr) ) )
+        platf_depend_exit(1)
+    except ValueError as verr:
+        printl("\n\n ! - Warning: {}".format( str(verr) ))
+        printl("Reason is probably the following:")
+        printl("  read that is copying to the result file is already in it.")
+        printl("ID of the read: '{}'".format(read_name))
+        printl("File: '{}'".format(to_fpath))
+        printl("Omitting this read...\n")
+    # end try
+# end def copy_read_f5_2_f5
+
+
 def sort_fast5_file(f5_path):
     """
     Function for sorting FAST5 files.
@@ -937,8 +971,33 @@ def sort_fast5_file(f5_path):
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
-    from_f5 = h5py.File(f5_path, 'r')
-    num_reads = len(from_f5)
+    try:
+        # File existance checking is performed while parsing CL arguments.
+        # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
+        if not h5py.is_hdf5(f5_path):
+            raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
+        # end if
+        # Open the file
+        from_f5 = h5py.File(f5_path, 'r')
+        # Validation of the file:
+        #   RuntimeError will be raised if FAST5 file is broken.
+        for _ in from_f5:
+            break
+        # end for
+    except OSError as oserr:
+        printl(err_fmt("cannot open FAST5 file"))
+        printl("Opening file '{}' crashed:".format(os.path.basename(f5_path)))
+        printl("Reason: {}".format( str(oserr) ))
+        platf_depend_exit(1)
+    except RuntimeError as runterr:
+        printl(err_fmt("FAST5 file is broken"))
+        printl("Reading of the file '{}' crashed.".format(os.path.basename(f5_path)))
+        printl("Reason: {}".format( str(runterr) ))
+        platf_depend_exit(5)
+    else:
+        # If everything is OK, then we can get number of reads in this file
+        num_reads = len(from_f5)
+    # end try
 
     for i, read_name in enumerate(from_f5):
 
@@ -959,14 +1018,12 @@ def sort_fast5_file(f5_path):
             q_len = SeqLength(q_len)
             if ph33_qual != '-' and ph33_qual < min_ph33_qual:
                 # Get name of result FASTQ file to write this read in
-                to_f5 = h5py.File(trash_fpath, 'a')
-                from_f5.copy(read_name, to_f5)
+                copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
                 seqs_fail += 1
             else:
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                to_f5 = h5py.File(sorted_file_path, 'a')
-                from_f5.copy(read_name, to_f5)
+                copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
                 seqs_pass += 1
             # end if
         # end try
