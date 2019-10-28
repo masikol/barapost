@@ -159,7 +159,11 @@ fast5_in_inp_files = False
 
 # Add positional arguments to fq_fa_list
 for arg in args:
-    if not os.path.exists(arg) or not is_fastQA5(arg):
+    if not os.path.exists(arg):
+        print(err_fmt("file does not exist:\n '{}'".format(os.path.abspath(arg))))
+        platf_depend_exit(1)
+    # end if
+    if not is_fastQA5(arg):
         print(err_fmt("invalid positional argument: '{}'".format(arg)))
         print("Only FAST(A/Q/5) files can be specified without a key in command line.")
         platf_depend_exit(1)
