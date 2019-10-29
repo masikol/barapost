@@ -5,6 +5,7 @@
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
 - [Getting barapost](#getting-barapost)
+- [Pre-requirements and where to get them](#pre-requirements)
 - [1. prober](#prober)
 - [2. barapost](#barapost)
 - [3. fastQA sorter](#fastQA-sorter)
@@ -23,7 +24,7 @@ It is awful to to sit in front of the computer for hours sending all these seque
 
 ## The default workflow looks like
 
-**!** - these scripts cannot be executed by Python interpreter version < 3.0. They have been tested on Python interpreter version 3.8.0.
+**!** - these scripts cannot be executed by Python interpreter version < 3.0.
 
 1. **prober.py** -- this script sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober.py" saves information about the best hit of each sequence from probing batch.
 Process all sequences in this way takes too much time, what leads us to "barapost.py".
@@ -41,9 +42,33 @@ Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git
 
 Way 2: download ZIP archive (green button at the top right of this page "Clone or downlaod" -> "Download ZIP").
 
+## Pre-requirements
+
+1. **Python 3** (https://www.python.org/). Tested on Python interpreter version 3.8.0.
+
+2. **BLAST+** toolkit is used by "barapost.py" for building a database and aligning.
+
+   BLAST+ toolkit (including blastn, makeblastdb and makembindex) can
+   be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
+
+   "barapost.py" has been tested on Linux and Windows with BLAST+ version 2.9.0.
+
+3. [**h5py**](https://www.h5py.org/) Python package is used by "fastQA5-sorter.py" for sorting FAST5 files.
+
+   This package is not necessary if you do not intend to sort FAST5 files.
+
+   To build `h5py`, `libhdf5-dev` is in turn required. To install this soft, run following commands (assumming that your packet manager is `apt` and you use `pip3` to install Python side packages):
+
+  ```
+  apt install libhdf5-dev
+  pip3 install h5py
+  ```
+
+   Sorting FAST5 files have been tested only on Linux (`h5py` version 2.10.0 was used).
+
 ## prober
 
-Version 1.12.g; 2019.10.28 edition;
+Version 1.12.h; 2019.10.29 edition;
 
 ### DESCRIPTION:
 
@@ -140,7 +165,7 @@ But you always can run "prober.py" again on "unknown" sequences.
 
 ### EXAMPLES:
 
-Note for Windows users: `./prober.py` won't work on Windows -- type `python prober.py` instead.
+Note for Windows users: `./prober.py` won't work on Windows -- type `py -3 prober.py` instead.
 
 Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober.py`) and run it as it is shown in examples below.
 
@@ -170,7 +195,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.5.g; 2019.10.28 edition;
+Version 3.5.h; 2019.10.29 edition;
 
 ### DESCRIPTION:
 
@@ -189,9 +214,6 @@ script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 "barapost.py" writes it's results in the same TSV file as "prober.py" does.
 
 FASTQ files processed by this script are meant to be sorted afterwards by 'fastQA_sorted.py'.
-
-`BLAST+` toolkit (including blastn, makeblastdb and makembindex) can
-be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
 
 
 ### Default parameters:
@@ -248,7 +270,7 @@ be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDoc
 
 ### EXAMPLES:
 
-Note for Windows users: `./barapost.py` won't work on Windows -- type `python barapost.py` instead.
+Note for Windows users: `./barapost.py` won't work on Windows -- type `py -3 barapost.py` instead.
 
 Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost.py`) and run it as it is shown in examples below.
 
@@ -363,7 +385,7 @@ Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ f
 
 ### EXAMPLES:
 
-Note for Windows users: `./fastQA5-sorter.py` won't work on Windows -- type `python fastQA5-sorter.py` instead.
+Note for Windows users: `./fastQA5-sorter.py` won't work on Windows -- type `py -3 fastQA5-sorter.py` instead.
 
 Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA5-sorter.py`) and run it as it is shown in examples below.
 
@@ -408,17 +430,6 @@ Since it is recommended to keep your FAST5 files in order to re-basecall them la
 4. Keep sorted FAST5 files in order to re-basecall them later.
 
 Therefore, you can pass FAST5 files to "fastQA5-sorter.py" just as FASTQ or FASTA files and they will be sorted as well.
-
-### Pre-requirements:
-
-- [h5py](https://www.h5py.org/) Python package is used to perform this feature. To build it, `libhdf5-dev` is in turn required. To install this soft, run following commands (assumming that your packet manager is `apt` and you use `pip3` to install Python side packages):
-
-```
-apt install libhdf5-dev
-pip3 install h5py
-```
-
-Sorting of FAST5 files have been tested only on Linux (`h5py` version 2.10.0 was used).
 
 ### The constraint on names of FAST5 and FASTQ files
 

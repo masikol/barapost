@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.g"
+__version__ = "1.12.h"
 # Year, month, day
-__last_update_date__ = "2019.10.28"
+__last_update_date__ = "2019.10.29"
 
 # |===== Check python interpreter version =====|
 
@@ -17,8 +17,6 @@ if verinf.major < 3:
     raw_input("Press ENTER to exit:")
     exit(1)
 # end if
-
-# |===== Function that asks to press ENTER on Windows =====|
 
 from sys import platform
 
@@ -41,18 +39,18 @@ help_msg = """
   prober.py
   Version {}; {} edition;\n
 DESCRIPTION:\n
-  This program is designed for determinating the taxonomic position
+  This script is designed for determinating the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
-  The main goal of this program is to send a probing batch of sequences to NCBI BLAST server
+  The main goal of this script is to send a probing batch of sequences to NCBI BLAST server
 and discover, what Genbank records can be downloaded and used for building a database
 on your local machine by "barapost.py".\n
-  This program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
-  Results of the work of this program are written to TSV files, that can be found in result directory:\n
+  This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
+  Results of the work of this script are written to TSV files, that can be found in result directory:\n
 1) There is a file named `...acc_list.tsv`. It contains accessions and names of Genbank records that
     can be used for building a database on your local machine by "barapost.py".\n
 2) There is a file named `...result.tsv`. It contains full result of "BLASTing".\n
     Results of barapost.py's work will be appended to this file\n
-  Files processed by this program are meant to be processed afterwards by "barapost.py".\n
+  Files processed by this script are meant to be processed afterwards by "barapost.py".\n
   If you have your own FASTA files that can be used as database to blast against, you can omit
 "prober.py" step and go to "barapost.py" (see `-l` option in "barapost.py" description).
 ----------------------------------------------------------\n
@@ -394,9 +392,7 @@ if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_si
     probing_batch_size = seqs_at_all
 # end if
 
-if seqs_at_all < packet_size:
-    packet_size = seqs_at_all
-# end if
+packet_size = min(packet_size, probing_batch_size)
 
 del help_msg # we do not need this large string object any more
 
@@ -532,41 +528,40 @@ def verify_taxids(taxid_list):
     return organisms
 # end def verify taxids
 
-# |===== Question funtions =====|
 
-def is_continued():
+def ask_for_resumption():
     """
-    Function asks the user if he/she wants to continue the previous run.
+    Function asks a user if he/she wants to resume the previous run.
 
-    :return: True if the decision is to continue, else False;
-    :return type: bool;
+    Returns True if the decision is to resume, else False;
     """
 
-    continuation = None
+    resume = None
 
-    while continuation is None:
-        continuation = input("""
-Would you like to continue the previous run?
-    1. Continue!
+    while resume is None:
+        resume = input("""
+Would you like to resume the previous run?
+    1. Resume!
     2. Start from the beginning.
 
 Enter the number (1 or 2):>> """)
         # Check if entered value is integer number. If no, give another attempt.
         try:
-            continuation = int(continuation)
+            resume = int(resume)
             # Check if input number is 1 or 2
-            if continuation != 1 and continuation != 2:
+            if resume != 1 and resume != 2:
                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
-                continuation = None
+                resume = None
             else:
-                print("You have chosen number " + str(continuation) + '\n')
+                print("You have chosen number " + str(resume) + '\n')
             # end if
         except ValueError:
             print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
-            continuation = None
+            resume = None
         # end try
 
-    return(True if continuation == 1 else False)
+    return True if resume == 1 else False
+# end def ask_for_resumption
 
 
 # |===== End of question funtions =====|
@@ -744,14 +739,14 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
-    continuation = None
+    resume = None
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
         printl('\n' + get_work_time() + " - The previous result file is found in the directory:")
         printl("   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
-        continuation = is_continued()
-        if not continuation:
+        resume = ask_for_resumption()
+        if not resume:
             rename_file_verbosely(tsv_res_fpath, new_dpath)
             rename_file_verbosely(tmp_fpath, new_dpath)
             rename_file_verbosely(acc_fpath, new_dpath)
@@ -759,7 +754,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     # end if
     
     # Find the name of last successfull processed sequence
-    if continuation == True:
+    if resume == True:
         printl("Let's try to continue...")
 
         # Collect information from result file
@@ -782,12 +777,14 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 return None
             else:
                 printl("Last sent sequence: " + last_seq_id)
+                printl("{} sequences have been already processed".format(num_done_reads))
             # end try
         # end if
         
         # Collect information from accession file
         global acc_dict
         if os.path.exists(acc_fpath):
+
             # There can be invalid information in this file
             try:
                 with open(acc_fpath, 'r') as acc_file:
@@ -828,47 +825,15 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            old_packet_size = int(re_search(r"packet_size: ([0-9]+)", temp_lines[0]).group(1).strip())
             saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[1]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[2]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
         
         except Exception as exc:
-            total_num_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(fasta_path))
-            printl("\n    Attention! Temporary file not found or broken! Reason:")
-            printl( ' ' + str(exc) )
-            printl("{} sequences have been already processed.".format(num_done_reads))
-            printl("There are {} sequences totally in file '{}'.".format(total_num_seqs, os.path.basename(fasta_path)))
 
-            reply = "BULLSHIT"
-            global omit_file
-            while True:
-                reply = input("Press ENTER to omit this file and go to the next one.\n \
- Or enter 'c' to continue processing this file:>>")
-                if reply == 'c':
-                    if num_done_reads >= total_num_seqs:
-                        printl("There are no sequences left to process in this file. Omitting it.")
-                        omit_file = True
-                        return
-                    # end if
-                    
-                    break
-                elif reply == "":
-                    omit_file = True
-                    # global seqs_processed
-                    # seqs_processed += num_done_reads
-                    return
-                else:
-                    print(err_fmt("invalid reply"))
-                # end if
-            # end while
-
-            printl("{} reads have been already processed".format(num_done_reads))
-            printl("{} reads left".format(total_num_seqs - num_done_reads))
-            # packet_size = get_packet_size(total_num_seqs - num_done_reads)
+            # There is no need to disturb a user, merely resume.
             return {
-                "pack_size": packet_size,
                 "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
@@ -879,7 +844,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                "pack_size": old_packet_size,
                 "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
@@ -889,7 +853,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             }
         # end try
         
-    elif continuation == False:
+    else:
         # If we've decided to start from the beginnning - rename old files
         rename_file_verbosely(tsv_res_fpath, new_dpath)
         rename_file_verbosely(tmp_fpath, new_dpath)
@@ -1123,11 +1087,6 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
     url = "/blast/Blast.cgi"
     error = True
 
-    # Save packet size
-    with open(tmp_fpath, 'w') as tmp_file:
-        tmp_file.write("packet_size: {}\n".format(packet_size))
-    # end with
-
     while error:
         try:
             conn = http.client.HTTPSConnection(server) # create a connection
@@ -1244,7 +1203,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     printl("\n{} - Requesting for alignment results. Request ID: {},\n '{}' ({}/{})".format(get_work_time(),
     rid, filename, pack_to_send, packs_at_all))
-    # RTOE can be zero at the very beginning of continuation
+    # RTOE can be zero at the very beginning of resumption
     if rtoe > 0:
         printl("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
         printl("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
@@ -1615,7 +1574,6 @@ def create_result_directory(fq_fa_path, outdir_path):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. 'previous_data' is a dict of the following structure:
 #    {
-#        "pack_size": packet_size (int),
 #        "sv_npck": saved_number_of_sent_packet (int),
 #        "RID": saved_RID (str),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
@@ -1666,14 +1624,16 @@ printl('-'*30 + '\n')
 acc_counter = 0
 # Dictionary of accessions and record names.
 # Accessions are keys, record names are values.
-# This dictionary is filled while processing and at the beginning of continuation.
+# This dictionary is filled while processing and at the beginning of resumption.
 acc_dict = dict()
 # Dictionary of accessions and record names encountered while sending of the current packet.
 # Accessions are keys, record names are values.
 new_acc_dict = dict()
 
-# Counter of processed sequences
+# Counter of sequences processed during current run
 seqs_processed = 0
+# Counetr of sequences processed concerning putative previous run(s)
+glob_seqs_processed = 0
 
 # Variable that contains id of next sequence in current FASTA file.
 # If no or all sequences in current FASTA file have been already processed, this variable is None
@@ -1682,11 +1642,6 @@ next_id_line = None
 
 # Varible for stopping execution when probing batch is processed completely.
 stop = False
-
-# Files that were processed completely will be omited.
-# Function 'look_around' changes value of this variable.
-omit_file= False
-
 
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):
@@ -1720,35 +1675,24 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
         saved_npack = previous_data["sv_npck"] # get number of last sent packet
-        packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
-        contin_rtoe = 0 # we will not sleep at the very beginning of continuation
+        contin_rtoe = 0 # we will not sleep at the very beginning of resumption
     # end if
 
-    # Omit completely processed files.
-    if omit_file:
-        omit_file = False
-        continue
-    # end if
+    glob_seqs_processed += num_done_reads
 
-    if num_done_reads != 0:
-        seqs_processed = num_done_reads
-    # end if
-
-    if probing_batch_size <= curr_fasta["nreads"]:
-        tmp_num = probing_batch_size
-    else:
-        tmp_num = curr_fasta["nreads"]
-    # end if
-    packs_at_all = tmp_num // packet_size # Calculate total number of packets sent from current FASTA file
+    # Calculate total number of packets meant to be sent from current FASTA file
+    tmp_num = min(probing_batch_size, curr_fasta["nreads"])
+    packs_at_all = tmp_num // packet_size
 
     if tmp_num % packet_size > 0: # And this is ceiling (in order not to import 'math')
         packs_at_all += 1
     # end if
-    packs_received = int( num_done_reads / packet_size ) # number of successfully processed sequences
+
+    pack_to_send = 1 # number of packet meant to be sent now
 
     if is_gzipped(curr_fasta["fpath"]):
         fmt_func = lambda l: l.decode("utf-8")
@@ -1758,10 +1702,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         fmt_func = lambda l: l
         how_to_open = open
     # end if
-
-    reads_left = curr_fasta["nreads"] - num_done_reads # number of sequences left to precess
-    packs_left = packs_at_all - packs_received # number of packets left to send
-    pack_to_send = packs_received+1 if packs_received > 0 else 1 # number of packet meant to be sent now
 
     # Iterate over packets left to send
     for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):
@@ -1852,11 +1792,14 @@ def get_undr_sep_number(number):
     return undr_sep_num
 # end def get_undr_sep_number
 
-printl("\n {} sequences have been processed\n".format(get_undr_sep_number(seqs_processed)))
+glob_seqs_processed += seqs_processed
+str_about_prev_runs = ", including previous run(s)"
+
+printl("\n {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
+    str_about_prev_runs))
 
 printl("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
 printl("They are sorted by their occurence in probing batch:")
-
 
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
@@ -1868,7 +1811,7 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
 # end for
 
 # Print number of unkmown sequences, if there are any:
-unkn_num = probing_batch_size - sum( map(lambda x: x[2], acc_dict.values()) )
+unkn_num = glob_seqs_processed - sum( map(lambda x: x[2], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
     printl(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))

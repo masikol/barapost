@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.5.g"
+__version__ = "3.5.h"
 # Year, month, day
-__last_update_date__ = "2019.10.28"
+__last_update_date__ = "2019.10.29"
 
 # |===== Check python interpreter version =====|
 
@@ -17,8 +17,6 @@ if verinf.major < 3:
     raw_input("Press ENTER to exit:")
     exit(1)
 # end if
-
-# |===== Function that asks to press ENTER on Windows =====|
 
 from sys import platform
 
@@ -35,36 +33,16 @@ def platf_depend_exit(exit_code):
     exit(exit_code)
 # end def platf_depend_exit
 
-
-def err_fmt(text):
-    """Function for configuring error messages"""
-    return "\n   \a!! - ERROR: " + text + '\n'
-# end def print_error
-
-
-from sys import stdout as sys_stdout
-def printn(text):
-    """
-    Function prints text to the console without adding '\n' in the end of the line.
-    Why not just to use 'print(text, end="")'?
-    In order to display informative error message if Python 2.X is launched
-        instead if awful error traceback.
-    """
-    sys_stdout.write(text)
-    sys_stdout.flush()
-# end def printn
-
-
 # |===== Handle command line arguments =====|
 help_msg = """
   barapost.py
   Version {}; {} edition;\n
 DESCRIPTION:\n
- barapost.py -- this program is designed for determinating the taxonomic position
+ barapost.py -- this script is designed for determinating the taxonomic position
     of nucleotide sequences by aligning each of them with 'blastn' from 'BLAST+' toolkit
     and regarding the best hit.\n
  'barapost.py' is meant to be used just after 'prober.py'.
- The program processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
+ The script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
  Results of the work of this script are written to TSV file,
     that can be found in result directory.\n
  Files processed by this script are meant to be sorted afterwards by 'fastQA_sorted.py'.
@@ -150,6 +128,25 @@ def get_work_time():
 # end def get_work_time
 
 # |===========================================|
+
+
+def err_fmt(text):
+    """Function for configuring error messages"""
+    return "\n   \a!! - ERROR: " + text + '\n'
+# end def print_error
+
+from sys import stdout as sys_stdout
+def printn(text):
+    """
+    Function prints text to the console without adding '\n' in the end of the line.
+    Why not just to use 'print(text, end="")'?
+    In order to display informative error message if Python 2.X is launched
+        instead if awful error traceback.
+    """
+    sys_stdout.write(text)
+    sys_stdout.flush()
+# end def printn
+
 
 import os
 import multiprocessing as mp
@@ -609,10 +606,8 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
     Returns None if there is no result from previous run.
     If there are results from previous run, returns a dict of the following structure:
     {
-        "pack_size": packet_size (int),
         "tsv_respath": path_to_tsv_file_from_previous_run (str),
         "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-        "tmp_fpath": path_to_pemporary_file (str)
     }
 
     :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
@@ -628,8 +623,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
     fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
     fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
 
-    # Form path to temporary file
-    tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
     # Form path to result file
     tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
 
@@ -648,7 +641,6 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
                 printl( str(err) )
                 printl("Start from the beginning.")
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
-                rename_file_verbosely(tmp_fpath, new_dpath)
                 return None
             # end try
         # end with
@@ -659,26 +651,10 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
         num_done_reads = 0
     # end if
 
-    global packet_size # use default value at first
-
-    # There can be invalid information in tmp file of tmp file may not exist
-    try:
-        with open(tmp_fpath, 'r') as tmp_file:
-            temp_line = tmp_file.readline()
-        # end with
-        packet_size = int(re_search(r"packet_size: {}", temp_line).group(1).strip())
-        printl("\nPacket size switched to '{}', as it was during previous run".format(packet_size))
-    except Exception as err:
-        pass
-    finally:
-        # Return data from previous run
-        return {
-            "pack_size": packet_size,
-            "tsv_respath": tsv_res_fpath,
-            "n_done_reads": num_done_reads,
-            "tmp_fpath": tmp_fpath
-        }
-    # end try
+    return {
+        "tsv_respath": tsv_res_fpath,
+        "n_done_reads": num_done_reads,
+    }
 # end def look_around
 
 
@@ -1600,10 +1576,8 @@ def configure_acc_dict(acc_fpath):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. 'previous_data' is a dict of the following structure:
 #    {
-#        "pack_size": packet_size (int),
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-#        "tmp_fpath": path_to_pemporary_file (str)
 #    }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 3. 'packet' is a dict of the following structure:
@@ -1719,13 +1693,9 @@ def process_multiple_files(fq_fa_list, parallel=False):
             num_done_reads = 0 # number of successfully processed sequences
             tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
                 fasta_hname), blast_algorithm) # form result tsv file path
-            tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
-                fasta_hname), blast_algorithm) # form temporary file path
         else: # if there is data from previous run
             num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-            packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
             tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
-            tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         # end if
 
         if num_done_reads == curr_fasta["nreads"]:
@@ -1767,10 +1737,6 @@ def process_multiple_files(fq_fa_list, parallel=False):
 
         for pack_i, packet in enumerate(fasta_packets(curr_fasta["fpath"],
             packet_size, curr_fasta["nreads"], num_done_reads)):
-
-            with open(tmp_fpath, 'w') as tmp_file:
-                tmp_file.write("packet_size: {}".format(packet_size))
-            # end with
 
             # Align the packet
             align_xml_text = launch_blastn(packet["fasta"], blast_algorithm)
@@ -1814,7 +1780,6 @@ def process_multiple_files(fq_fa_list, parallel=False):
         if not parallel:
             printl() # just print blank line
         # end if
-        remove_tmp_files(tmp_fpath)
     # end for
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
 # end def process_multiple_files
@@ -1931,7 +1896,6 @@ def process_single_file_in_paral(fq_fa_path, i):
             fasta_hname), blast_algorithm) # form result tsv file path
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        packet_size = previous_data["pack_size"] # packet size sholud be the same as it was in previous run
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
     # end if
 

@@ -18,12 +18,6 @@ if verinf.major < 3:
     exit(1)
 # end if
 
-def err_fmt(text):
-    """Function for configuring error messages"""
-    return "\n   \a!! - ERROR: " + text + '\n'
-# end def print_error
-
-
 from sys import platform
 
 def platf_depend_exit(exit_code):
@@ -44,7 +38,7 @@ help_msg = """
   fastQA5-sorter.py
   Version {}; {} edition;\n
 DESCRIPTION:\n
-fastQA5-sorter.py -- this program is designed for sorting (dividing into separate files)
+fastQA5-sorter.py -- this script is designed for sorting (dividing into separate files)
     FASTQ and FASTA files processed by "barapost.py".\n
 Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ files,
     that are result of basecalling these FAST5 files. For details, see README.md
@@ -116,6 +110,11 @@ if "-v" in argv[1:] or "--version" in argv[1:]:
     print(__version__)
     platf_depend_exit(0)
 # end if
+
+def err_fmt(text):
+    """Function for configuring error messages"""
+    return "\n   \a!! - ERROR: " + text + '\n'
+# end def print_error
 
 
 from sys import stdout as sys_stdout
@@ -376,7 +375,7 @@ for fpath in fq_fa_list:
 Then try to sort this FAST5 file again.\n""".format(fpath))
             print("""  2. If you are sure that step 1 doesn't work for you,
 but this error still occurs, then you should make sure that
-results of processing this FASTQ file by programs mentioned above are located in the directory '{}'.
+results of processing this FASTQ file by scripts mentioned above are located in the directory '{}'.
 Then try to sort this FAST5 file again.\n""".format(tax_annot_res_dir))
             print("""  3. If you are sure that steps 1 and 2 do not work for you,
 but this error still occurs, then you should make sure that
