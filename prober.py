@@ -39,39 +39,26 @@ help_msg = """
   prober.py
   Version {}; {} edition;\n
 DESCRIPTION:\n
-  This script is designed for determinating the taxonomic position
-of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
-  The main goal of this script is to send a probing batch of sequences to NCBI BLAST server
-and discover, what Genbank records can be downloaded and used for building a database
-on your local machine by "barapost.py".\n
-  This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
-  Results of the work of this script are written to TSV files, that can be found in result directory:\n
-1) There is a file named `...acc_list.tsv`. It contains accessions and names of Genbank records that
-    can be used for building a database on your local machine by "barapost.py".\n
-2) There is a file named `...result.tsv`. It contains full result of "BLASTing".\n
-    Results of barapost.py's work will be appended to this file\n
-  Files processed by this script are meant to be processed afterwards by "barapost.py".\n
-  If you have your own FASTA files that can be used as database to blast against, you can omit
-"prober.py" step and go to "barapost.py" (see `-l` option in "barapost.py" description).
+This script is designed for determinating the taxonomic position
+  of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
+The main goal of this script is to send a probing batch (see `-b` option) of sequences to
+  NCBI BLAST server and discover, what Genbank records can be downloaded and used for
+  building a database on your local machine by "barapost.py".\n
+This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
+Results of taxonomic annotation are written in TSV file named according to name of input file(s),
+  that can be found in result directory.\n
+"prober.py" also generates a file named '...probe_acc_list.tsv'. It contains accessions and
+  names of Genbank records that can be used for building a database on your local machine by "barapost.py".
 ----------------------------------------------------------\n
 Default parameters:\n
 - all FASTQ and FASTA files in current directory will be processed;
 - packet size (see '-p' option): 100 sequences;
 - probing batch size (see '-b' option): 200 sequences;
-- algorithm (see '-a' option): 'megaBlast';
+- algorithm (see '-a' option): `megaBlast`;
 - organisms (see '-g' option): full 'nt' database, i.e. no slices;
-- output directory ('-o' option): directory named "barapost_result"
+- output directory ('-o' option): directory named 'barapost_result'
   nested in current directory;
-- no email information is send to NCBI;\n
-  Default behavior of this script is to send certain batch (see '-b' option) of sequences to BLAST server.
-It means that you should not process all your data by 'prober.py' -- it would take long time.\n
-  Instead of this you should process some sequences by 'prober.py' -- it will determine,
-what Genbank records (genomes, if you want) are present in your data and then go to 'barapost.py'.\n
-  'barapost.py' will process the rest of you sequences in the same way like 'prober.py', but on your local computer.
-'barapost.py' uses 'BLAST+' toolkit for this purpose. It would be much faster.\n
-  Obviously, a probing batch cannot cover all variety of a data set,
-so some sequences can be recognized as "unknown" while processing by 'barapost.py'.
-But you always can run 'prober.py' again on "unknown" sequences.
+- no email information ('-e' option) is send to NCBI;
 ----------------------------------------------------------\n
 Files that you want 'prober.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
   Wildcards do work: './prober.py my_directory/*' will process all files in 'my_directory'.
@@ -742,7 +729,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     resume = None
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
-        printl('\n' + get_work_time() + " - The previous result file is found in the directory:")
+        printl('\n' + get_work_time() + " - A result file from previous run is found in the directory:")
         printl("   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
         resume = ask_for_resumption()
@@ -822,11 +809,12 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         # Get packet size, number of the last sent packet and RID
         # There can be invalid information in tmp file of tmp file may not exist
         try:
+
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[1]).group(1).strip())
-            RID_save = re_search(r"Request_ID: (.+)", temp_lines[2]).group(1).strip()
+            saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
+            RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
         
@@ -852,13 +840,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 "tmp_fpath": tmp_fpath
             }
         # end try
-        
-    else:
-        # If we've decided to start from the beginnning - rename old files
-        rename_file_verbosely(tsv_res_fpath, new_dpath)
-        rename_file_verbosely(tmp_fpath, new_dpath)
-        rename_file_verbosely(acc_fpath, new_dpath)
-    # end if
     
     return None
 # end def look_around
@@ -874,13 +855,17 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
     :type num_done_reads: int;
     :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
     """
-    
+
     if num_done_reads == 0:
         return None
     else:
         i = 0
         while i <= num_done_reads:
+
             line = fmt_func(fasta_file.readline())
+            if line is "":
+                return ""
+            # end if
             if line .startswith('>'):
                 if ' ' in line:
                     line = line.partition(' ')[0]
@@ -929,6 +914,10 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
             # In this case we need all FASTA data.
             next_id_line = None
         # end try
+
+        if next_id_line == "":
+            yield {"fasta": "", "names": list()}
+        # end if
 
         packet = ""
 
@@ -1120,7 +1109,7 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
     # end try
 
     # Save temporary data
-    with open(tmp_fpath, 'a') as tmpfile:
+    with open(tmp_fpath, 'w') as tmpfile:
         tmpfile.write("sent_packet_num: {}\n".format(pack_to_send))
         tmpfile.write("Request_ID: {}".format(rid))
     # end with
@@ -1708,7 +1697,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Just in case:
         if packet["fasta"] is "":
-            printl("Recent packet is empty")
+            printl("All sequences in recent file have been already processed.")
             break
         # end if
 
@@ -1795,7 +1784,8 @@ def get_undr_sep_number(number):
 glob_seqs_processed += seqs_processed
 str_about_prev_runs = ", including previous run(s)"
 
-printl("\n {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
+printl('-'*20+'\n')
+printl(" {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
     str_about_prev_runs))
 
 printl("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
