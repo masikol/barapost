@@ -1,6 +1,6 @@
 # Barapost toolkit
 
-**"Barapost"** command line toolkit is designed for determinating the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
+**"Barapost"** command line toolkit is designed for determination the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
 
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
@@ -18,7 +18,7 @@
 
 Find yourself constantly having a large amount of FASTA, FASTQ or FAST5 files, where sequences that belong to different organisms are **mixed up** together, but you want them to be **separated**?
 
-It is awful to to sit in front of the computer for hours sending all these sequences to NCBI BLAST server and to rewrite large FAST(A/Q) files by hand, isn't it?
+It is awful to sit in front of the computer for hours sending all these sequences to NCBI BLAST server and to rewrite large FAST(A/Q) files by hand, isn't it?
 
 "Barapost" toolkit is the thing that can do it for you and **save your time**.
 
@@ -26,7 +26,7 @@ It is awful to to sit in front of the computer for hours sending all these seque
 
 **!** - these scripts cannot be executed by Python interpreter version < 3.0.
 
-1. **prober.py** -- this script sends several sequences (aka probing batch) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober.py" saves information about the best hit of each sequence from probing batch.
+1. **prober.py** -- this script sends several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober.py" saves information about the best hit of each sequence from probing batch.
 Processing all sequences in this way takes too much time, what leads us to "barapost.py".
 
 2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
@@ -68,11 +68,11 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.h; 2019.10.29 edition;
+Version 1.12.i; 2019.11.02 edition;
 
 ### DESCRIPTION:
 
-**prober.py** -- this script is designed for determinating the taxonomic position
+**prober.py** -- this script is designed for determination the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.
 
 The main goal of this script is to send a probing batch (see `-b` option) of sequences to NCBI BLAST server and discover, what Genbank records can be downloaded and used for building a database on your local machine by "barapost.py".
@@ -85,7 +85,7 @@ This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') f
 
 Results of taxonomic annotation are written in TSV file named according to name of input file(s), that can be found in result directory.
 
-"prober.py" also generates a file named `...probe_acc_list.tsv`. It contains accessions and names of Genbank records that
+"prober.py" also generates a file named `...probe_acc_list.tsv`. It contains accessions and names of Genbank records (these "best hits" mentioned above) that
   can be used for building a database on your local machine by "barapost.py".
 
 If you have your own FASTA files that can be used as database to blast against, you can omit "prober.py" step and go to "barapost.py" (see `-l` option in "barapost.py" description).
@@ -125,15 +125,16 @@ If you have your own FASTA files that can be used as database to blast against, 
           Available values: 'megaBlast', 'discoMegablast', 'blastn'.
           Default is megaBlast;
 
-    -g (--organisms) --- 'nt' database slices, i.e. organisms that you expect to see in result files.
+    -g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
+          You can find your Taxonomy IDs here: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi
           Format of value (TaxIDs separated by comma): 
             <organism1_name>,<organism2_taxid>...
           See EXAMPLES #4 and #5 below.
           Spaces are not allowed.
           Default is: full 'nt' database, i.e. no slices.
 
-    -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-          during 'prober.py' work.
+    -b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
+          during 'prober.py' run.
           You can specify '-b all' to process all your sequeces by 'prober.py'.
           Value: positive integer number.
           Default value is 200;
@@ -144,7 +145,6 @@ If you have your own FASTA files that can be used as database to blast against, 
 
 - More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:
     https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome.
-- You can find your Taxonomy IDs here: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi.
 
 
 ### EXAMPLES:

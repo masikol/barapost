@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.h"
+__version__ = "1.12.i"
 # Year, month, day
-__last_update_date__ = "2019.10.29"
+__last_update_date__ = "2019.11.02"
 
 # |===== Check python interpreter version =====|
 
@@ -76,7 +76,7 @@ OPTIONS:\n
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
         Available values: 'megaBlast', 'discoMegablast', 'blastn'.
         Default is megaBlast;\n
-    -g (--organisms) --- 'nt' database slices, i.e. organisms that you expect to see in result files.
+    -g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
         More clearly, functionality of this option is totally equal to "Organism" text boxes
         on this BLASTn page:
          'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
@@ -86,8 +86,8 @@ OPTIONS:\n
         Spaces are not allowed.
         Default value is full 'nt' database, i.e. no slices.
         You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
-    -b (--probing-batch-size) --- number of sequences that will be aligned on BLAST server
-        during 'prober.py' work.
+    -b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
+        during 'prober.py' run.
         You can specify '-b all' to process all your sequeces by 'prober.py'.
         Value: positive integer number.
         Default value is 200;\n
@@ -944,6 +944,8 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
         for _ in range(packs_left):
 
             i = 0 # variable for counting sequenes within packet
+
+            packet_size = min(packet_size, probing_batch_size - seqs_processed)
             
             while i < packet_size:
 
@@ -1103,7 +1105,7 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
         with open("request_denial_response.html", 'w') as den_file:
             den_file.write(response_text)
         # end with
-        exit(1)
+        platf_depend_exit(1)
     finally:
         conn.close()
     # end try
@@ -1261,9 +1263,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     if "[blastsrv4.REAL]" in respond_text:
         printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
-        printl("Let's try to prune these sequences.")
-        printl("""All sequences in this packet will be halved
-  and the packet will be resent to BLAST server.""")
         return None
     # end if
 
@@ -1702,7 +1701,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         # end if
 
         printl("\nGo to BLAST (" + blast_algorithm + ")!")
-        printl("Request number {} out of {}.".format(pack_to_send, packs_at_all))
+        printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
+            packs_at_all, len(packet["names"])))
 
         send = True
 
@@ -1735,6 +1735,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
                 # Send the request get BLAST XML response
                 # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
+
                 align_xml_text = send_request(request,
                     pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
 
@@ -1782,7 +1783,7 @@ def get_undr_sep_number(number):
 # end def get_undr_sep_number
 
 glob_seqs_processed += seqs_processed
-str_about_prev_runs = ", including previous run(s)"
+str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
 
 printl('-'*20+'\n')
 printl(" {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
