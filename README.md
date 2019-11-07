@@ -34,7 +34,7 @@ Results of taxonomic annotation are written in TSV file named according to name 
 
 3. **fastQA5-sorter.py** -- this script performs sorting (dividing into separate files) of your data set according to results of "prober.py" and "barapost.py"
 
-![Workflow](https://github/com/masikol/barapost/Barapost-wokflow.png)
+![](Barapost-wokflow.png)
 
 ## Getting barapost
 
