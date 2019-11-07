@@ -831,7 +831,7 @@ class SeqLength:
         "Less than" (<) dunder method.
         It will always return False if length filtering is disabled
             (i.e. if the rigth operand is None).
-        :param rcmp_len: the rigth operand of '>' operator;
+        :param rcmp_len: the rigth operand of '<' operator;
         :type rcmp_len: int or None;
         """
         if not rcmp_len is None:
@@ -859,7 +859,6 @@ def sort_fastqa_file(fq_fa_path):
     global seqs_pass
     global seqs_fail
     global srt_file_dict
-    global minlen_fmt_str
 
     new_dpath = get_curr_res_dir(fq_fa_path, tax_annot_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
@@ -967,7 +966,7 @@ if verify_fast5:
     index_name = "fast5_to_fastq_idx"
     second_index_name = index_name+"_secondary"
     index_dirpath = os.path.join(tax_annot_res_dir, index_name)
-    
+
 
     def map_reads_2_taxann(QA5_list):
 
@@ -1054,11 +1053,8 @@ Please, remove extra files and leave only one, which contains actual taxononic a
             # end for
 
             first = True
-            j = 0
 
             while len(readids_to_seek) > 0:
-
-                print(0)
 
                 len_before = len(readids_to_seek)
 
@@ -1070,14 +1066,11 @@ Please, remove extra files and leave only one, which contains actual taxononic a
 
                         if first_readid in readids_in_tsv:
 
-                            j += 1
-
                             index_read2tsv[f5_path] = os.path.abspath(tsv_taxann_fpath)
                             readids_to_seek.remove(first_readid)
 
-                            for readid in readids_to_seek:
+                            for readid in reversed(readids_to_seek):
                                 if readid in readids_in_tsv:
-                                    j += 1
                                     if not first:
                                         try:
                                             second_ind_dict[tsv_taxann_fpath].append(readid)
@@ -1116,101 +1109,174 @@ Please, remove extra files and leave only one, which contains actual taxononic a
 
         index_read2tsv.close()
         index_f5_2_tsv.close()
-
-        print(j)
-        print("Exitting...")
-        exit(0)
     # end def map_reads_2_taxann
-# end if
 
-def sort_fast5_file(f5_path):
-    """
-    Function for sorting FAST5 files.
-    It stays separately from analoguous code from the kernel loop because
-        interaction with HDF5 files and platin text ones have rather different interfases.
-    It would be an ad hoc trick to implement a context manager wrapping for HDF5 files
-        in order only to create an interface that would look like plain text files' one.
 
-    :param f5_path: path to FAST5 file meant to be processed;
-    :type f5_path: str;
-    """
+    def sort_fast5_file(f5_path):
 
-    global seqs_pass
-    global seqs_fail
-    global minlen_fmt_str
+        global seqs_pass
+        global seqs_fail
 
-    trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
-            minlen_fmt_str))
+        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
+                minlen_fmt_str))
 
-    new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
-    tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-    resfile_lines = configure_resfile_lines(tsv_res_fpath)
-
-    try:
-        # File existance checking is performed while parsing CL arguments.
-        # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
-        if not h5py.is_hdf5(f5_path):
-            raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
-        # end if
-        # Open the file
         from_f5 = h5py.File(f5_path, 'r')
-        # Validation of the file:
-        #   RuntimeError will be raised if FAST5 file is broken.
-        for _ in from_f5:
-            break
-        # end for
-    except OSError as oserr:
-        printl(err_fmt("cannot open FAST5 file"))
-        printl("Opening file '{}' crashed:".format(os.path.basename(f5_path)))
-        printl("Reason: {}".format( str(oserr) ))
-        platf_depend_exit(1)
-    except RuntimeError as runterr:
-        printl(err_fmt("FAST5 file is broken"))
-        printl("Reading of the file '{}' crashed.".format(os.path.basename(f5_path)))
-        printl("Reason: {}".format( str(runterr) ))
-        platf_depend_exit(5)
-    else:
-        # If everything is OK, then we can get number of reads in this file
         num_reads = len(from_f5)
-    # end try
 
-    for i, read_name in enumerate(from_f5):
+        readids_to_seek = list()
 
-        if not read_name.startswith("read_"):
-            printl("Name of read '{}' from FAST5 file has format that is unforseen by the developer.".format(read_name))
-            printl("Please, contact the developer.")
-            platf_depend_exit(1)
+        for i, read_name in enumerate(from_f5):
+            if not read_name.startswith("read_"):
+                printl("Name of read '{}' from FAST5 file has format that is unforseen by the developer.".format(read_name))
+                printl("Please, contact the developer.")
+                platf_depend_exit(1)
+            # end if
+            # Get rid of "read_"
+            readids_to_seek.append(intern(read_name))
+        # end for
+
+        index_read2tsv = open_shelve( os.path.join(index_dirpath, index_name))
+        first_put_tsv = index_read2tsv[f5_path]
+        index_read2tsv.close()
+
+        resfile_lines = configure_resfile_lines(first_put_tsv)
+        
+        for read_name in reversed(readids_to_seek):
+            if read_name[5:] in resfile_lines.keys():
+                hit_name, ph33_qual, q_len = resfile_lines[read_name[5:]] # omit 'read_' in the beginning of FAST5 group's name
+                q_len = SeqLength(q_len)
+                if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+                    # Get name of result FASTQ file to write this read in
+                    copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
+                    seqs_fail += 1
+                else:
+                    # Get name of result FASTQ file to write this read in
+                    sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                    copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
+                    seqs_pass += 1
+                # end if
+            # end if
+            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
+            readids_to_seek.remove(read_name)
+        # end for
+
+        if len(readids_to_seek) != 0:
+            index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, second_index_name) )
+
+            for tsv_path in index_f5_2_tsv[f5_path].keys():
+
+                read_names = index_f5_2_tsv[f5_path][tsv_path]
+                resfile_lines = configure_resfile_lines(first_put_tsv)
+
+                for read_name in read_names:
+                    hit_name, ph33_qual, q_len = resfile_lines[read_name] # omit 'read_' in the beginning of FAST5 group's name
+                    q_len = SeqLength(q_len)
+                    if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+                        # Get name of result FASTQ file to write this read in
+                        copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
+                        seqs_fail += 1
+                    else:
+                        # Get name of result FASTQ file to write this read in
+                        sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                        copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
+                        seqs_pass += 1
+                    # end if
+                    printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
+                # end for
+
+            index_f5_2_tsv.close()
         # end if
+    # end def sort_fast5_file
+
+else:
+
+    def sort_fast5_file(f5_path):
+        """
+        Function for sorting FAST5 files.
+        It stays separately from analoguous code from the kernel loop because
+            interaction with HDF5 files and platin text ones have rather different interfases.
+        It would be an ad hoc trick to implement a context manager wrapping for HDF5 files
+            in order only to create an interface that would look like plain text files' one.
+
+        :param f5_path: path to FAST5 file meant to be processed;
+        :type f5_path: str;
+        """
+
+        global seqs_pass
+        global seqs_fail
+
+        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
+                minlen_fmt_str))
+
+        new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
+        tsv_res_fpath = get_res_tsv_fpath(new_dpath)
+        resfile_lines = configure_resfile_lines(tsv_res_fpath)
 
         try:
-            hit_name, ph33_qual, q_len = resfile_lines[read_name[5:]] # omit 'read_' in the beginning of FAST5 group's name
-        except KeyError:
-            printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
-  This TSV file: '{}'""".format(read_name[5:], tsv_res_fpath)))
-            printl("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
-            platf_depend_exit(1)
-        # If read is found in TSV file:
-        else:
-            q_len = SeqLength(q_len)
-            if ph33_qual != '-' and ph33_qual < min_ph33_qual:
-                # Get name of result FASTQ file to write this read in
-                copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
-                seqs_fail += 1
-            else:
-                # Get name of result FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
-                seqs_pass += 1
+            # File existance checking is performed while parsing CL arguments.
+            # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
+            if not h5py.is_hdf5(f5_path):
+                raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
             # end if
+            # Open the file
+            from_f5 = h5py.File(f5_path, 'r')
+            # Validation of the file:
+            #   RuntimeError will be raised if FAST5 file is broken.
+            for _ in from_f5:
+                break
+            # end for
+        except OSError as oserr:
+            printl(err_fmt("cannot open FAST5 file"))
+            printl("Opening file '{}' crashed:".format(os.path.basename(f5_path)))
+            printl("Reason: {}".format( str(oserr) ))
+            platf_depend_exit(1)
+        except RuntimeError as runterr:
+            printl(err_fmt("FAST5 file is broken"))
+            printl("Reading of the file '{}' crashed.".format(os.path.basename(f5_path)))
+            printl("Reason: {}".format( str(runterr) ))
+            platf_depend_exit(5)
+        else:
+            # If everything is OK, then we can get number of reads in this file
+            num_reads = len(from_f5)
         # end try
-        printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
-    # end for
 
-    print() # print blank line to console but not to log file
-    logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
-    printl('-'*20)
-# end def sort_fast5_file
+        for i, read_name in enumerate(from_f5):
 
+            if not read_name.startswith("read_"):
+                printl("Name of read '{}' from FAST5 file has format that is unforseen by the developer.".format(read_name))
+                printl("Please, contact the developer.")
+                platf_depend_exit(1)
+            # end if
+
+            try:
+                hit_name, ph33_qual, q_len = resfile_lines[read_name[5:]] # omit 'read_' in the beginning of FAST5 group's name
+            except KeyError:
+                printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
+      This TSV file: '{}'""".format(read_name[5:], tsv_res_fpath)))
+                printl("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
+                platf_depend_exit(1)
+            # If read is found in TSV file:
+            else:
+                q_len = SeqLength(q_len)
+                if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+                    # Get name of result FASTQ file to write this read in
+                    copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
+                    seqs_fail += 1
+                else:
+                    # Get name of result FASTQ file to write this read in
+                    sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                    copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
+                    seqs_pass += 1
+                # end if
+            # end try
+            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
+        # end for
+
+        print() # print blank line to console but not to log file
+        logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
+        printl('-'*20)
+    # end def sort_fast5_file
+# end if
 
 def configure_resfile_lines(tsv_res_fpath):
     """
