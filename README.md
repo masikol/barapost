@@ -1,6 +1,6 @@
 # Barapost toolkit
 
-**"Barapost"** command line toolkit is designed for determination the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences.
+**"Barapost"** command line toolkit is designed for determination the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences and then separates these sets into different files.
 
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
@@ -10,6 +10,7 @@
 - [2. barapost](#barapost)
 - [3. fastQA sorter](#fastQA-sorter)
 - [FAST5 sorting](#FAST5-sorting)
+- [FAST5 untwisting](#FAST5-untwisting)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
@@ -34,7 +35,7 @@ Results of taxonomic annotation are written in TSV file named according to name 
 
 3. **fastQA5-sorter.py** -- this script performs sorting (dividing into separate files) of your data set according to results of "prober.py" and "barapost.py"
 
-![](Barapost-wokflow.png)
+![](imgs/Barapost-wokflow.png)
 
 ## Getting barapost
 
@@ -46,12 +47,18 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## Pre-requirements
 
-1. **Python 3** (https://www.python.org/). Tested on Python interpreter version 3.8.0.
+1. **Python 3** (https://www.python.org/). Barapost is tested on Python interpreter version 3.8.0.
 
 2. **BLAST+** toolkit is used by "barapost.py" for building a database and aligning.
 
-   BLAST+ toolkit (including blastn, makeblastdb and makembindex) can
-   be downloaded [here](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download);
+   It can be downloaded [here](ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/);
+
+   **Installation:**
+
+   - Linux: download tarball, unpack it and add `bin/` directory from unpacked tree to `PATH` variable.
+     (this should also work for macOS, but I have not checked it)
+
+   - Windows: download `.exe` executable, run it and follow installation. Do not forget to add "BLAST+" to `PATH` during installation (you will see corresponding checkbox at one of installation steps).
 
    "barapost.py" has been tested on Linux and Windows with BLAST+ version 2.9.0.
 
@@ -59,12 +66,15 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
    This package is not necessary if you do not intend to sort FAST5 files.
 
-   To build `h5py`, `libhdf5-dev` is in turn required. To install this soft, run following commands (assumming that your packet manager is `apt` and you use `pip3` to install Python side packages):
+   To build `h5py`, `libhdf5-dev` is in turn required.
 
-  ```
-  apt install libhdf5-dev
-  pip3 install h5py
-  ```
+   **Installation**:
+
+   - Linux (assumming that your packet manager is `apt` and you use `pip3` to install Python side packages):
+     ```
+     apt install libhdf5-dev
+     pip3 install h5py
+     ```
 
    Sorting FAST5 files have been tested only on Linux (`h5py` version 2.10.0 was used).
 
@@ -181,7 +191,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.5.h; 2019.10.29 edition;
+Version 3.5.i; 2019.11.08 edition;
 
 ### DESCRIPTION:
 
@@ -293,13 +303,13 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.2.c; 2019.10.28 edition;
+Version 3.3.a; 2019.11.08 edition;
 
 ### DESCRIPTION:
 
 **fastQA5-sorter.py** -- this script is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost.py".
 
-Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ files, that are in turn results of basecalling of these FAST5 files.
+Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ files, that are in turn results of basecalling of these FAST5 files. See "FAST5 sorting" and "FAST5 untwisting" sections below.
 
 "fastQA5-sorter.py" is meant to be used just after "barapost.py".
 
@@ -311,6 +321,7 @@ Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ f
   nested in current directory;
 - minimum mean quality of a read to keep (`-q` option): 20 (Phred33);
 - length filtering (`-m` option) is disabled by default;
+- "FAST5 untwisting" is disaled by default;
 
 ### OPTIONS:
 
@@ -345,6 +356,12 @@ Moreover, it can sort FAST5 files according to taxonomical annotation of FASTQ f
     -m (--min_seq_len) --- minimum length of a sequence to keep.
         Shorter sequences will be written to separate "trash" file.
         Length filtering is disabled by default;
+
+    -u (--untwist-fast5) --- flag option. If specified, FAST5 files will be
+        sorted considering that they and "corresponding" FASTQ files contain
+        different reads (like after basecalling performed by Guppy).
+        For details, see "FAST5 untwisting" section below.
+        Disabled by default;
 ```
 
 ### Notes about sorting:
@@ -394,10 +411,10 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 `./fastQA5-sorter.py reads.fastq.gz another_sequences.fasta -o outdir -r prober_outdir/`
 
   4. Process all FASTQ, FASTA and FAST5 files in directory named `dir_with_seqs`. Sort by species.
-     All these files have been already processed by "barapost.py".
+     All these files have been already processed by "barapost.py". Perform "FAST5 untwisting".
      Results of "barapost.py" work are in directory `prober_outdir`:
 
-`./fastQA5-sorter.py -d dir_with_seqs -o outdir -r prober_outdir/ -s species`
+`./fastQA5-sorter.py -d dir_with_seqs -o outdir -r prober_outdir/ -s species -u`
 
 
 ## FAST5 sorting
@@ -409,41 +426,17 @@ FAST5 files can be sorted by fastQA5-sorter.py.
 Since it is recommended to keep your FAST5 files in order to re-basecall them later, with more accurate (e.g. more sensible for base modifications) basecall algorithms, it worth following the pipeline below:
 
 1. Basecall FAST5 files and get FASTQ.
-2. Perform taxonomical annotation of obtained FASTQ files.
-3. Sort source FAST5 files according to this taxonomical annotation.
+2. Perform taxonomic annotation of obtained FASTQ files.
+3. Sort source FAST5 files according to this taxonomic annotation.
 4. Keep sorted FAST5 files in order to re-basecall them later.
 
 Therefore, you can pass FAST5 files to "fastQA5-sorter.py" just as FASTQ or FASTA files and they will be sorted as well.
-
-### The constraint on names of FAST5 and FASTQ files
-
-The short and reliable rule souds so: **do not rename your FASTQ and FAST5 files after basecalling** if you intend to sort these FAST5 files with "fastQA5-sorter.py".
-
-Details:
-
-- Software that drives nanopore sequencing devices (like MinKNOW) yields FAST5 files named as follows:
-  `FAK94973_e6f2851ddd414655574208c18f2f51e590bf4b27_1.fast5`
-  (at least, MinKNOW does so, I am not sure about other programs).
-
-- Basecallers (Guppy, for instance), can drop `FAK94973` part of file name or replace it with some other string (e.g. `fastq_runid`), but `e6f2851ddd414655574208c18f2f51e590bf4b27_1` part is kept intact. Therefore the second one (let's call it "check string") can be used to identify basecalled FASTQ file and associate it with source FAST5 file unambiguously.
-
-- Experience tells that check string (more precisely, it's hash-like part before the underscore) has length of 41. Assuming that this situation can vary from case to case, "fastQA5-sorter.py" will match check string that contains hash-like part with length at least 30 characters (or more). Also I have not seen uppercase letters in such hash-like character sequences, but it is better to assume their existance.
-
-Algorithm of finding taxonomical annotation infornation for a particular FAST5 file sorting:
-
-1. "fastQA5-sorter.py" tries to match the pattern described above with regex. Exact pattern:
-
-    `[a-zA-Z0-9]{30,}_[0-9]+`
-  
-2. If mathing string is substring of the name of directory with results of taxonomic annotation, FAST5 file of our interest will be associated with this directory and will be sorted according to TSV file in it.
-
-3. If there is no match (for example, the user renames his/her FAST5 files just after sequensing) whole FAST5 file name will be used to find corresponding directory with results of taxonomic annotation. For example, if FAST5 file is named `my_favorite_reads_324egf.fast5`, then `my_favorite_reads_324egf` will be used as check string. Again, a directory which name contains check string is considered as corresponding to this FAST5 file.
 
 ### Example:
 
 Assuming you have already performed basecalling of file "some_reads.fast5" and have file "some_reads.fastq". You may act as follows to sort source FAST5 file:
 
-Taxonomical annotation:
+Taxonomic annotation:
 ```
 ./prober.py some_reads.fastq
 ./barapost.py some_reads.fastq
@@ -453,13 +446,29 @@ Sorting:
 ./fastQA5-sorter.py some_reads.fast5
 ```
 
+## FAST5 untwisting
+
+The problem is following: basecallers (popular Guppy, in particular) often missasign names of input FAST5 and output FASTQ files. In result, source **FAST5** and basecalled **FASTQ** files **contain different reads**. Therefore, straitforward sorting of FAST5 files, that relies on names of "corresponding" FASTQ files (that have ondergone taxonomic annotation) is, in general, impossible.
+
+In fastQA-sorter.py, this issue is solved by developing a "FAST5 untwisting" procedure (it can be enabled by specifying `-u` flag).
+
+"Untwisting" is performed by creating a DBM index file that maps FAST5 files and each read in it to TSV file containing taxonomic annotation information about this read. Subsequent sorting goes on according to this index file.
+
+"Untwisting" procedure also determines, if all reads in input FAST5 files have undergone taxonomic annotation and gives you IDs of missing ones if there are any.
+
+One obvious disadvantage: you may need to perform taxonomic annotation of all your FASTQ files to sort some (maybe not all) FAST5 files from the same data set.
+
+Here another problem arises: how to find out, in which FASTQ file(s) are your reads from given FAST5 file placed? You can find this information in "sequencing_summary" file which is often generated by basecaller (at least, Guppy behaves so). But these files are rather bulky and not very enjoyable to use (and often lack essential information, like names of FASTQ files).
+
+Therefore I will develop an auxiliary tool which will make much more handy summary about how reads are distributed between FAST5 and FASTQ files.
+
 ## Examples of usage in combination:
 
 1. You can place all .py-files provided with by this toolkit in a directory that contains some FASTA and FASTQ files and run whole "pipeline" with default settings:
 
 `./prober.py && ./barapost.py && ./fastQA5-sorter.py`
 
-2. You can try these scripts on test dataset named `some_reads.fastq` (there are 4 reads):
+2. You can try these scripts on toy test dataset named `some_reads.fastq` (there are 4 reads):
 
 `./prober.py some_reads.fastq -o some_outdir -g 561,10239 -p 2 -b 2`
 

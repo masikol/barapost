@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.5.h"
+__version__ = "3.5.i"
 # Year, month, day
-__last_update_date__ = "2019.10.29"
+__last_update_date__ = "2019.11.08"
 
 # |===== Check python interpreter version =====|
 
@@ -2025,6 +2025,11 @@ if n_thr <= len(fq_fa_list):
         pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(fq_fa_list, print_lock,
             perc_inc_lock, perc_array, path2idc_dict))
         pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
+
+        # Reaping zombies
+        pool.terminate()
+        pool.join()
+
     else:
         # Single-thread mode do not differ much from 'many_files'-parallel mode.
         # Only printing to console is different.
