@@ -2043,7 +2043,6 @@ try:
 except OSError as oserr:
     printl(err_fmt("unable to delete directory '{}'".format(queries_tmp_dir)))
     printl( str(oserr) )
-    printl("Please, contact the developer.\n")
     printl("Don't worry -- barapost has completed it's job just fine,")
     printl("   the only thing that some temporary files are left in the directory mentioned above.\n")
 # end try
