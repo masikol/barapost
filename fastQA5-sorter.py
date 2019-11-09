@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.3.a"
+__version__ = "3.3.b"
 # Year, month, day
-__last_update_date__ = "2019.11.08"
+__last_update_date__ = "2019.11.10"
 
 # |===== Check python interpreter version =====|
 
@@ -1124,7 +1124,7 @@ if untwist_fast5:
 
                 f5_file = h5py.File(f5_path, 'r')# open FAST5 file
                 readids_to_seek = list() # here all read IDs will be stored
-                second_ind_dict = dict() # dictionary for index
+                idx_dict = dict() # dictionary for index
 
                 # Store add read IDs in a list
                 for read_name in f5_file:
@@ -1164,9 +1164,9 @@ if untwist_fast5:
                             if readid in readids_in_tsv:
                                 # If not first -- write data to dict (and to index later)
                                 try:
-                                    second_ind_dict[tsv_taxann_fpath].append("read_"+readid) # append to existing list
+                                    idx_dict[tsv_taxann_fpath].append("read_"+readid) # append to existing list
                                 except KeyError:
-                                    second_ind_dict[tsv_taxann_fpath] = ["read_"+readid] # create a new list
+                                    idx_dict[tsv_taxann_fpath] = ["read_"+readid] # create a new list
                                 finally:
                                     readids_to_seek.remove(readid)
                                 # end try
@@ -1204,7 +1204,7 @@ if untwist_fast5:
                 # end if
 
                 # Update index
-                index_f5_2_tsv[f5_path] = second_ind_dict
+                index_f5_2_tsv[f5_path] = idx_dict
                 print("\rUntwisting reads in '{}'...{}".format(os.path.basename(f5_path), check_mark))
             # end for
 
@@ -1409,7 +1409,11 @@ printl( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtim
 
 printl(" - Sorting sensitivity: '{}';".format(sens))
 printl(" - Minimum mean Phred33 quality of a read to keep: {};".format(min_ph33_qual))
-printl(" - Minimum length of a read to keep: {};\n".format(min_qlen if not min_qlen is None else "unlimited"))
+printl(" - Minimum length of a read to keep: {};".format(min_qlen if not min_qlen is None else "unlimited"))
+if untwist_fast5:
+    printl(" - \"FAST5 untwisting\" is enabled.")
+# end if
+print()
 
 printl("\nFollowing files will be processed:")
 for i, path in enumerate(QA5_list):
