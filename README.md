@@ -5,12 +5,13 @@
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
 - [Getting barapost](#getting-barapost)
-- [Pre-requirements and where to get them](#pre-requirements)
+- [Pre-requirements](#pre-requirements)
 - [1. prober](#prober)
 - [2. barapost](#barapost)
 - [3. fastQA sorter](#fastQA-sorter)
-- [FAST5 sorting](#FAST5-sorting)
-- [FAST5 untwisting](#FAST5-untwisting)
+  - [FAST5 sorting](#FAST5-sorting)
+  - [FAST5 untwisting](#FAST5-untwisting)
+  - [BCsummarizer](#BCsummarizer)
 - [Examples of usage in combination](#Examples-of-usage-in-combination)
 
 ## Motivation
@@ -82,7 +83,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 Version 1.12.i; 2019.11.02 edition;
 
-### DESCRIPTION:
+### Description:
 
 **prober.py** -- this script is designed for determination the taxonomic position
 of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.
@@ -114,7 +115,7 @@ If you have your own FASTA files that can be used as database to blast against, 
   nested in current directory;
 - no email information (`-e` option) is send to NCBI;
 
-### OPTIONS:
+### Options:
 
 - Files that you want "prober.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
   Wildcards do work: `./prober.py my_directory/*` will process all files in `'my_directory'`.
@@ -141,7 +142,7 @@ If you have your own FASTA files that can be used as database to blast against, 
           You can find your Taxonomy IDs here: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi
           Format of value (TaxIDs separated by comma): 
             <organism1_name>,<organism2_taxid>...
-          See EXAMPLES #4 and #5 below.
+          See Examples #4 and #5 below.
           Spaces are not allowed.
           Default is: full 'nt' database, i.e. no slices.
 
@@ -159,11 +160,11 @@ If you have your own FASTA files that can be used as database to blast against, 
     https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome.
 
 
-### EXAMPLES:
+### Examples:
 
 Note for Windows users: `./prober.py` won't work on Windows -- type `py -3 prober.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
@@ -193,7 +194,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 Version 3.5.i; 2019.11.08 edition;
 
-### DESCRIPTION:
+### Description:
 
 **barapost.py** -- this script is designed for taxonomic annotation of nucleotide sequences by "BLASTing" each of them with 'blastn' script from "BLAST+" toolkit
 and regarding the best hit.
@@ -218,7 +219,7 @@ If you have your own FASTA files that can be used as database to blast against, 
 - numbers of threads to launch (`-t` option): 1 thread.
 
 
-### OPTIONS:
+### Options:
 
 - Files that you want "barapost.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
   Wildcards do work: `./barapost.py my_directory/*` will process all files in `'my_directory'`.
@@ -262,11 +263,11 @@ If you have your own FASTA files that can be used as database to blast against, 
 
     Sequences from assembly files affect on sorting process in their own specific way (see "Notes about sorting" section in "fastQA5-sorter.py" decsription below, note number 4).
 
-### EXAMPLES:
+### Examples:
 
 Note for Windows users: `./barapost.py` won't work on Windows -- type `py -3 barapost.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
@@ -303,13 +304,13 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.3.a; 2019.11.08 edition;
+Version 3.3.b; 2019.11.10 edition;
 
-### DESCRIPTION:
+### Description:
 
 **fastQA5-sorter.py** -- this script is designed for sorting (dividing into separate files) FASTQ and FASTA files processed by "barapost.py".
 
-Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ files, that are in turn results of basecalling of these FAST5 files. See "FAST5 sorting" and "FAST5 untwisting" sections below.
+Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ files, that are in turn results of basecalling of these FAST5 files. See [FAST5 sorting](#FAST5-sorting) and [FAST5 untwisting](#FAST5-untwisting) section below.
 
 "fastQA5-sorter.py" is meant to be used just after "barapost.py".
 
@@ -323,7 +324,7 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
 - length filtering (`-m` option) is disabled by default;
 - "FAST5 untwisting" is disaled by default;
 
-### OPTIONS:
+### Options:
 
 - Files that you want "fastQA5-sorter.py" to process should be specified as positional arguments (see EXAMPLE #2 below).
   Wildcards do work: `./fastQA5-sorter.py my_directory/*` will process all files in `'my_directory'`.
@@ -384,11 +385,11 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
 
     `qual_less_Q<min_quality>_len_less_<min_length>.fastq.gz`.
 
-### EXAMPLES:
+### Examples:
 
 Note for Windows users: `./fastQA5-sorter.py` won't work on Windows -- type `py -3 fastQA5-sorter.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA5-sorter.py`) and run it as it is shown in examples below.
+Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA5-sorter.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
 
   1. Process all FASTA, FASTQ and FAST5 files in working directory with default settings:
 
@@ -448,7 +449,7 @@ Sorting:
 
 ## FAST5 untwisting
 
-The problem is following: basecallers (popular Guppy, in particular) often missasign names of input FAST5 and output FASTQ files. In result, source **FAST5** and basecalled **FASTQ** files **contain different reads**. Therefore, straitforward sorting of FAST5 files, that relies on names of "corresponding" FASTQ files (that have ondergone taxonomic annotation) is, in general, impossible.
+The problem is following: basecallers (popular Guppy, in particular) often missasign names of input FAST5 and output FASTQ files. In result, source **FAST5** and basecalled **FASTQ** files **contain different reads** although their names match one another. Therefore, straitforward sorting of FAST5 files, that relies on names of "corresponding" FASTQ files (that have ondergone taxonomic annotation) is, in general, impossible.
 
 In fastQA-sorter.py, this issue is solved by developing a "FAST5 untwisting" procedure (it can be enabled by specifying `-u` flag).
 
@@ -460,7 +461,49 @@ One obvious disadvantage: you may need to perform taxonomic annotation of all yo
 
 Here another problem arises: how to find out, in which FASTQ file(s) are your reads from given FAST5 file placed? You can find this information in "sequencing_summary" file which is often generated by basecaller (at least, Guppy behaves so). But these files are rather bulky and not very enjoyable to use (and often lack essential information, like names of FASTQ files).
 
-Therefore I will develop an auxiliary tool which will make much more handy summary about how reads are distributed between FAST5 and FASTQ files.
+This problem leads us to an auxiliary script "BCsummarizer.py".
+
+## BCsummarizer
+
+Version 1.0.a; 2019.11.10 edition;
+
+### Description:
+
+**BCsummarizer.py** -- this script is designed for generating a brief summary of basecalling. It determines, in which FASTQ files are reads from FAST5 files placed.
+
+This script can be useful, because basecallers (popular Guppy, in particular) often missasign names of input FAST5 and output FASTQ files. In result, source FAST5
+  and basecalled FASTQ files contain different reads although their names match one another.
+
+**Pre-requirements**: `h5py` Python package is necessary for working with FAST5 files. See [Pre-requirements](#pre-requirements) section above for installation details.
+
+### Options:
+
+```
+    -h (--help) --- show help message;
+
+    -v (--version) --- show version;
+
+    -5 (--fast5-dir) --- directory that contains FAST5 files
+        meant to be processed. It may contain not only FAST5 files;
+
+    -q (--fastq-dir) --- directory that contains FASTQ files
+        meant to be processed. It may contain not only FASTQ files.
+        FASTQ files can be gzipped;
+
+    -o (--outfile) --- output summary file;
+```
+
+### Examples:
+
+1. FAST5 files are in directory `F5_dir`. Basecalled FASTQ files
+  are in directory `FQ_dir`:
+
+`./BCsummarizer.py -5 F5_dir -q FQ_dir`
+
+2. FAST5 and basecalled FASTQ files are in the working directory.
+  Write results in the file `/tmp/seq_summ.txt`:
+
+`./BCsummarizer -5 ./ -q ./ -o /tmp/seq_summ.txt`
 
 ## Examples of usage in combination:
 
