@@ -52,7 +52,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 2. **BLAST+** toolkit is used by "barapost.py" for building a database and aligning.
 
-   It can be downloaded [here](ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/);
+   It can be downloaded here: ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 
    **Installation:**
 
