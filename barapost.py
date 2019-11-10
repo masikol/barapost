@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.5.i"
+__version__ = "3.5.j"
 # Year, month, day
-__last_update_date__ = "2019.11.08"
+__last_update_date__ = "2019.11.10"
 
 # |===== Check python interpreter version =====|
 
@@ -481,6 +481,8 @@ FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
 
 
+from shutil import copyfileobj as shutil_copyfileobj
+
 def fastq2fasta(fq_fa_path, new_dpath):
     """
     Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
@@ -507,7 +509,7 @@ def fastq2fasta(fq_fa_path, new_dpath):
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
-    if not re_search(fastq_patt, fq_fa_path) is None and not os.path.exists(fasta_path):
+    if not re_search(fastq_patt, fq_fa_path) is None and not os.path.exists(fasta_path+".gz"):
 
         # Get ready to process gzipped files
         how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -535,11 +537,29 @@ def fastq2fasta(fq_fa_path, new_dpath):
         # end with
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
-        # print("'{}' ({} reads) --> FASTA".format(os.path.basename(fq_fa_path), num_reads))
+        # GNU gzip utility is faster, but there can be presence of absence of it
+        gzip_util = "gzip"
+        util_found = False
+        for directory in os.environ["PATH"].split(os.pathsep):
+            if os.path.isdir(directory) and gzip_util in os.listdir(directory):
+                util_found = True
+                break
+            # end if
+        # end for
+
+        if util_found:
+            os.system("{} {}".format(gzip_util, fasta_path))
+        else:
+            # form .fasta.gz file 'by hand'
+            with open(fasta_path, 'rb') as fasta_file, open_as_gzip(fasta_path+".gz", "wb") as fagz_file:
+                shutil_copyfileobj(fasta_file, fagz_file)
+            # end with
+            os.unlink(fasta_path) # remove plain FASTA file
+        # end if
     
     # IF FASTA file is already created
     # We need only number of sequences in it.
-    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):
+    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path+".gz"):
         num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
     
@@ -551,7 +571,7 @@ def fastq2fasta(fq_fa_path, new_dpath):
         fasta_path = fq_fa_path
     # end if
 
-    return {"fpath": fasta_path, "nreads": num_reads}
+    return {"fpath": fasta_path+".gz", "nreads": num_reads}
 # end def fastq2fasta
 
 
@@ -659,6 +679,18 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
 # end def look_around
 
 
+ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+
+def fmt_read_id(read_id):
+
+    srch_ont_read = re_search(ont_read_signature, read_id)
+    if srch_ont_read is None:
+        return read_id.partition(' ')[0]
+    else:
+        return '>' + srch_ont_read.group(1)
+# end def fmt_read_id
+
+
 def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
     """
     Function passes sequences that have been already processed.
@@ -677,9 +709,7 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
         while i <= num_done_reads:
             line = fmt_func(fasta_file.readline())
             if line .startswith('>'):
-                if ' ' in line:
-                    line = line.partition(' ')[0]
-                # end if
+                line = fmt_read_id(line)
                 next_id_line = line
                 i += 1
             # end if
@@ -769,8 +799,8 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
     packet = ""
 
     line = get_next_line()
-    if line.startswith('>') and ' ' in line:
-        line = line.partition(' ')[0] # prune sequence ID
+    if line.startswith('>'):
+        line = fmt_read_id(line) # prune sequence ID
     # end if
 
     # If some sequences have been passed, this if-statement will be executed.
@@ -796,9 +826,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
             line = get_next_line()
             if line.startswith('>'):
-                if ' ' in line:
-                    line = line.partition(' ')[0] # prune sequence ID
-                # end if
+                line = fmt_read_id(line) # prune sequence ID
                 i += 1
             # end if
             
@@ -818,7 +846,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
         # Get list of sequence IDs:
         names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-        names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+        names = list( map(lambda l: l.replace('>', ''), names) )
 
         # Just in case
         if packet == "":
@@ -1169,7 +1197,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
     printl("{} - Database index has been successfully created\n".format(get_work_time()))
 
     # Gzip downloaded FASTA file in order to save space on disk
-    printl("Gzipping FASTA file that will be added to database:\n '{}'".format(local_fasta))
+    printl("Gzipping FASTA file:\n '{}'".format(local_fasta))
 
     # GNU gzip utility is faster, but there can be presence of absence of it
     gzip_util = "gzip"
@@ -1184,9 +1212,10 @@ Enter 'r' to remove all files in this directory and build the database from the 
     if util_found:
         os.system("{} {}".format(gzip_util, local_fasta))
     else:
+        from shutil import copyfileobj as shutil_copyfileobj
         # form .fasta.gz file 'by hand'
-        with open(local_fasta, 'r') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:
-            fagz_file.write(bytes(fasta_file.read(), "utf-8"))
+        with open(local_fasta, 'rb') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:
+            shutil_copyfileobj(fasta_file, fagz_file)
         # end with
         os.unlink(local_fasta) # remove source FASTA file, not the database
     # end if
@@ -1296,7 +1325,7 @@ def configure_qual_dict(fastq_path):
         line = fmt_func(fastq_file.readline())
         while line != "":
             if counter == 1:
-                seq_id = intern( (line.partition(' ')[0])[1:] )
+                seq_id = intern( fmt_read_id(line).replace('>', '') )
             # end if
             
             counter += 1
@@ -1936,6 +1965,9 @@ def process_single_file_in_paral(fq_fa_path, i):
 
     pool.starmap(process_part_of_file, [(file_part["fasta"], tsv_res_path, qual_dict, seqs_left) for file_part in fasta_packets(curr_fasta["fpath"],
         file_part_size, curr_fasta["nreads"], num_done_reads)])
+    # Reaping zombies
+    pool.terminate()
+    pool.join()
     printl() # just print blank line
 # end def process_single_file_in_paral
 
@@ -2000,7 +2032,7 @@ if not os.path.isdir(queries_tmp_dir):
 
 if n_thr <= len(fq_fa_list):
     if n_thr != 1:
-        print(" Time passed: {}".format(get_work_time()))
+        print("\n Time passed: {}".format(get_work_time()))
         for i, path in enumerate(fq_fa_list):
             path = os.path.basename(path)
             if len(path) + 12 >= get_terminal_size().columns:

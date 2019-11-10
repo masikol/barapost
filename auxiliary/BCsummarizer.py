@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.0.a"
+__version__ = "1.0.b"
 # Year, month, day
 __last_update_date__ = "2019.11.10"
 
@@ -254,6 +254,18 @@ FORMATTING_FUNCS = (
 )
 
 
+ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+
+def fmt_read_id(read_id):
+
+    srch_ont_read = re_search(ont_read_signature, read_id)
+    if srch_ont_read is None:
+        return read_id.partition(' ')[0]
+    else:
+        return srch_ont_read.group(1)
+# end def fmt_read_id
+
+
 def get_fastq_readids(fastq_fpath):
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq_fpath) ]
@@ -261,7 +273,7 @@ def get_fastq_readids(fastq_fpath):
 
     with how_to_open(fastq_fpath) as fastq_file:
         line = fmt_func(fastq_file.readline())
-        yield line.partition(' ')[0].replace('@', '')
+        yield fmt_read_id(line)
         i = 1
         while line != "":
             line = fmt_func(fastq_file.readline())
@@ -269,7 +281,7 @@ def get_fastq_readids(fastq_fpath):
             if i == 4:
                 i = 0
             elif i == 1:
-                yield line.partition(' ')[0].replace('@', '')
+                yield fmt_read_id(line)
             # end if
         # end while
     # end with
@@ -286,20 +298,9 @@ for fast5_fpath in fast5_lst:
     f5_file = h5py.File(fast5_fpath, 'r')
     num_reads = len(f5_file)
 
-    readids_to_seek = list() # here all read IDs will be stored
-
-    # Store add read IDs in a list
-    for read_name in f5_file:
-        if not read_name.startswith("read_"):
-            printl("\nName of read '{}' from FAST5 file has format that is unforseen by the developer.".format(read_name))
-            printl("Please, contact the developer.")
-        # end if
-        # Get rid of "read_"
-        readids_to_seek.append(intern(read_name[5:]))
-    # end for
-
+    readids_to_seek = list(f5_file.keys()) # list of not-found-yet read IDs
+    readids_to_seek = list(map(fmt_read_id, readids_to_seek))
     res_dict = dict()
-    i = 0
 
     for fastq_fpath in fastq_lst:
         fastq_readids = list(get_fastq_readids(fastq_fpath))

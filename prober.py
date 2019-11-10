@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.i"
+__version__ = "1.12.j"
 # Year, month, day
-__last_update_date__ = "2019.11.02"
+__last_update_date__ = "2019.11.10"
 
 # |===== Check python interpreter version =====|
 
@@ -480,7 +480,7 @@ def verify_taxids(taxid_list):
     organisms = list()
     if len(taxid_list) > 0:
 
-        printl("Verifing TaxIDs:")
+        printl("Verifying TaxIDs:")
         if not platform.startswith("win"):
             check_mark = " \u2714"
             cross = " \u274c"
@@ -574,7 +574,7 @@ def configure_qual_dict(fastq_path):
         line = fmt_func(fastq_file.readline())
         while line != "":
             if counter == 1:
-                seq_id = intern( (line.partition(' ')[0])[1:] )
+                seq_id = intern( fmt_read_id(line).replace('@', '') )
             # end if
             
             counter += 1
@@ -589,6 +589,8 @@ def configure_qual_dict(fastq_path):
     return qual_dict
 # end def configure_qual_dict
 
+
+from shutil import copyfileobj as shutil_copyfileobj
 
 def fastq2fasta(fq_fa_path, i, new_dpath):
     """
@@ -610,7 +612,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
     """
     
     fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
-    fasta_path = fasta_path.replace(".gz", "") # get rid of ".gz" extention
+    fasta_path = fasta_path.replace(".gz", "")
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -618,7 +620,9 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
     num_lines = 0 # variable for counting lines in a file
-    if not re_search(fastq_patt, fq_fa_path) is None:
+    if not re_search(fastq_patt, fq_fa_path) is None and not os.path.exists(fasta_path+".gz"):
+
+        printl("\n{}. '{}' --> FASTA".format(i+1, os.path.basename(fq_fa_path)))
 
         global FASTQ_LINES_PER_READ
 
@@ -647,11 +651,31 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
         # end with
         num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
 
-        printl("\n{}. '{}' ({} reads) --> FASTA".format(i+1, os.path.basename(fq_fa_path), num_reads))
+        print("Gzipping '{}'...".format(fasta_path))
+
+        # GNU gzip utility is faster, but there can be presence of absence of it
+        gzip_util = "gzip"
+        util_found = False
+        for directory in os.environ["PATH"].split(os.pathsep):
+            if os.path.isdir(directory) and gzip_util in os.listdir(directory):
+                util_found = True
+                break
+            # end if
+        # end for
+
+        if util_found:
+            os.system("{} {}".format(gzip_util, fasta_path))
+        else:
+            # form .fasta.gz file 'by hand'
+            with open(fasta_path, 'rb') as fasta_file, open_as_gzip(fasta_path+".gz", "wb") as fagz_file:
+                shutil_copyfileobj(fasta_file, fagz_file)
+            # end with
+            os.unlink(fasta_path) # remove plain FASTA file
+        # end if
     
     # IF FASTA file is already created
     # We need only number of sequences in it.
-    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path):
+    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path+".gz"):
         num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
         num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
     # We've got FASTA source file
@@ -663,8 +687,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
         fasta_path = fq_fa_path
     # end if
 
-    printl("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(fasta_path), num_reads))
-    return {"fpath": fasta_path, "nreads": num_reads}
+    return {"fpath": fasta_path+".gz", "nreads": num_reads}
 # end def fastq2fasta
 
 
@@ -845,6 +868,18 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 # end def look_around
 
 
+ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+
+def fmt_read_id(read_id):
+
+    srch_ont_read = re_search(ont_read_signature, read_id)
+    if srch_ont_read is None:
+        return read_id.partition(' ')[0]
+    else:
+        return srch_ont_read.group(1)
+# end def fmt_read_id
+
+
 def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
     """
     Function passes sequences that have been already processed.
@@ -862,14 +897,12 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
         i = 0
         while i <= num_done_reads:
 
-            line = fmt_func(fasta_file.readline())
-            if line is "":
+            line = '>' + fmt_func(fasta_file.readline())
+            if line == "":
                 return ""
             # end if
             if line .startswith('>'):
-                if ' ' in line:
-                    line = line.partition(' ')[0]
-                # end if
+                line = '>' + fmt_read_id(line)
                 next_id_line = line
                 i += 1
             # end if
@@ -922,8 +955,8 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
         packet = ""
 
         line = get_next_line()
-        if line.startswith('>') and ' ' in line:
-            line = line.partition(' ')[0] # prune sequence ID
+        if line.startswith('>'):
+            line = '>' + fmt_read_id(line) # prune sequence ID
         # end if
 
         # If some sequences have been passed, this if-statement will be executed.
@@ -951,9 +984,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
                 line = get_next_line()
                 if line.startswith('>'):
-                    if ' ' in line:
-                        line = line.partition(' ')[0] # prune sequence ID
-                    # end if
+                    line = '>' + fmt_read_id(line)
                     i += 1
                 # end if
                 
@@ -972,10 +1003,10 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
             # Get list of sequence IDs:
             names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-            names = list( map(lambda l: l.partition(' ')[0].strip(), names) )
+            names = list( map(lambda l: l.replace('>', ''), names) )
 
             # Just in case
-            if packet is "":
+            if packet == "":
                 printl("Recent packet is empty")
                 return
             # end if
@@ -1605,7 +1636,7 @@ for i, path in enumerate(fq_fa_list):
     printl("    {}. '{}'".format(i+1, path))
 # end for
 
-printl('-'*30 + '\n')
+printl('-'*30)
 
 # Variable for counting accessions of records menat to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
@@ -1642,6 +1673,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
+    printl("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(curr_fasta["fpath"]),
+        curr_fasta["nreads"]))
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
@@ -1695,7 +1728,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):
 
         # Just in case:
-        if packet["fasta"] is "":
+        if packet["fasta"] == "":
             printl("All sequences in recent file have been already processed.")
             break
         # end if
