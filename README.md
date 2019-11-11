@@ -304,7 +304,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.3.c; 2019.11.10 edition;
+Version 3.3.d; 2019.11.11 edition;
 
 ### Description:
 
@@ -465,7 +465,7 @@ This problem leads us to an auxiliary script "BCsummarizer.py".
 
 ## BCsummarizer
 
-Version 1.0.b; 2019.11.10 edition;
+Version 1.0.c; 2019.11.11 edition;
 
 ### Description:
 

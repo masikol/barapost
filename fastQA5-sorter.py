@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.3.c"
+__version__ = "3.3.d"
 # Year, month, day
-__last_update_date__ = "2019.11.10"
+__last_update_date__ = "2019.11.11"
 
 # |===== Check python interpreter version =====|
 
@@ -1179,7 +1179,7 @@ if untwist_fast5:
                 # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
                 #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
                 if len(readids_to_seek) == len_before:
-                    printl(err_fmt("reads for FAST5 file not found"))
+                    printl(err_fmt("reads from FAST5 file not found"))
                     printl("FAST5 file: '{}'".format(f5_path))
                     printl("Some reads reads have not undergone taxonomic annotation.")
                     missing_log = "missing_reads_lst.txt"
