@@ -170,7 +170,7 @@ for opt, arg in opts:
     if opt in ("-o", "--outfile"):
         outfpath = arg
         try:
-            with open(outfile, 'w') as outfile:
+            with open(outfpath, 'w') as outfile:
                 pass
             # end with
         except OSError as oserrr:
