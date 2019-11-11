@@ -465,7 +465,7 @@ This problem leads us to an auxiliary script "BCsummarizer.py".
 
 ## BCsummarizer
 
-Version 1.0.c; 2019.11.11 edition;
+Version 1.0.d; 2019.11.11 edition;
 
 ### Description:
 
