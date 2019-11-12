@@ -867,8 +867,9 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     return None
 # end def look_around
 
-
-ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+# According to
+# https://github.com/nanoporetech/ont_h5_validator/blob/master/h5_validator/schemas/multi_read_fast5.yaml
+ont_read_signature = r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
 
 def fmt_read_id(read_id):
 

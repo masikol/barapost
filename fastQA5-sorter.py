@@ -422,6 +422,10 @@ if fast5_in_inp_files:
         """
         try:
             to_f5 = h5py.File(to_fpath, 'a')
+            # Assign version attribute to '2.0' -- multiFAST5
+            if not "file_version" in to_f5.attrs:
+                to_f5.attrs["file_version"] = b"2.0"
+            # end if
             from_f5.copy(read_name, to_f5)
         except OSError as oserr:
             printl(err_fmt("cannot open FAST5 file"))
@@ -1000,7 +1004,9 @@ def sort_fastqa_file(fq_fa_path):
 # end def sort_fastqa_file
 
 
-ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+# According to
+# https://github.com/nanoporetech/ont_h5_validator/blob/master/h5_validator/schemas/multi_read_fast5.yaml
+ont_read_signature = r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
 
 def fmt_read_id(read_id):
 

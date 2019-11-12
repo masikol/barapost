@@ -261,7 +261,10 @@ FORMATTING_FUNCS = (
 )
 
 
-ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+# According to
+# https://github.com/nanoporetech/ont_h5_validator/blob/master/h5_validator/schemas/multi_read_fast5.yaml
+ont_read_signature = r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
+
 
 def fmt_read_id(read_id):
 
@@ -343,7 +346,7 @@ for fast5_fpath in fast5_lst:
     if nlost_reads != 0:
         total_nlost_reads += nlost_reads
         outfile.write("! - {} reads from this FAST5 file are not found in FASTQ files.\n".format(nlost_reads))
-        print("! - {} reads from this file have not been found.")
+        print("! - {} reads from this file have not been found.".format(nlost_reads))
     # end if
     print('-'*20)
     outfile.write('-'*20 + '\n')

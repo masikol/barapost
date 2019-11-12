@@ -678,8 +678,9 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
     }
 # end def look_around
 
-
-ont_read_signature = r"([0-9a-zA-Z\-]{20,})"
+# According to
+# https://github.com/nanoporetech/ont_h5_validator/blob/master/h5_validator/schemas/multi_read_fast5.yaml
+ont_read_signature = r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
 
 def fmt_read_id(read_id):
 
@@ -2073,7 +2074,6 @@ else:
     # end for
 # end if
 
-# Directory with tmp query files must be empty now, therefore just 'os.rmdir' is used:
 from shutil import rmtree
 try:
     rmtree(queries_tmp_dir)
