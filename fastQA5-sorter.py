@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.3.d"
+__version__ = "3.4.a"
 # Year, month, day
-__last_update_date__ = "2019.11.11"
+__last_update_date__ = "2019-11-17"
 
 # |===== Check python interpreter version =====|
 
@@ -386,6 +386,16 @@ def printl(text=""):
     logfile.flush()
 # end def printl
 
+def println(text=""):
+    """
+    Function for printing text to console and to log file.
+    The only difference from 'printl' -- text that is printed to console does not end with '\\n'
+    """
+    printn(text)
+    logfile.write(str(text).strip('\r') + '\n')
+    logfile.flush()
+# end def printl
+
 # There some troubles with file extention on Windows, so let's make a .txt file for it:
 log_ext = ".log" if not platform.startswith("win") else ".txt"
 logfile_path = os.path.join(outdir_path, "fastQA5-sorter_log_{}{}".format(strftime("%Y-%m-%d_%H-%M-%S", localtime(start_time)), log_ext))
@@ -408,39 +418,94 @@ if fast5_in_inp_files:
     # end try
 
 
-    def copy_read_f5_2_f5(from_f5, read_name, to_fpath):
+    def copy_read_f5_2_f5(from_f5, read_name, to_f5):
         """
         Function copies a read with ID 'read_name'
-            from 'from_f5' FAST5 file to to_fpath one.
+            from 'from_f5' multiFAST5 file to to_f5 multiFAST5 one.
 
         :param from_f5: FAST5 file object to copy a read from;
         :type from_f5: h5py.File;
         :param read_name: ID of a read to copy;
         :type read_name: str;
-        :param to_fpath: path to destination FAST5 file;
-        :type to_fpath: str;
+        :param to_f5: destination FAST5 file;
+        :type to_f5: h5py.File;
         """
         try:
-            to_f5 = h5py.File(to_fpath, 'a')
             # Assign version attribute to '2.0' -- multiFAST5
             if not "file_version" in to_f5.attrs:
                 to_f5.attrs["file_version"] = b"2.0"
             # end if
             from_f5.copy(read_name, to_f5)
-        except OSError as oserr:
-            printl(err_fmt("cannot open FAST5 file"))
-            printl("Sorter crushed while opening file '{}'".format(os.path.basename(to_f5)))
-            printl( "Reason: {}".format( str(oserr) ) )
-            platf_depend_exit(1)
         except ValueError as verr:
-            printl("\n\n ! - Warning: {}".format( str(verr) ))
+            printl("\n\n ! - Error: {}".format( str(verr) ))
             printl("Reason is probably the following:")
             printl("  read that is copying to the result file is already in it.")
             printl("ID of the read: '{}'".format(read_name))
-            printl("File: '{}'".format(to_fpath))
-            printl("Omitting this read...\n")
+            printl("File: '{}'".format(to_f5.filename))
+            platf_depend_exit(1)
         # end try
     # end def copy_read_f5_2_f5
+
+
+    def copy_single_f5(from_f5, read_name, to_f5):
+        """
+        Function copies a read with ID 'read_name'
+            from 'from_f5' singleFAST5 file to to_f5 multiFAST5 one.
+
+        :param from_f5: FAST5 file object to copy a read from;
+        :type from_f5: h5py.File;
+        :param read_name: ID of a read to copy;
+        :type read_name: str;
+        :param to_f5: destination FAST5 file;
+        :type to_f5: h5py.File;
+        """
+        try:
+            # Assign version attribute to '2.0' -- multiFAST5 (output file is always multiFAST5)
+            if not "file_version" in to_f5.attrs:
+                to_f5.attrs["file_version"] = b"2.0"
+            # end if
+            read_group = read_name
+            to_f5.create_group(read_group)
+
+            for ugk_subgr in from_f5["UniqueGlobalKey"]:
+                    from_f5.copy("UniqueGlobalKey/"+ugk_subgr, to_f5[read_group])
+            # end for
+
+            read_number_group = "Raw/Reads/"+next(iter(from_f5["Raw"]["Reads"]))
+            read_number = re_search(r"(Read_[0-9]+)", read_number_group).group(1)
+            from_f5.copy(from_f5[read_number_group], to_f5[read_group])
+            to_f5.move("{}/{}".format(read_group, read_number), "{}/Raw".format(read_group))
+
+            for group in from_f5:
+                if group != "Raw" and group != "UniqueGlobalKey":
+                    from_f5.copy(group, to_f5["/{}".format(read_group)])
+                # end if
+            # end for
+        except ValueError as verr:
+            printl("\n\n ! - Error: {}".format( str(verr) ))
+            printl("Reason is probably the following:")
+            printl("  read that is copying to the result file is already in it.")
+            printl("ID of the read: '{}'".format(read_name))
+            printl("File: '{}'".format(to_f5.filename))
+            platf_depend_exit(1)
+        # end try
+    # end def copy_single_f5
+
+
+    def fast5_readids(fast5_file):
+
+        if "Raw" in fast5_file.keys():
+            yield "read_" + fmt_read_id(fast5_file.filename)
+            return
+        else:
+            for readid in fast5_file:
+                if readid.startswith("read_"):
+                    yield readid
+                # end if
+            # end for
+        # end if
+        return
+    # end def fast5_readids
 # end if
 
 if not platform.startswith("win"):
@@ -448,6 +513,9 @@ if not platform.startswith("win"):
 else:
     check_mark = "OK"
 # end if
+
+logfile.write('\n')
+printl( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # Make sure that each file meant to be processed has it's directory with TSV result file
@@ -565,6 +633,30 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
         # end if
     # end while
 # end if
+
+
+from threading import Thread
+# Value that contains number of processed files:
+
+global inc_val
+global stop
+
+def status_printer(get_inc_val):
+    printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(QA5_list)))
+    saved_val = get_inc_val()
+    while not stop:
+        loc_inc_val = get_inc_val()
+        printn("\r{} - {}/{} files processed. Working...".format(get_work_time(), loc_inc_val, len(QA5_list)))
+        if loc_inc_val != saved_val:
+            logfile.write("{} - {}/{} files processed.\n".format(get_work_time(), loc_inc_val, len(QA5_list)))
+            saved_val = get_inc_val()
+        sleep(1)
+    # end while
+    printn("\r{} - {}/{} files processed.".format(get_work_time(), get_inc_val(), len(QA5_list)) +
+        ' '*len(" Working..."))
+    logfile.write("{} - {}/{} files processed.\n".format(get_work_time(), get_inc_val(), len(QA5_list)))
+# end def status_printer
+
 
 #                                      Genus    species                   strain name and anything after it
 hit_name_patt = r"(PREDICTED)?(:)?(_)?[A-Z][\.a-z]+_[a-z]*(sp\.)?(phage)?_(strain_)?.+$"
@@ -872,7 +964,11 @@ def get_res_tsv_fpath(new_dpath):
 def update_file_dict(srt_file_dict, new_fpath):
     if new_fpath not in srt_file_dict.keys():
         try:
-            srt_file_dict[intern(new_fpath)] = open_as_gzip(new_fpath, 'wb')
+            if new_fpath.endswith(".fast5"):
+                srt_file_dict[intern(new_fpath)] = h5py.File(new_fpath, 'a')
+            else:
+                srt_file_dict[intern(new_fpath)] = open_as_gzip(new_fpath, 'wb')
+            # end if
         except OSError as oserr:
             printl(err_fmt("error while opening one of result files"))
             printl("Errorneous file: '{}'".format(new_fpath))
@@ -994,11 +1090,7 @@ def sort_fastqa_file(fq_fa_path):
                 # end if
             # end try
 
-            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
         # end for
-        print() # print space to console but not to log file
-        logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
-        printl('-'*20)
     # end with
 
 # end def sort_fastqa_file
@@ -1140,13 +1232,20 @@ if untwist_fast5:
             # Open index files overwriting existing data ('n' parameter)
             index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, index_name), 'n' )
 
-            # Iterate over FAST5 files
-            for f5_path in fast5_list:
+            global inc_val
+            global stop
+            inc_val = 0
+            get_inc_val = lambda: inc_val
 
-                printn("Untwisting reads in '{}'...".format(os.path.basename(f5_path)))
+            printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+            stop = False # raise the flag
+            printer.start() # start waiting
+
+            # Iterate over FAST5 files
+            for j, f5_path in enumerate(fast5_list):
 
                 f5_file = h5py.File(f5_path, 'r')# open FAST5 file
-                readids_to_seek = list(f5_file.keys()) # list of not-found-yet read IDs
+                readids_to_seek = list(fast5_readids(f5_file))
                 idx_dict = dict() # dictionary for index
 
                 # This saving is needed to compare with 'len(readids_to_seek)'
@@ -1173,6 +1272,7 @@ if untwist_fast5:
                                     idx_dict[tsv_taxann_fpath] = [readid] # create a new list
                                 finally:
                                     readids_to_seek.remove(readid)
+                                    inc_val += 1
                                 # end try
                             # end if
                         # end for
@@ -1209,8 +1309,10 @@ if untwist_fast5:
 
                 # Update index
                 index_f5_2_tsv[f5_path] = idx_dict
-                print("\rUntwisting reads in '{}'...{}".format(os.path.basename(f5_path), check_mark))
             # end for
+            stop = True # lower the flag
+            printer.join()
+            printl()
 
             # index_read2tsv.close()
             index_f5_2_tsv.close()
@@ -1230,12 +1332,21 @@ if untwist_fast5:
 
         global seqs_pass
         global seqs_fail
+        global srt_file_dict
 
         trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
                 minlen_fmt_str))
 
         from_f5 = h5py.File(f5_path, 'r') # open source FAST5
         num_reads = len(from_f5) # get number of reads in it
+
+        # singleFAST5 and multiFAST5 files should be processed in different ways
+        # "Raw" group always in singleFAST5 root and never in multiFAST5 root
+        if "Raw" in from_f5.keys():
+            f5_cpy_func = copy_single_f5
+        else:
+            f5_cpy_func = copy_read_f5_2_f5
+        # end if
 
         try:
             readids_to_seek = list(from_f5.keys()) # list of not-sorted-yet read IDs
@@ -1245,15 +1356,19 @@ if untwist_fast5:
         # end try
 
         # Fill the list 'readids_to_seek'
-        for read_name in from_f5:
+        for read_name in fast5_readids(from_f5):
             # Get rid of "read_"
             readids_to_seek.append(intern(read_name))
         # end for
 
-        i = 0 # counter
-
         # Walk through the index
         index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, index_name), 'r' )
+
+        if not f5_path in index_f5_2_tsv.keys():
+            printl(err_fmt("Source FAST5 file not found in index"))
+            printl("Try to rebuild index")
+            platf_depend_exit(1)
+        # end if
 
         for tsv_path in index_f5_2_tsv[f5_path].keys():
 
@@ -1275,23 +1390,20 @@ if untwist_fast5:
                     q_len = SeqLength(q_len)
                     if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
                         # Get name of result FASTQ file to write this read in
-                        copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
+                        srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
+                        f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
                         seqs_fail += 1
                     else:
                         # Get name of result FASTQ file to write this read in
                         sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                        copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
+                        srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                        f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
                         seqs_pass += 1
                     # end if
-                    i += 1
-                    printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i, num_reads))
                 # end try
             # end for
 
         index_f5_2_tsv.close()
-        print() # print blank line to console but not to log file
-        logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i, num_reads))
-        printl('-'*20)
     # end def sort_fast5_file
 
 else: # if untwisting is not enabled, this function will be different
@@ -1306,6 +1418,7 @@ else: # if untwisting is not enabled, this function will be different
 
         global seqs_pass
         global seqs_fail
+        global srt_file_dict
 
         trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
                 minlen_fmt_str))
@@ -1317,13 +1430,15 @@ else: # if untwisting is not enabled, this function will be different
         from_f5 = h5py.File(f5_path, 'r')
         num_reads = len(from_f5)
 
-        for i, read_name in enumerate(from_f5):
+        # singleFAST5 and multiFAST5 files should be processed in different ways
+        # "Raw" group always in singleFAST5 root and never in multiFAST5 root
+        if "Raw" in from_f5.keys():
+            f5_cpy_func = copy_single_f5
+        else:
+            f5_cpy_func = copy_read_f5_2_f5
+        # end if
 
-            if not read_name.startswith("read_"):
-                printl("Name of read '{}' from FAST5 file has format that is unforseen by the developer.".format(read_name))
-                printl("Please, contact the developer.")
-                platf_depend_exit(1)
-            # end if
+        for i, read_name in enumerate(fast5_readids(from_f5)):
 
             try:
                 hit_name, ph33_qual, q_len = resfile_lines[intern(fmt_read_id(read_name))] # omit 'read_' in the beginning of FAST5 group's name
@@ -1337,21 +1452,18 @@ else: # if untwisting is not enabled, this function will be different
                 q_len = SeqLength(q_len)
                 if ph33_qual != '-' and ph33_qual < min_ph33_qual:
                     # Get name of result FASTQ file to write this read in
-                    copy_read_f5_2_f5(from_f5, read_name, trash_fpath)
+                    srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
+                    f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
                     seqs_fail += 1
                 else:
                     # Get name of result FASTQ file to write this read in
                     sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                    copy_read_f5_2_f5(from_f5, read_name, sorted_file_path)
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                    f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
                     seqs_pass += 1
                 # end if
             # end try
-            printn("\r{} - {}/{} reads are sorted  ".format(get_work_time(), i+1, num_reads))
         # end for
-
-        print() # print blank line to console but not to log file
-        logfile.write("\r{} - {}/{} reads are sorted\n".format(get_work_time(), i+1, num_reads))
-        printl('-'*20)
     # end def sort_fast5_file
 # end if
 
@@ -1413,8 +1525,6 @@ def configure_resfile_lines(tsv_res_fpath):
 
 # |===== Proceed =====|
 
-logfile.write('\n')
-printl( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 printl(" - Sorting sensitivity: '{}';".format(sens))
 printl(" - Minimum mean Phred33 quality of a read to keep: {};".format(min_ph33_qual))
@@ -1422,14 +1532,15 @@ printl(" - Minimum length of a read to keep: {};".format(min_qlen if not min_qle
 if untwist_fast5:
     printl(" - \"FAST5 untwisting\" is enabled.")
 # end if
-print()
 
-printl("\nFollowing files will be processed:")
+s_letter = '' if len(QA5_list) == 1 else 's'
+printl("\n {} file{} will be processed.".format( len(QA5_list), s_letter))
+logfile.write("Here they are:\n")
 for i, path in enumerate(QA5_list):
-    printl("  {}. {}".format(i+1, path))
+    logfile.write("    {}. '{}'\n".format(i+1, path))
 # end for
-printl('-'*20 + '\n')
 
+printl('-'*30)
 
 LINES_PER_READ_FASTQ = 4
 is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
@@ -1444,9 +1555,17 @@ if untwist_fast5 and not use_old_index:
     map_f5reads_2_taxann(QA5_list)
 # end if
 
-for j, fq_fa_path in enumerate(QA5_list):
 
-    printl("{} - '{}': start sorting".format(get_work_time(), os.path.basename(fq_fa_path)))
+printl("{} - Sorting started.".format(get_work_time()))
+
+inc_val = 0
+get_inc_val = lambda: inc_val
+
+printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+stop = False # raise the flag
+printer.start() # start waiting
+
+for fq_fa_path in QA5_list:
 
     # Interface of interactiong with HDF5 files are quite different from plain text ones.
     # So it is beter to write a separate function for them.
@@ -1455,7 +1574,12 @@ for j, fq_fa_path in enumerate(QA5_list):
     else:
         sort_fast5_file(fq_fa_path)
     # end if
+    inc_val += 1
 # end for
+
+stop = True # lower the flag
+printer.join()
+printl()
 
 # Close all sorted files
 for file_obj in srt_file_dict.values():
@@ -1478,5 +1602,5 @@ if seqs_fail > 0:
 # end if
 
 end_time = time()
-printl( '\n'+get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
+printl( '\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
 platf_depend_exit(0)

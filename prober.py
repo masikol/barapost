@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.j"
+__version__ = "1.12.k"
 # Year, month, day
-__last_update_date__ = "2019.11.10"
+__last_update_date__ = "2019-11-17"
 
 # |===== Check python interpreter version =====|
 
@@ -394,6 +394,50 @@ if not os.path.isdir(outdir_path):
     # end try
 # end if
 
+# |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
+
+def check_connection():
+    """
+    Function checks if 'https://blast.ncbi.nlm.nih.gov' is available.
+
+    :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
+    """
+    printn("Checking Internet connection...")
+
+    if not platform.startswith("win"):
+        check_mark = "\u2714"
+    else:
+        check_mark = "OK"
+    # end if
+
+    try:
+        ncbi_server = "https://blast.ncbi.nlm.nih.gov"
+        status_code = urllib.request.urlopen(ncbi_server).getcode()
+        # Just in case
+        if status_code != 200:
+            print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print("Check your Internet connection.\a")
+            print("Status code: {}".format(status_code))
+            platf_depend_exit(-2)
+        # end if
+    except OSError as err:
+        print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print("Check your Internet connection.\a")
+        print( str(err) )
+
+        # 'urllib.request.HTTPError' can provide a user with information about the error
+        if isinstance(err, HTTPError):
+            print("Status code: {}".format(err.code))
+            print(err.reason)
+        # end if
+        platf_depend_exit(-2)
+    else:
+        print("\rChecking Internet connection... {}".format(check_mark))
+    # end try
+# end def check_connection
+
+check_connection()
+
 # There some troubles with file extention on Windows, so let's make a .txt file for it:
 log_ext = ".log" if not platform.startswith("win") else ".txt"
 logfile_path = os.path.join(outdir_path, "prober_log_{}{}".format(strftime("%Y-%m-%d_%H-%M-%S", localtime(start_time)), log_ext))
@@ -419,50 +463,7 @@ def println(text=""):
 # end def printl
 
 printl(" |=== prober.py (version {}) ===|\n".format(__version__))
-printl( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
-
-
-# |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
-
-def check_connection():
-    """
-    Function checks if 'https://blast.ncbi.nlm.nih.gov' is available.
-
-    :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
-    """
-    printn("Checking Internet connection...")
-
-    if not platform.startswith("win"):
-        check_mark = "\u2714"
-    else:
-        check_mark = "OK"
-    # end if
-
-    try:
-        ncbi_server = "https://blast.ncbi.nlm.nih.gov"
-        status_code = urllib.request.urlopen(ncbi_server).getcode()
-        # Just in case
-        if status_code != 200:
-            printl('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            print("Check your Internet connection.\a")
-            printl("Status code: {}".format(status_code))
-            platf_depend_exit(-2)
-        # end if
-    except OSError as err:
-        printl('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-        print("Check your Internet connection.\a")
-        printl( str(err) )
-
-        # 'urllib.request.HTTPError' can provide a user with information about the error
-        if isinstance(err, HTTPError):
-            printl("Status code: {}".format(err.code))
-            printl(err.reason)
-        # end if
-        platf_depend_exit(-2)
-    else:
-        print("\rChecking Internet connection... {}".format(check_mark))
-    # end try
-# end def check_connection
+printl( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 def verify_taxids(taxid_list):
@@ -1245,9 +1246,9 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
         # if server asks to wait
         if "Status=WAITING" in resp_content:
             println("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
-            # indicate each 10 seconds with a dot
-            for i in range(1, 7):
-                sleep(10)
+            # indicate each 20 seconds with a dot
+            for i in range(1, 4):
+                sleep(20)
                 printn("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i))
             # end for
             print() # go to next line
@@ -1616,7 +1617,6 @@ def create_result_directory(fq_fa_path, outdir_path):
 
 #                   |===== Kernel loop =====|
 
-check_connection()
 organisms = verify_taxids(taxid_list)
 
 if user_email != "":
@@ -1632,9 +1632,11 @@ if len(organisms) > 0:
     # end for
 # end if
 
-printl("\n Following files will be processed:")
+s_letter = '' if len(fq_fa_list) == 1 else 's'
+printl("\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
+logfile.write("Here they are:\n")
 for i, path in enumerate(fq_fa_list):
-    printl("    {}. '{}'".format(i+1, path))
+    logfile.write("    {}. '{}'\n".format(i+1, path))
 # end for
 
 printl('-'*30)
@@ -1848,6 +1850,6 @@ printl("""\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost.py'.""")
 end_time = time()
-printl('\n'+get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(end_time))) + "- Probing task is completed\n")
+printl('\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Probing task is completed\n")
 logfile.close()
 platf_depend_exit(0)

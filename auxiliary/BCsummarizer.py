@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.0.d"
+__version__ = "1.1.a"
 # Year, month, day
-__last_update_date__ = "2019.11.11"
+__last_update_date__ = "2019-11-17"
 
 # |===== Check python interpreter version =====|
 
@@ -205,17 +205,42 @@ def printn(text):
 
 print(("\n |=== BCsummarizer.py (version {}) ===|\n".format(__version__)))
 
-print( get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
+print( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 print("{} FAST5 files will be processed.".format(len(fast5_lst)))
 print("""Results will be written to the following file:
-  '{}'\n""".format(outfpath))
+  '{}'\n""".format(os.path.abspath(outfpath)))
 
 print("{} - Primary validation...".format(get_work_time()))
-i = 0
-printn("{} - {}/{} files are checked.".format(get_work_time(), i, len(fast5_lst)))
+
+from threading import Thread
+# Value that contains number of processed files:
+global inc_val
+
+global stop
+
+def status_printer(get_inc_val):
+    printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(fast5_lst)))
+    saved_val = get_inc_val()
+    while not stop:
+        loc_inc_val = get_inc_val()
+        printn("\r{} - {}/{} files processed. Working...".format(get_work_time(), loc_inc_val, len(fast5_lst)))
+        if loc_inc_val != saved_val:
+            saved_val = get_inc_val()
+        sleep(1)
+    # end while
+    printn("\r{} - {}/{} files processed.".format(get_work_time(), get_inc_val(), len(fast5_lst)) +
+        ' '*len(" Working..."))
+# end def status_printer
+
+inc_val = 0
+get_inc_val = lambda: inc_val
+
+printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+stop = False # raise the flag
+printer.start() # start waiting
+
 for fpath in fast5_lst:
-    # print(fpath)
     try:
         # File existance checking is performed while parsing CL arguments.
         # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
@@ -242,10 +267,12 @@ for fpath in fast5_lst:
         platf_depend_exit(5)
     finally:
         f5_file.close()
-        i += 1
-        printn("\r{} - {}/{} files are checked.".format(get_work_time(), i, len(fast5_lst)))
+        inc_val += 1
     # end try
 # end for
+
+stop = True # lower the flag
+printer.join()
 print("\n{} - Primary validation -- Ok\n".format(get_work_time()))
 
 from gzip import open as open_as_gzip
@@ -297,62 +324,80 @@ def get_fastq_readids(fastq_fpath):
     # end with
 # end def get_fastq_readids
 
+def fast5_readids(fast5_file):
+
+    if "Raw" in fast5_file.keys():
+        yield "read_" + fmt_read_id(fast5_file.filename)
+        return
+    else:
+        for readid in fast5_file:
+            if readid.startswith("read_"):
+                yield readid
+            # end if
+        # end for
+    # end if
+    return
+# end def fast5_readids
+
 
 final_verdict = "\nAll reads from all FAST5 files are found"
 total_nlost_reads = 0
 
+inc_val = 0
+get_inc_val = lambda: inc_val
+print("Searching for reads from FAST5 files started")
+
+printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+stop = False # raise the flag
+printer.start() # start waiting
+
 outfile = open(outfpath, 'w')
 for fast5_fpath in fast5_lst:
-    print("{} - '{}': start processing".format(get_work_time(), os.path.basename(fast5_fpath)))
 
     f5_file = h5py.File(fast5_fpath, 'r')
-    num_reads = len(f5_file)
 
-    i = 0
-    printn("{} - {}/{} reads found".format(get_work_time(), i, num_reads))
-
-    readids_to_seek = list(f5_file.keys()) # list of not-found-yet read IDs
+    readids_to_seek = fast5_readids(f5_file) # list of not-found-yet read IDs
     readids_to_seek = list(map(fmt_read_id, readids_to_seek))
+    num_reads = len(readids_to_seek)
     res_dict = dict()
 
     for fastq_fpath in fastq_lst:
         fastq_readids = list(get_fastq_readids(fastq_fpath))
 
-        for readid in reversed(readids_to_seek):
+        for readid in readids_to_seek:
             
             if readid in fastq_readids:
                 try:
                     res_dict[fastq_fpath] += 1
                 except KeyError:
                     res_dict[fastq_fpath] = 1
-                finally:
-                    readids_to_seek.remove(readid)
-                    i += 1
                 # end try
             # end if
-            printn("\r{} - {}/{} reads found".format(get_work_time(), i, num_reads))
         # end for
         if len(readids_to_seek) == 0:
             break
         # end if
     # end for
 
+    inc_val += 1
+
     outfile.write("  '{}' -- {} reads;\n".format(fast5_fpath, num_reads))
     for fastq_fpath, curr_nreads in res_dict.items():
         outfile.write("{} reads in '{}';\n".format(curr_nreads, fastq_fpath))
     # end for
-    print("\n{} - '{}': end processing".format(get_work_time(), os.path.basename(fast5_fpath)))
     nlost_reads = num_reads - sum(res_dict.values())
     if nlost_reads != 0:
         total_nlost_reads += nlost_reads
         outfile.write("! - {} reads from this FAST5 file are not found in FASTQ files.\n".format(nlost_reads))
-        print("! - {} reads from this file have not been found.".format(nlost_reads))
     # end if
-    print('-'*20)
     outfile.write('-'*20 + '\n')
+    outfile.flush()
 
 # end for
 outfile.close()
+
+stop = True # lower the flag
+printer.join()
 
 if total_nlost_reads != 0:
     final_verdict = "\n{} reads from FAST5 files are not found in FASTQ files.".format(total_nlost_reads)
@@ -360,5 +405,5 @@ if total_nlost_reads != 0:
 print(final_verdict)
 
 end_time = time()
-print( '\n'+get_work_time() + " ({}) ".format(strftime("%Y.%m.%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
+print( '\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
 platf_depend_exit(0)

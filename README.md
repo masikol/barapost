@@ -81,7 +81,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.j; 2019.11.10 edition;
+Version 1.12.k; 2019.11.17 edition;
 
 ### Description:
 
@@ -192,7 +192,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.5.j; 2019.11.10 edition;
+Version 3.6.a; 2019.11.17 edition;
 
 ### Description:
 
@@ -304,7 +304,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.3.d; 2019.11.11 edition;
+Version 3.4.a; 2019.11.17 edition;
 
 ### Description:
 
@@ -465,7 +465,7 @@ This problem leads us to an auxiliary script "BCsummarizer.py".
 
 ## BCsummarizer
 
-Version 1.0.d; 2019.11.11 edition;
+Version 1.1.a; 2019.11.17 edition;
 
 ### Description:
 
