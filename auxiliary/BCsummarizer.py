@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.1.a"
+__version__ = "1.1.b"
 # Year, month, day
-__last_update_date__ = "2019-11-17"
+__last_update_date__ = "2019-11-19"
 
 # |===== Check python interpreter version =====|
 
@@ -214,12 +214,18 @@ print("""Results will be written to the following file:
 print("{} - Primary validation...".format(get_work_time()))
 
 from threading import Thread
+
 # Value that contains number of processed files:
 global inc_val
-
+# Flag that signals printer to stop
 global stop
 
 def status_printer(get_inc_val):
+    """
+    Function meant to be launched as threading.Thread in order to indicate progress each second.
+
+    :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
+    """
     printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(fast5_lst)))
     saved_val = get_inc_val()
     while not stop:

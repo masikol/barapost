@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.6.a"
+__version__ = "3.6.b"
 # Year, month, day
-__last_update_date__ = "2019-11-17"
+__last_update_date__ = "2019-11-19"
 
 # |===== Check python interpreter version =====|
 
@@ -1024,6 +1024,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     return os.path.join(db_dir, "local_seq_set.fasta")
                 
                 elif reply == 'r':
+                    if acc_fpath is None and len(your_own_fasta_lst) == 0:
+                        printl(err_fmt("missing data to build a database from"))
+                        printl(""" There is no accession file in directory '{}'
+ and no FASTA file have been specified with '-l' option.""")
+                        platf_depend_exit(1)
+                    # end if
                     # Empty this directory and break from the loop in order to build a database.
                     for file in glob("{}{}*".format(db_dir, os.sep)):
                         os.unlink(file)
@@ -1730,11 +1736,11 @@ def process_multiple_files(fq_fa_list, parallel=False):
                 print_lock.release()
             # end if
             if not parallel:
-                with inc_lock:
-                    inc_val += 1
-                # end with
+                inc_val += 1
             else:
-                inc_val.value += 1
+                with inc_lock:
+                    inc_val.value += 1
+                # end with
             # end if
             continue
         # end if
@@ -1964,10 +1970,15 @@ if not os.path.isdir(queries_tmp_dir):
 
 # Value that contains number of processed files:
 global inc_val
-
+# Flag that signals printer to stop
 global stop
 
 def status_printer(get_inc_val):
+    """
+    Function meant to be launched as threading.Thread in order to indicate progress each second.
+
+    :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
+    """
     printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(fq_fa_list)))
     saved_val = get_inc_val()
     while not stop:
@@ -2003,8 +2014,9 @@ if n_thr <= len(fq_fa_list):
         print_lock = mp.Lock() # lock for printing
         inc_lock = mp.Lock() # lock for updating 'perc_array'
         inc_val = mp.Value('i', 0)
-        get_inc_val = lambda: inc_val.value
+        get_inc_val = lambda: inc_val.value # access shared 'inc_val' value
 
+        # Launch printer
         printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
         stop = False # raise the flag
         printer.start() # start waiting
@@ -2012,26 +2024,27 @@ if n_thr <= len(fq_fa_list):
         pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, inc_lock, inc_val))
         pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
 
-        stop = True # lower the flag
-        printer.join()
-        printl()
-
         # Reaping zombies
         pool.close()
         pool.join()
 
+        # Stop printer
+        stop = True # lower the flag
+        printer.join()
+        printl()
     else:
         inc_val = 0
-        get_inc_val = lambda: inc_val
+        get_inc_val = lambda: inc_val # merely return this value (1 thread)
 
+        # Launch printer
         printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
         stop = False # raise the flag
         printer.start() # start waiting
 
         # Single-thread mode do not differ much from 'many_files'-parallel mode.
-        # Only printing to console is different.
         process_multiple_files(fq_fa_list, parallel=False)
 
+        # Stop printer
         stop = True # lower the flag
         printer.join()
         printl()
@@ -2039,8 +2052,10 @@ if n_thr <= len(fq_fa_list):
 else:
 
     inc_val = 0
+    # Merely return this value ('inc_val' is incrementing in the main process)
     get_inc_val = lambda: inc_val
 
+    # Launch printer
     printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
     stop = False # raise the flag
     printer.start() # start waiting
@@ -2049,14 +2064,18 @@ else:
         process_single_file_in_paral(fq_fa_path, i)
     # end for
 
+    # Stop printer
     stop = True # lower the flag
     printer.join()
     printl()
 # end if
 
-from shutil import rmtree
+# Remove all in 'queries_tmp_dir'
 try:
-    rmtree(queries_tmp_dir)
+    for qpath in glob( os.path.join(queries_tmp_dir, '*') ):
+        os.unlink(qpath)
+    # end for
+    os.rmdir(queries_tmp_dir)
 except OSError as oserr:
     printl(err_fmt("unable to delete directory '{}'".format(queries_tmp_dir)))
     printl( str(oserr) )

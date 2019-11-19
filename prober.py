@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.k"
+__version__ = "1.12.l"
 # Year, month, day
-__last_update_date__ = "2019-11-17"
+__last_update_date__ = "2019-11-19"
 
 # |===== Check python interpreter version =====|
 
@@ -462,7 +462,7 @@ def println(text=""):
     logfile.flush()
 # end def printl
 
-printl(" |=== prober.py (version {}) ===|\n".format(__version__))
+printl("\n |=== prober.py (version {}) ===|\n".format(__version__))
 printl( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
@@ -1245,27 +1245,23 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
-            println("\r{} - The request is still processing. Waiting for 60 seconds".format(get_work_time()))
+            printn("\r{} - The request is still processing. Waiting      \033[6D".format(get_work_time()))
             # indicate each 20 seconds with a dot
-            for i in range(1, 4):
-                sleep(20)
-                printn("\r{} - The request is still processing. Waiting for 60 seconds{}".format(get_work_time(), '.'*i))
+            for i in range(1, 7):
+                sleep(10)
+                printn("\r{} - The request is still processing. Waiting{}".format(get_work_time(), '.'*i))
             # end for
-            print() # go to next line
             continue
         # end if
         if "Status=FAILED" in resp_content:
             # if job failed
             printl('\n' + get_work_time() + " - Job failed\a\n")
-            response_text = """{} - Job for query {} ({}/{}) with Request ID {} failed.
+            return """{} - Job for query {} ({}/{}) with Request ID {} failed.
     Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
-            return response_text
         # end if
         # if job expired
         if "Status=UNKNOWN" in resp_content:
             printl('\n' + get_work_time() + " - Job expired\a\n")
-            respond_text = """{} - Job for query {} ({}/{}) with Request ID {} expired.
-    Try to start it again\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
             return "expired"
         # end if
         # if results are ready
@@ -1278,12 +1274,11 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
                     printl('-' * i)
                 # end for
                 print() # just print a blank line
-                break
             # if there are no hits
             else:
                 printl(get_work_time() + " - There are no hits. It happens.\n")
-                break
             # end if
+            break
         # end if
         # Execution should not reach here
         printl('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
@@ -1676,7 +1671,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
-    printl("\n |===== file: '{}' ({} sequences) =====|".format(os.path.basename(curr_fasta["fpath"]),
+    printl("\n |=== file: '{}' ({} sequences) ===|".format(os.path.basename(curr_fasta["fpath"]),
         curr_fasta["nreads"]))
 
     # "hname" means human readable name (i.e. without file path and extention)

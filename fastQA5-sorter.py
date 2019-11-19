@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.4.a"
+__version__ = "3.4.b"
 # Year, month, day
-__last_update_date__ = "2019-11-17"
+__last_update_date__ = "2019-11-19"
 
 # |===== Check python interpreter version =====|
 
@@ -636,12 +636,18 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
 
 
 from threading import Thread
-# Value that contains number of processed files:
 
+# Value that contains number of processed files:
 global inc_val
+# Flag that signals printer to stop
 global stop
 
 def status_printer(get_inc_val):
+    """
+    Function meant to be launched as threading.Thread in order to indicate progress each second.
+
+    :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
+    """
     printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(QA5_list)))
     saved_val = get_inc_val()
     while not stop:
@@ -1219,7 +1225,7 @@ if untwist_fast5:
       '{}'
     Omitting this directory.\n""".format(taxann_dir))
                 else:
-                    printl("""Warning!  Multiple TSV files in the following directory:
+                    printl("""Error!  Multiple TSV files in the following directory:
       '{}'
     Please, remove extra files and leave only one, which contains actual taxononic annotation info.""".format(taxann_dir))
                     platf_depend_exit(1)
@@ -1235,8 +1241,9 @@ if untwist_fast5:
             global inc_val
             global stop
             inc_val = 0
-            get_inc_val = lambda: inc_val
+            get_inc_val = lambda: inc_val # merely return this value (1 thread)
 
+            # Launch printer
             printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
             stop = False # raise the flag
             printer.start() # start waiting
@@ -1295,11 +1302,12 @@ if untwist_fast5:
                         for readid in readids_to_seek:
                             missing_logfile.write(fmt_read_id(readid) + '\n')
                         # end for
-                    # index_read2tsv.close()
                     index_f5_2_tsv.close()
-                    from shutil import rmtree # in other cases this import is not necessary
                     try:
-                        rmtree(index_dirpath)
+                        for path in glob( os.path.join(index_dirpath, '*') ):
+                            os.unlink(path)
+                        # end for
+                        os.rmdir(index_dirpath)
                     except OSError as oserr:
                         printl("error while removing index directory: {}".format(oserr))
                     finally:
@@ -1310,11 +1318,12 @@ if untwist_fast5:
                 # Update index
                 index_f5_2_tsv[f5_path] = idx_dict
             # end for
+
+            # Stop printer
             stop = True # lower the flag
             printer.join()
             printl()
 
-            # index_read2tsv.close()
             index_f5_2_tsv.close()
             printl("{} - Untwisting is completed.".format(get_work_time()))
             printl('-'*20+'\n')
@@ -1559,8 +1568,9 @@ if untwist_fast5 and not use_old_index:
 printl("{} - Sorting started.".format(get_work_time()))
 
 inc_val = 0
-get_inc_val = lambda: inc_val
+get_inc_val = lambda: inc_val # merely get this value (1 thread)
 
+# Launch printer
 printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
 stop = False # raise the flag
 printer.start() # start waiting
@@ -1577,6 +1587,7 @@ for fq_fa_path in QA5_list:
     inc_val += 1
 # end for
 
+# Stop printer
 stop = True # lower the flag
 printer.join()
 printl()

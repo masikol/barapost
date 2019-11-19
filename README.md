@@ -16,15 +16,13 @@
 
 ## Motivation
 
->*Rhodococcus* separately, *Pseudomonas* separately!
-
 Find yourself constantly having a large amount of FASTA, FASTQ or FAST5 files, where sequences that belong to different organisms are **mixed up** together, but you want them to be **separated**?
 
 It is awful to sit in front of the computer for hours sending all these sequences to NCBI BLAST server and to rewrite large FAST(A/Q) files by hand, isn't it?
 
 "Barapost" toolkit is the thing that can do it for you and **save your time**.
 
-## The default workflow looks like
+## Default workflow
 
 **!** - these scripts cannot be executed by Python interpreter version < 3.0.
 
@@ -81,7 +79,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.k; 2019.11.17 edition;
+Version 1.12.l; 2019.11.19 edition;
 
 ### Description:
 
@@ -192,7 +190,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.6.a; 2019.11.17 edition;
+Version 3.6.b; 2019.11.19 edition;
 
 ### Description:
 
@@ -304,7 +302,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.4.a; 2019.11.17 edition;
+Version 3.4.b; 2019.11.19 edition;
 
 ### Description:
 
@@ -465,7 +463,7 @@ This problem leads us to an auxiliary script "BCsummarizer.py".
 
 ## BCsummarizer
 
-Version 1.1.a; 2019.11.17 edition;
+Version 1.1.b; 2019.11.19 edition;
 
 ### Description:
 
