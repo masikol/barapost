@@ -242,7 +242,7 @@ def status_printer(get_inc_val):
 inc_val = 0
 get_inc_val = lambda: inc_val
 
-printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+printer = Thread(target=status_printer, args=(get_inc_val,), daemon=True) # create thread
 stop = False # raise the flag
 printer.start() # start waiting
 
@@ -353,7 +353,7 @@ inc_val = 0
 get_inc_val = lambda: inc_val
 print("Searching for reads from FAST5 files started")
 
-printer = Thread(target=status_printer, args=(get_inc_val,)) # create thread
+printer = Thread(target=status_printer, args=(get_inc_val,), daemon=True) # create thread
 stop = False # raise the flag
 printer.start() # start waiting
 

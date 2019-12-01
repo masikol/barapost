@@ -119,36 +119,37 @@ If you have your own FASTA files that can be used as database to blast against, 
   Wildcards do work: `./prober.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
-    -h (--help) --- show help message;
+    -h (--help) --- show help message.
+        '-h' -- brief, '--help' -- full;
 
     -v (--version) --- show version;
 
     -d (--indir) --- directory which contains FASTQ or FASTA files meant to be processed.
-          I.e. all FASTQ and FASTA files in this direcory will be processed; Files can be gzipped.
+        I.e. all FASTQ and FASTA files in this direcory will be processed; Files can be gzipped.
 
     -o (--outdir) --- output directory.
-          Default value: `barapost_result`;
+        Default value: `barapost_result`;
 
     -p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
-          Value: integer number [1, 500]. Default value is 100;
+        Value: integer number [1, 500]. Default value is 100;
 
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
-          Available values: 'megaBlast', 'discoMegablast', 'blastn'.
-          Default is megaBlast;
+        Available values: 'megaBlast', 'discoMegablast', 'blastn'.
+        Default is megaBlast;
 
     -g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
-          You can find your Taxonomy IDs here: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi
-          Format of value (TaxIDs separated by comma): 
-            <organism1_name>,<organism2_taxid>...
-          See Examples #4 and #5 below.
-          Spaces are not allowed.
-          Default is: full 'nt' database, i.e. no slices.
+        You can find your Taxonomy IDs here: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi
+        Format of value (TaxIDs separated by comma): 
+          <organism1_name>,<organism2_taxid>...
+        See Examples #4 and #5 below.
+        Spaces are not allowed.
+        Default is: full 'nt' database, i.e. no slices.
 
     -b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
-          during 'prober.py' run.
-          You can specify '-b all' to process all your sequeces by 'prober.py'.
-          Value: positive integer number.
-          Default value is 200;
+        during 'prober.py' run.
+        You can specify '-b all' to process all your sequeces by 'prober.py'.
+        Value: positive integer number.
+        Default value is 200;
 
     -e (--email) --- your email. Please, specify your email when you run "prober.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
@@ -223,7 +224,8 @@ If you have your own FASTA files that can be used as database to blast against, 
   Wildcards do work: `./barapost.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
-    -h (--help) --- show help message;
+    -h (--help) --- show help message.
+        '-h' -- brief, '--help' -- full;
 
     -v (--version) --- show version;
 
@@ -328,7 +330,8 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
   Wildcards do work: `./fastQA5-sorter.py my_directory/*` will process all files in `'my_directory'`.
 
 ```
-    -h (--help) --- show help message;
+    -h (--help) --- show help message.
+        '-h' -- brief, '--help' -- full;
 
     -v (--version) --- show version;
 
@@ -352,7 +355,7 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
         Reads of lower quality will be written to separate "trash" file.
         Default value: 20;
 
-    -m (--min_seq_len) --- minimum length of a sequence to keep.
+    -m (--min-seq-len) --- minimum length of a sequence to keep.
         Shorter sequences will be written to separate "trash" file.
         Length filtering is disabled by default;
 
@@ -361,6 +364,11 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
         different reads (like after basecalling performed by Guppy).
         For details, see "FAST5 untwisting" section below.
         Disabled by default;
+
+    -z (--gzip) --- Compress output files with gzip.
+        Compression affects only FASTA and FASTQ files;
+        Values: 'true', 'false' (see Example #2).
+        'true' by default.
 ```
 
 ### Notes about sorting:
@@ -393,23 +401,23 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 
 `./fastQA5-sorter.py`
 
-  2. Process all files in the working directory that start with "some_my_fastq". Place reads with mean Phred33 quality < 15 into separate "trash" file:
+  2. Process all files in the working directory that start with "some_my_fastq". Do not compress output files. Place reads with mean Phred33 quality < 15 into separate "trash" file:
 
-`./fastQA5-sorter.py some_my_fastq* -q 15`
+`./fastQA5-sorter.py some_my_fastq* -q 15 -z false`
 
-  2. Process one FASTQ file with default settings.
+  3. Process one FASTQ file with default settings.
      File `reads.fastq` has been already processed by "barapost.py".
      Results of "barapost.py" work are in directory `prober_outdir`:
 
 `./fastQA5-sorter.py reads.fastq.gz -r prober_outdir/`
 
-  3. Process a FASTQ file and a FASTA file, place results in `outdir` directory.
+  4. Process a FASTQ file and a FASTA file, place results in `outdir` directory.
      Files `reads.fastq.gz` and `another_sequences.fasta` have been already processed by "barapost.py".
      Results of "barapost.py" work are in directory `prober_outdir`:
 
 `./fastQA5-sorter.py reads.fastq.gz another_sequences.fasta -o outdir -r prober_outdir/`
 
-  4. Process all FASTQ, FASTA and FAST5 files in directory named `dir_with_seqs`. Sort by species.
+  5. Process all FASTQ, FASTA and FAST5 files in directory named `dir_with_seqs`. Sort by species.
      All these files have been already processed by "barapost.py". Perform "FAST5 untwisting".
      Results of "barapost.py" work are in directory `prober_outdir`:
 

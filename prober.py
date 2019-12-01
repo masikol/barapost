@@ -34,49 +34,58 @@ def platf_depend_exit(exit_code):
     exit(exit_code)
 # end def platf_depend_exit
 
-# |===== Handle command line arguments =====|
-help_msg = """
-  prober.py
-  Version {}; {} edition;\n
-DESCRIPTION:\n
-This script is designed for determinating the taxonomic position
-  of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n
-The main goal of this script is to send a probing batch (see `-b` option) of sequences to
-  NCBI BLAST server and discover, what Genbank records can be downloaded and used for
-  building a database on your local machine by "barapost.py".\n
-This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
-Results of taxonomic annotation are written in TSV file named according to name of input file(s),
-  that can be found in result directory.\n
-"prober.py" also generates a file named '...probe_acc_list.tsv'. It contains accessions and
-  names of Genbank records that can be used for building a database on your local machine by "barapost.py".
-----------------------------------------------------------\n
-Default parameters:\n
-- all FASTQ and FASTA files in current directory will be processed;
-- packet size (see '-p' option): 100 sequences;
-- probing batch size (see '-b' option): 200 sequences;
-- algorithm (see '-a' option): `megaBlast`;
-- organisms (see '-g' option): full 'nt' database, i.e. no slices;
-- output directory ('-o' option): directory named 'barapost_result'
-  nested in current directory;
-- no email information ('-e' option) is send to NCBI;
-----------------------------------------------------------\n
-Files that you want 'prober.py' to process should be specified as positional arguments (see EXAMPLE #2 below).
-  Wildcards do work: './prober.py my_directory/*' will process all files in 'my_directory'.
-----------------------------------------------------------\n
-OPTIONS:\n
-    -h (--help) --- show help message;\n
-    -v (--version) --- show version;\n
-    -d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
+from sys import argv
+
+# First search for information-providing options:
+
+if "-h" in argv[1:] or "--help" in argv[1:]:
+
+    print("\n  prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
+    print("DESCRIPTION:\n")
+    print("""This script is designed for determinating the taxonomic position
+  of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n""")
+
+    if "--help" in argv[1:]:
+        print("""The main goal of this script is to send a probing batch (see `-b` option) of sequences to
+      NCBI BLAST server and discover, what Genbank records can be downloaded and used for
+      building a database on your local machine by "barapost.py".\n""")
+        print("""This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
+    Results of taxonomic annotation are written in TSV file named according to name of input file(s),
+      that can be found in result directory.\n""")
+        print(""""prober.py" also generates a file named '...probe_acc_list.tsv'. It contains accessions and
+      names of Genbank records that can be used for building a database on your local machine by "barapost.py".""")
+        print("----------------------------------------------------------\n")
+        print("Default parameters:\n")
+        print("  - all FASTQ and FASTA files in current directory will be processed;")
+        print("  - packet size (see '-p' option): 100 sequences;")
+        print("  - probing batch size (see '-b' option): 200 sequences;")
+        print("  - algorithm (see '-a' option): `megaBlast`;")
+        print("  - organisms (see '-g' option): full 'nt' database, i.e. no slices;")
+        print("  - output directory ('-o' option): directory named 'barapost_result'")
+        print("    nested in current directory;")
+        print("  - no email information ('-e' option) is send to NCBI;")
+        print("----------------------------------------------------------\n")
+    # end if
+
+    print("""Files that you want 'prober.py' to process should be specified as
+  positional arguments (see EXAMPLE #2 running detailed (--help) help message).
+  Wildcards do work: './prober.py my_directory/*' will process all files in 'my_directory'.""")
+    print("----------------------------------------------------------\n")
+    print("OPTIONS:\n")
+    print("""-h (--help) --- show help message.
+        '-h' -- brief, '--help' -- full;\n""")
+    print("-v (--version) --- show version;\n")
+    print("""-d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
         I.e. all FASTQ and FASTA files in this direcory will be processed;
-        Input files can be gzipped.\n
-    -o (--outdir) --- output directory.
-        Default value: 'barapost_result';\n
-    -p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
-        Value: integer number [1, 500]. Default value is 100;\n
-    -a (--algorithm) --- BLASTn algorithm to use for aligning.
+        Input files can be gzipped.\n""")
+    print("""-o (--outdir) --- output directory.
+        Default value: 'barapost_result';\n""")
+    print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
+        Value: integer number [1, 500]. Default value is 100;\n""")
+    print("""-a (--algorithm) --- BLASTn algorithm to use for aligning.
         Available values: 'megaBlast', 'discoMegablast', 'blastn'.
-        Default is megaBlast;\n
-    -g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
+        Default is megaBlast;\n""")
+    print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
         More clearly, functionality of this option is totally equal to "Organism" text boxes
         on this BLASTn page:
          'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
@@ -85,37 +94,33 @@ OPTIONS:\n
         See EXAMPLES #2 and #3 below.
         Spaces are not allowed.
         Default value is full 'nt' database, i.e. no slices.
-        You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n
-    -b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
+        You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n""")
+    print("""-b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
         during 'prober.py' run.
         You can specify '-b all' to process all your sequeces by 'prober.py'.
         Value: positive integer number.
-        Default value is 200;\n
-    -e (--email) --- your email. Please, specify your email when you run "prober.py",
-        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
-----------------------------------------------------------\n
-EXAMPLES:\n
-  1. Process all FASTA and FASTQ files in working directory with default settings:\n
-    ./prober.py\n
-  2. Process all files in the working directory that start with "some_my_fasta".
-     Provide NCBI with your email. Use default settings:\n
-    ./prober.py some_my_fasta* -e my.email@smth.com\n
-  3. Process one file with default settings:\n
-    ./prober.py reads.fastq\n
-  4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
-Search only among Erwinia sequences (551 is Erwinia taxid):\n
-    ./prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n
-  5. Process all FASTQ and FASTA files in directory named `some_dir`. Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
-Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-    ./prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100
-""".format(__version__, __last_update_date__)
+        Default value is 200;\n""")
+    print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
+        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.""")
 
-from sys import argv
-
-# First search for information-providing options:
-
-if "-h" in argv[1:] or "--help" in argv[1:]:
-    print(help_msg)
+    if "--help" in argv[1:]:
+        print("----------------------------------------------------------\n")
+        print("EXAMPLES:\n")
+        print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
+  ./prober.py\n""")
+        print("""2. Process all files in the working directory that start with "some_my_fasta".
+  Provide NCBI with your email. Use default settings:\n
+  ./prober.py some_my_fasta* -e my.email@smth.com\n""")
+        print("""3. Process one file with default settings:\n
+  ./prober.py reads.fastq\n""")
+        print("""4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
+        Search only among Erwinia sequences (551 is Erwinia taxid):\n
+  ./prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
+        print("""5. Process all FASTQ and FASTA files in directory named `some_dir`.
+  Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
+  Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
+  ./prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100""")
+    # end if
     platf_depend_exit(0)
 # end if
 
@@ -381,8 +386,6 @@ if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_si
 
 packet_size = min(packet_size, probing_batch_size)
 
-del help_msg # we do not need this large string object any more
-
 if not os.path.isdir(outdir_path):
     try:
         os.makedirs(outdir_path)
@@ -612,8 +615,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
     }
     """
     
-    fasta_path = os.path.basename(fq_fa_path).replace(".fastq", ".fasta") # change extention
-    fasta_path = fasta_path.replace(".gz", "")
+    fasta_path = re_search(r"(.*)\.(m)?f(ast)?(a|q)", os.path.basename(fq_fa_path)).group(1) + ".fasta"
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
@@ -1614,6 +1616,7 @@ def create_result_directory(fq_fa_path, outdir_path):
 
 organisms = verify_taxids(taxid_list)
 
+printl(" - Output directory: '{}';".format(outdir_path))
 if user_email != "":
     printl(" - Your email: {}".format(user_email))
 # end if
@@ -1636,7 +1639,7 @@ for i, path in enumerate(fq_fa_list):
 
 printl('-'*30)
 
-# Variable for counting accessions of records menat to be downloaded from Genbank.
+# Variable for counting accessions of records meant to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
 acc_counter = 0
 # Dictionary of accessions and record names.
