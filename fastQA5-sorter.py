@@ -146,8 +146,9 @@ import os
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:ut:z", ["help", "version", "taxannot-resdir=", "indir=", "outdir=",
-        "sorting-sensitivity=", "min-ph33-qual=", "min-seq-len=", "untwist-fast5", "threads", "gzip"])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:ut:z:",
+        ["help", "version", "taxannot-resdir=", "indir=", "outdir=",
+        "sorting-sensitivity=", "min-ph33-qual=", "min-seq-len=", "untwist-fast5", "threads", "gzip="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -202,13 +203,11 @@ for opt, arg in opts:
         indir_path = os.path.abspath(arg)
 
         QA5_list.extend(list( filter(is_fastQA5, glob("{}{}*".format(indir_path, os.sep))) ))
-    # end if
 
-    if opt in ("-o", "--outdir"):
+    elif opt in ("-o", "--outdir"):
         outdir_path = os.path.abspath(arg)
-    # end if
 
-    if opt in ("-r", "--taxannot-resdir"):
+    elif opt in ("-r", "--taxannot-resdir"):
         if not os.path.exists(arg):
             print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
@@ -218,19 +217,17 @@ for opt, arg in opts:
             platf_depend_exit(1)
         # end if
         tax_annot_res_dir = os.path.abspath(arg)
-    # end if
 
-    if opt in ("-s", "--sorting-sensitivity"):
+    elif opt in ("-s", "--sorting-sensitivity"):
         if arg not in ("genus", "species", "strain"):
-            print(err_fmt("invalid value specified by '-s' option!\n"))
+            print(err_fmt("invalid value specified with '-s' option!\n"))
             print("Available values: 'genus', 'species', 'strain'")
             print("\nType for help:\n    ./fastQA5-sorter.py -h")
             platf_depend_exit(1)
         # end if
         sens = arg
-    # end if
 
-    if opt in ("-q", "--min-ph33-qual"):
+    elif opt in ("-q", "--min-ph33-qual"):
         try:
             min_ph33_qual = float(arg)
             if min_ph33_qual < 0:
@@ -241,9 +238,8 @@ for opt, arg in opts:
             print("You've specified '{}'".format(arg))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-m", "--min-seq-len"):
+    elif opt in ("-m", "--min-seq-len"):
         try:
             min_qlen = int(arg)
             if min_qlen < 0:
@@ -254,17 +250,21 @@ for opt, arg in opts:
             print("You've specified '{}'".format(arg))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-u", "--untwist-fast5"):
+    elif opt in ("-u", "--untwist-fast5"):
         untwist_fast5 = True
-    # end if
 
-    if opt in ("-z", "--gzip"):
-        compress = True
-    # end if
+    elif opt in ("-z", "--gzip"):
+        if arg in ("true", "false"):
+            compress = False if arg == "false" else True
+        else:
+            print(err_fmt("invalid value passed with '{}' option".format(opt)))
+            print("Available values: 'true', 'false'")
+            print("You have specified '{}'".format(arg))
+            platf_depend_exit(1)
+        # end if
 
-    if opt in ("-t", "--threasds"):
+    elif opt in ("-t", "--threasds"):
         try:
             n_thr = int(arg)
             if n_thr < 1:

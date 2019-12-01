@@ -203,9 +203,8 @@ for opt, arg in opts:
         indir_path = os.path.abspath(arg)
 
         fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
-    # end if
 
-    if opt in ("-p", "--packet-size"):
+    elif opt in ("-p", "--packet-size"):
         try:
             packet_size = int(arg)
             if packet_size < 1 or packet_size > 500:
@@ -215,9 +214,8 @@ for opt, arg in opts:
             print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-a", "--algorithm"):
+    elif opt in ("-a", "--algorithm"):
         if not arg in ("megaBlast", "discoMegablast", "blastn"):
             print(err_fmt("invalid value specified by '-a' option!"))
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
@@ -225,13 +223,12 @@ for opt, arg in opts:
         # end if
         
         blast_algorithm = arg
-    # end if
 
-    if opt in ("-r", "--taxannot-resdir"):
+    elif opt in ("-r", "--taxannot-resdir"):
         tax_annot_res_dir = os.path.abspath(arg)
     # end if
 
-    if opt in ("-l", "--local-fasta-to-bd"):
+    elif opt in ("-l", "--local-fasta-to-bd"):
 
         if not os.path.exists(arg):
             print(err_fmt("file '{}' does not exist!".format(arg)))
@@ -239,7 +236,6 @@ for opt, arg in opts:
         # end if
 
         your_own_fasta_lst.append(os.path.abspath(arg))
-    # end if
 
     elif opt in ("-t", "--threads"):
         try:

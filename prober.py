@@ -213,13 +213,11 @@ for opt, arg in opts:
         indir_path = os.path.abspath(arg)
 
         fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
-    # end if
 
-    if opt in ("-o", "--outdir"):
+    elif opt in ("-o", "--outdir"):
         outdir_path = os.path.abspath(arg)
-    # end if
 
-    if opt in ("-p", "--packet-size"):
+    elif opt in ("-p", "--packet-size"):
         try:
             packet_size = int(arg)
             if packet_size < 1 or packet_size > 500:
@@ -229,18 +227,16 @@ for opt, arg in opts:
             print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-a", "--algorithm"):
+    elif opt in ("-a", "--algorithm"):
         if not arg in ("megaBlast", "discoMegablast", "blastn"):
             print(err_fmt("invalid value specified by '-a' option!"))
             print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
             platf_depend_exit(1)
         # end if
         blast_algorithm = arg
-    # end if
 
-    if opt in ("-g", "--organisms"):
+    elif opt in ("-g", "--organisms"):
 
         taxid_list = arg.strip().split(',')
 
@@ -255,9 +251,8 @@ for opt, arg in opts:
             print(err_fmt("TaxID should be positive integer number\a"))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-b", "--probing-batch-size"):
+    elif opt in ("-b", "--probing-batch-size"):
         # Switch 'send_all' to True in order to process all sequences
         if arg == "all":
             send_all = True
@@ -272,9 +267,8 @@ for opt, arg in opts:
             print(err_fmt("probing batch size ('-b' option) must be positive integer number!"))
             platf_depend_exit(1)
         # end try
-    # end if
 
-    if opt in ("-e", "--email"):
+    elif opt in ("-e", "--email"):
         if arg != "" and re_match(r".+@.+\..+", arg) is None:
             print("Your email does not seem like an email.")
             print("Please check it and, if you are sure that your email is right, \
