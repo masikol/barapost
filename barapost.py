@@ -127,9 +127,9 @@ if "-v" in argv[1:] or "--version" in argv[1:]:
 from time import time, strftime, gmtime, sleep, localtime
 start_time = time()
 
-def get_work_time():
+def getwt():
     return strftime("%H:%M:%S", gmtime(time() - start_time))
-# end def get_work_time
+# end def getwt
 
 # |===========================================|
 
@@ -421,7 +421,7 @@ def println(text=""):
 # end def printl
 
 printl("\n |=== barapost.py (version {}) ===|\n".format(__version__))
-printl( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
+printl( getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
 
 
 # |===== Function for checking if 'https://ncbi.nlm.nih.gov' is available =====|
@@ -443,14 +443,14 @@ def check_connection():
         status_code = urllib.request.urlopen(ncbi_server).getcode()
         # Just in case
         if status_code != 200:
-            printl('\n' + get_work_time() + " - Site '{}' is not available.".format(ncbi_server))
+            printl('\n' + getwt() + " - Site '{}' is not available.".format(ncbi_server))
             print("Check your Internet connection.\a")
             printl("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
     except OSError as err:
 
-        printl('\n' + get_work_time() + " - Site '{}' is not available.".format(ncbi_server))
+        printl('\n' + getwt() + " - Site '{}' is not available.".format(ncbi_server))
         print("Check your Internet connection.\a")
         printl( str(err) )
 
@@ -603,7 +603,7 @@ def rename_file_verbosely(file, pardir):
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
 
     try:
-        printl('\n' + get_work_time() + " - Renaming old {}:".format(word))
+        printl('\n' + getwt() + " - Renaming old {}:".format(word))
         if not os.path.isdir(file):
             name_itself = re_search(r"(.*)\..*$", file).group(1)
             ext = re_search(r".*\.(.*)$", file).group(1)
@@ -880,7 +880,7 @@ acc_counter = 0
 
 # A new thread will be run.
 # It will inspect size of dowbloaded file during downloading
-from threading import Thread
+from threading import Thread, Event
 
 def get_gi_by_acc(acc):
     """
@@ -940,7 +940,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
         while not stop_wait:
             # Get size of downloaded data
             fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
-            printn("\r{} - {} MB downloaded ".format(get_work_time(), fsize))
+            printn("\r{} - {} MB downloaded ".format(getwt(), fsize))
             sleep(1) # instant updates are not necessary
         # end while
         
@@ -950,7 +950,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
         except OSError:
             pass # we can pass this ecxeption -- we do delete this file if downloading crushes
         # end try
-        printl("\r{} - {} MB downloaded \n".format(get_work_time(), fsize))
+        printl("\r{} - {} MB downloaded \n".format(getwt(), fsize))
     # end def download_waiter
 
     error = True
@@ -959,7 +959,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
             waiter = Thread(target=download_waiter) # create thread
             stop_wait = False # raise the flag
             waiter.start() # start waiting
-            printl("\n{} - Downloading sequences for local database building started".format(get_work_time()))
+            printl("\n{} - Downloading sequences for local database building started".format(getwt()))
             urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
         except Exception as err:
             stop_wait = True
@@ -978,7 +978,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
         # end try
     # end while
 
-    printl("{} - Downloading is completed".format(get_work_time()))
+    printl("{} - Downloading is completed".format(getwt()))
 
     return local_fasta
 # end def retrieve_fastas_by_gi
@@ -1136,7 +1136,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 # Add assembled sequences to database
                 fasta_db = open(local_fasta, 'a')
                 for assm_path in assm_lst:
-                    printl("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(assm_path)))
+                    printl("{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
 
                     how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
                     with how_to_open(assm_path) as fasta_file:
@@ -1161,7 +1161,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # No 'with open' here in order not to indent too much.
         fasta_db = open(local_fasta, 'a')
         for own_fasta_path in your_own_fasta_lst:
-            printl("{} - Adding '{}' to database...".format(get_work_time(), os.path.basename(own_fasta_path)))
+            printl("{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
 
             how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
             with how_to_open(own_fasta_path) as fasta_file:
@@ -1192,9 +1192,9 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end if
     
     printl("""{} - Database is successfully created:
-  '{}'\n""".format(get_work_time(), local_fasta))
+  '{}'\n""".format(getwt(), local_fasta))
 
-    printl("{} - Database index creating started".format(get_work_time()))
+    printl("{} - Database index creating started".format(getwt()))
     # Configure command line
     make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
     exit_code = os.system(make_index_cmd) # create an index for the database
@@ -1203,7 +1203,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         platf_depend_exit(exit_code)
     # end if
     
-    printl("{} - Database index has been successfully created\n".format(get_work_time()))
+    printl("{} - Database index has been successfully created\n".format(getwt()))
 
     # Gzip downloaded FASTA file in order to save space on disk
     printl("Gzipping FASTA file:\n '{}'\n".format(local_fasta))
@@ -1379,7 +1379,7 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
 
     if "Bad Gateway" in xml_text:
         printl('\n' + '=' * 45)
-        printl(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
+        printl(getwt() + " - ERROR! Bad Gateway! Data from last packet has lost.")
         printl("It would be better if you restart the script.")
         printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
@@ -1393,7 +1393,7 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     # end if
 
     if "to start it again" in xml_text:
-        printl('\n' + get_work_time() + "BLAST ERROR!")
+        printl('\n' + getwt() + "BLAST ERROR!")
 
         printl("Here are names of lost queries:")
         for i, name in enumerate(seq_names):
@@ -1969,28 +1969,31 @@ if not os.path.isdir(queries_tmp_dir):
 
 # Value that contains number of processed files:
 global inc_val
-# Flag that signals printer to stop
-global stop
 
-def status_printer(get_inc_val):
+
+def status_printer(get_inc_val, stop):
     """
     Function meant to be launched as threading.Thread in order to indicate progress each second.
 
     :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
+    :param stop: event that will signal printer when to stop;
+    :type stop: threading.Event;
     """
-    printn("{} - 0/{} files processed. Working...".format(get_work_time(), len(fq_fa_list)))
+
+    nfiles = len(fq_fa_list)
+    printn("{} - 0/{} files processed. Working...".format(getwt(), nfiles))
     saved_val = get_inc_val()
-    while not stop:
+    while stop.is_set():
         loc_inc_val = get_inc_val()
-        printn("\r{} - {}/{} files processed. Working...".format(get_work_time(), loc_inc_val, len(fq_fa_list)))
+        printn("\r{} - {}/{} files processed. Working...".format(getwt(), loc_inc_val, nfiles))
         if loc_inc_val != saved_val:
-            logfile.write("{} - {}/{} files processed.\n".format(get_work_time(), loc_inc_val, len(fq_fa_list)))
+            logfile.write("{} - {}/{} files processed.\n".format(getwt(), loc_inc_val, nfiles))
             saved_val = get_inc_val()
         sleep(1)
     # end while
-    printn("\r{} - {}/{} files processed.".format(get_work_time(), get_inc_val(), len(fq_fa_list)) +
+    printn("\r{} - {}/{} files processed.".format(getwt(), get_inc_val(), nfiles) +
         ' '*len(" Working..."))
-    logfile.write("{} - {}/{} files processed.\n".format(get_work_time(), get_inc_val(), len(fq_fa_list)))
+    logfile.write("{} - {}/{} files processed.\n".format(getwt(), get_inc_val(), nfiles))
 # end def status_printer
 
 # Proceeding.
@@ -2007,6 +2010,9 @@ def status_printer(get_inc_val):
 #      Processes interact with one another while writing to result file and
 #      while printing something to the console for user's entertainment.
 
+stop = Event()
+stop.set() # raise the flag
+
 if n_thr <= len(fq_fa_list):
     if n_thr != 1:
 
@@ -2016,8 +2022,7 @@ if n_thr <= len(fq_fa_list):
         get_inc_val = lambda: inc_val.value # access shared 'inc_val' value
 
         # Launch printer
-        printer = Thread(target=status_printer, args=(get_inc_val,), daemon=True) # create thread
-        stop = False # raise the flag
+        printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
         printer.start() # start waiting
 
         pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, inc_lock, inc_val))
@@ -2027,26 +2032,16 @@ if n_thr <= len(fq_fa_list):
         pool.close()
         pool.join()
 
-        # Stop printer
-        stop = True # lower the flag
-        printer.join()
-        printl()
     else:
         inc_val = 0
         get_inc_val = lambda: inc_val # merely return this value (1 thread)
 
         # Launch printer
-        printer = Thread(target=status_printer, args=(get_inc_val,), daemon=True) # create thread
-        stop = False # raise the flag
+        printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
         printer.start() # start waiting
 
         # Single-thread mode do not differ much from 'many_files'-parallel mode.
         process_multiple_files(fq_fa_list, parallel=False)
-
-        # Stop printer
-        stop = True # lower the flag
-        printer.join()
-        printl()
     # end if
 else:
 
@@ -2055,19 +2050,19 @@ else:
     get_inc_val = lambda: inc_val
 
     # Launch printer
-    printer = Thread(target=status_printer, args=(get_inc_val,), daemon=True) # create thread
-    stop = False # raise the flag
+    printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
     printer.start() # start waiting
 
     for i, fq_fa_path in enumerate(fq_fa_list):
         process_single_file_in_paral(fq_fa_path, i)
     # end for
 
-    # Stop printer
-    stop = True # lower the flag
-    printer.join()
-    printl()
 # end if
+
+# Stop printer
+stop.clear() # lower the flag
+printer.join()
+printl()
 
 # Remove all in 'queries_tmp_dir'
 try:
@@ -2083,5 +2078,6 @@ except OSError as oserr:
 # end try
 
 end_time = time()
-printl( '\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
+printl( '\n'+getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
+logfile.close()
 platf_depend_exit(0)
