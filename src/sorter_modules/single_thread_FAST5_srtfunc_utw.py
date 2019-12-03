@@ -27,10 +27,6 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5):
     :type to_f5: h5py.File;
     """
     try:
-        # Assign version attribute to '2.0' -- multiFAST5
-        if not "file_version" in to_f5.attrs:
-            to_f5.attrs["file_version"] = b"2.0"
-        # end if
         from_f5.copy(read_name, to_f5)
     except ValueError as verr:
         printl("\n\n ! - Error: {}".format( str(verr) ))
@@ -56,10 +52,6 @@ def copy_single_f5(from_f5, read_name, to_f5):
     :type to_f5: h5py.File;
     """
     try:
-        # Assign version attribute to '2.0' -- multiFAST5 (output file is always multiFAST5)
-        if not "file_version" in to_f5.attrs:
-            to_f5.attrs["file_version"] = b"2.0"
-        # end if
         read_group = read_name
         to_f5.create_group(read_group)
 
@@ -212,3 +204,12 @@ def update_file_dict(srt_file_dict, new_fpath):
     # end try
     return srt_file_dict
 # end def update_file_dict
+
+def assign_version_2(fast5_list):
+    # Assign version attribute to '2.0' -- multiFAST5
+    for f5path in fast5_list:
+        with h5py.File(f5path, 'a') as f5file:
+            f5file.attrs["file_version"] = b"2.0"
+        # end with
+    # end for
+# end def assign_version_2

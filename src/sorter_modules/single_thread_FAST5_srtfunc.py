@@ -28,11 +28,8 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5):
     :type to_f5: h5py.File;
     """
     try:
-        # Assign version attribute to '2.0' -- multiFAST5
-        if not "file_version" in to_f5.attrs:
-            to_f5.attrs["file_version"] = b"2.0"
-        # end if
         from_f5.copy(read_name, to_f5)
+
     except ValueError as verr:
         printl("\n\n ! - Error: {}".format( str(verr) ))
         printl("Reason is probably the following:")
@@ -57,10 +54,6 @@ def copy_single_f5(from_f5, read_name, to_f5):
     :type to_f5: h5py.File;
     """
     try:
-        # Assign version attribute to '2.0' -- multiFAST5 (output file is always multiFAST5)
-        if not "file_version" in to_f5.attrs:
-            to_f5.attrs["file_version"] = b"2.0"
-        # end if
         read_group = read_name
         to_f5.create_group(read_group)
 
@@ -125,7 +118,6 @@ def sort_fast5_file(f5_path):
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
 
     from_f5 = h5py.File(f5_path, 'r')
-    num_reads = len(from_f5)
 
     # singleFAST5 and multiFAST5 files should be processed in different ways
     # "Raw" group always in singleFAST5 root and never in multiFAST5 root
@@ -144,26 +136,25 @@ def sort_fast5_file(f5_path):
   This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
             printl("Try running sorter with '-u' (--untwist-fast5') flag.\n")
             platf_depend_exit(1)
-        # If read is found in TSV file:
-        else:
-            q_len = SeqLength(q_len)
-            if ph33_qual != '-' and ph33_qual < min_ph33_qual:
-                # Get name of result FASTQ file to write this read in
-                if trash_fpath not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
-                # end if
-                f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
-                seqs_fail += 1
-            else:
-                # Get name of result FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                if sorted_file_path not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
-                # end if
-                f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
-                seqs_pass += 1
-            # end if
         # end try
+        # If read is found in TSV file:
+        q_len = SeqLength(q_len)
+        if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+            # Get name of result FASTQ file to write this read in
+            if trash_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
+            # end if
+            f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
+            seqs_fail += 1
+        else:
+            # Get name of result FASTQ file to write this read in
+            sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+            if sorted_file_path not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+            # end if
+            f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
+            seqs_pass += 1
+        # end if
     # end for
     # Close all sorted files
     for file_obj in srt_file_dict.values():
@@ -188,3 +179,13 @@ def update_file_dict(srt_file_dict, new_fpath):
     # end try
     return srt_file_dict
 # end def update_file_dict
+
+
+def assign_version_2(fast5_list):
+    # Assign version attribute to '2.0' -- multiFAST5
+    for f5path in fast5_list:
+        with h5py.File(f5path, 'a') as f5file:
+            f5file.attrs["file_version"] = b"2.0"
+        # end with
+    # end for
+# end def assign_version_2

@@ -825,17 +825,25 @@ if n_thr == 1:
     printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
     printer.start() # start waiting
 
-    # Sort FAST5 files:
-    if len(fast5_list) != 0:
-        res_stats.extend( list(map(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
-            fast5_list)) )
-    # end if
+    try:
+        # Sort FAST5 files:
+        if len(fast5_list) != 0:
+            res_stats.extend( list(map(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
+                fast5_list)) )
+        # end if
 
-    # Sort FASTA and FASTQ files:
-    if len(fq_fa_list) != 0:
-        res_stats.extend( list(map(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
-            fq_fa_list)) )
-    # end if
+        # Sort FASTA and FASTQ files:
+        if len(fq_fa_list) != 0:
+            res_stats.extend( list(map(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
+                fq_fa_list)) )
+        # end if
+    except Exception as error:
+        printl("{} - {}".format(getwt(), err_fmt( str(error) )))
+        # Stop printer
+        stop.clear() # lower the flag
+        printer.join()
+        platf_depend_exit(1)
+    # end try
 
 else:
 
@@ -849,30 +857,45 @@ else:
     printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
     printer.start() # start waiting
 
-    # Sort FAST5 files:
-    if len(fast5_list) != 0:
-        pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
-            initargs=(write_lock, inc_val, inc_val_lock))
-        res_stats.extend(pool.starmap(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
-            [(sublist,) for sublist in fast5_list]))
-        pool.close()
-        pool.join()
-    # end if
+    try:
+        # Sort FAST5 files:
+        if len(fast5_list) != 0:
+            pool = mp.Pool(n_thr, initializer=FAST5_srt_module.init_paral_sorting,
+                initargs=(write_lock, inc_val, inc_val_lock))
+            res_stats.extend(pool.starmap(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
+                [(sublist,) for sublist in fast5_list]))
+            pool.close()
+            pool.join()
+        # end if
 
-    # Sort FASTA and FASTQ files:
-    if len(fq_fa_list) != 0:
-        pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
-            initargs=(write_lock, inc_val, inc_val_lock))
-        res_stats.extend(pool.starmap(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
-            [(sublist,) for sublist in fq_fa_list]))
+        # Sort FASTA and FASTQ files:
+        if len(fq_fa_list) != 0:
+            pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
+                initargs=(write_lock, inc_val, inc_val_lock))
+            res_stats.extend(pool.starmap(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
+                [(sublist,) for sublist in fq_fa_list]))
+            pool.close()
+            pool.join()
+        # end if
+    except Exception as error:
+        printl("{} - {}".format(getwt(), err_fmt( str(error) )))
+        # Stop printer
+        stop.clear() # lower the flag
         pool.close()
+        printer.join()
         pool.join()
-    # end if
+        platf_depend_exit(1)
+    # end try
 # end if
 
 # Stop printer
 stop.clear() # lower the flag
 printer.join()
+
+# Assign version attribute to '2.0' -- multiFAST5
+if len(fast5_list) != 0:
+    FAST5_srt_module.assign_version_2(fast5_list)
+# end if
 
 # Summarize statistics
 seqs_pass = sum(map(lambda x: x[0], res_stats))
@@ -900,7 +923,6 @@ printl()
 fastqa_res_files = list(filter(is_fastqa, glob(os.path.join(outdir_path, '*'))))
 
 # Exit now if there is nothing to compress
-
 if len(fastqa_res_files) == 0 or not compress:
     end_time = time()
     printl('\n'+getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
@@ -969,8 +991,9 @@ else:
 # end if
 
 if n_thr == 1: # single-thread compressing
-
-    map(gzip_func, fastqa_res_files)
+    
+    # map object will not run function without 'tuple'
+    tuple(map(gzip_func, fastqa_res_files))
 
 else: # compress in parallel
     pool = mp.Pool(n_thr)
