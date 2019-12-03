@@ -155,7 +155,6 @@ except getopt.GetoptError as gerr:
     platf_depend_exit(2)
 # end try
 
-is_fastQA5 = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q|5)(\.gz)?$", f) is None else False
 is_fastqa = lambda f: False if re_search(r"\.(m)?f(ast)?(q|a)(\.gz)?$", f) is None else True
 is_fast5 = lambda f: f.endswith(".fast5")
 
@@ -336,6 +335,8 @@ if len(fq_fa_list) == 0 and len(fast5_list) == 0:
     # end if
 # end if
 
+num_files = len(fq_fa_list) + len(fast5_list)
+
 if len(fast5_list) == 0 and untwist_fast5:
     print("\nWarning! No FAST5 file has been given to sorter's input.")
     print("Therefore, '-u' ('--untwist-fast5') flag does not make any sense.")
@@ -437,110 +438,6 @@ logfile = open(logfile_path, 'w')
 printl("\n |=== fastQA5-sorter.py (version {}) ===|\n".format(__version__))
 
 
-# Try to import 'h5py' if at least one FAST5 file is specified to process.
-if len(fast5_list) != 0:
-    try:
-        import h5py
-    except ImportError as imperr:
-        print(err_fmt("package 'h5py' is not installed"))
-        print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
-        print("\n  'h5py' package is necessary for FAST5 files sorting.")
-        print("  Please, install it (e.g. 'pip3 install h5py').")
-        print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
-        platf_depend_exit(1)
-    # end try
-
-
-    def copy_read_f5_2_f5(from_f5, read_name, to_f5):
-        """
-        Function copies a read with ID 'read_name'
-            from 'from_f5' multiFAST5 file to to_f5 multiFAST5 one.
-
-        :param from_f5: FAST5 file object to copy a read from;
-        :type from_f5: h5py.File;
-        :param read_name: ID of a read to copy;
-        :type read_name: str;
-        :param to_f5: destination FAST5 file;
-        :type to_f5: h5py.File;
-        """
-        try:
-            # Assign version attribute to '2.0' -- multiFAST5
-            if not "file_version" in to_f5.attrs:
-                to_f5.attrs["file_version"] = b"2.0"
-            # end if
-            from_f5.copy(read_name, to_f5)
-        except ValueError as verr:
-            printl("\n\n ! - Error: {}".format( str(verr) ))
-            printl("Reason is probably the following:")
-            printl("  read that is copying to the result file is already in it.")
-            printl("ID of the read: '{}'".format(read_name))
-            printl("File: '{}'".format(to_f5.filename))
-            platf_depend_exit(1)
-        # end try
-    # end def copy_read_f5_2_f5
-
-
-    def copy_single_f5(from_f5, read_name, to_f5):
-        """
-        Function copies a read with ID 'read_name'
-            from 'from_f5' singleFAST5 file to to_f5 multiFAST5 one.
-
-        :param from_f5: FAST5 file object to copy a read from;
-        :type from_f5: h5py.File;
-        :param read_name: ID of a read to copy;
-        :type read_name: str;
-        :param to_f5: destination FAST5 file;
-        :type to_f5: h5py.File;
-        """
-        try:
-            # Assign version attribute to '2.0' -- multiFAST5 (output file is always multiFAST5)
-            if not "file_version" in to_f5.attrs:
-                to_f5.attrs["file_version"] = b"2.0"
-            # end if
-            read_group = read_name
-            to_f5.create_group(read_group)
-
-            for ugk_subgr in from_f5["UniqueGlobalKey"]:
-                    from_f5.copy("UniqueGlobalKey/"+ugk_subgr, to_f5[read_group])
-            # end for
-
-            read_number_group = "Raw/Reads/"+next(iter(from_f5["Raw"]["Reads"]))
-            read_number = re_search(r"(Read_[0-9]+)", read_number_group).group(1)
-            from_f5.copy(from_f5[read_number_group], to_f5[read_group])
-            to_f5.move("{}/{}".format(read_group, read_number), "{}/Raw".format(read_group))
-
-            for group in from_f5:
-                if group != "Raw" and group != "UniqueGlobalKey":
-                    from_f5.copy(group, to_f5["/{}".format(read_group)])
-                # end if
-            # end for
-        except ValueError as verr:
-            printl("\n\n ! - Error: {}".format( str(verr) ))
-            printl("Reason is probably the following:")
-            printl("  read that is copying to the result file is already in it.")
-            printl("ID of the read: '{}'".format(read_name))
-            printl("File: '{}'".format(to_f5.filename))
-            platf_depend_exit(1)
-        # end try
-    # end def copy_single_f5
-
-
-    def fast5_readids(fast5_file):
-
-        if "Raw" in fast5_file.keys():
-            yield "read_" + fmt_read_id(fast5_file.filename)
-            return
-        else:
-            for readid in fast5_file:
-                if readid.startswith("read_"):
-                    yield readid
-                # end if
-            # end for
-        # end if
-        return
-    # end def fast5_readids
-# end if
-
 if not sys.platform.startswith("win"):
     check_mark = " \u2714"
 else:
@@ -630,6 +527,7 @@ for fpath in fq_fa_list:
 
 print("\rPrimary validation... {}\n".format(check_mark))
 
+is_fastQA5 = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q|5)(\.gz)?$", f) is None else False
 
 # Check if there are some results in output directory
 if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
@@ -681,6 +579,54 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
     # end while
 # end if
 
+del is_fastQA5
+
+if untwist_fast5:
+
+    # Names of index files
+    index_name = "fast5_to_tsvtaxann_idx"
+
+    # Create index directory
+    index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
+    if not os.path.isdir(index_dirpath):
+        try:
+            os.makedirs(index_dirpath)
+        except OSError as oserr:
+            printl(err_fmt("cannot create index directory"))
+            printl("Directory that cannot be created: '{}'".format(index_dirpath))
+            printl("Reason: '{}'".format( str(oserr) ))
+            platf_depend_exit(1)
+        # end try
+    # end if
+
+    def build_index():
+
+        use_old_index = False
+
+        if len(os.listdir(index_dirpath)) != 0:
+            printl("Attention! Index file created by '-u' (--untwist_fast5) option exists (left from previous run).")
+
+            error = True
+
+            while error:
+                reply = input("""  Press ENTER to make new index file
+      or enter 'u' to use old index file:>>""")
+                if reply == "":
+                    error = False
+                elif reply == 'u':
+                    use_old_index = True
+                    error = False
+                else:
+                    print("Invalid reply!\n")
+                # end if
+            # end while
+            printl("You have chosen to {} index file.\n".format("use old" if use_old_index else "make new"))
+        # end if
+        return use_old_index
+    # end def ask_if_rebuild_index
+
+# end if
+
 
 is_gzipped = lambda f: True if f.endswith(".gz") else False
 OPEN_FUNCS = (open, open_as_gzip)
@@ -705,28 +651,74 @@ if not os.path.exists(outdir_path):
 # end if
 
 
+
+# |=== Module assembling ===|
+
 # Here we are going to define different functions for different use cases:
 #   prallel and single-thread procesing requires different functions that
 #   performs writing to and sorting plain (FASTA, FASTQ) files.
 # It is better to check number of threads once and define functions that will
 #   be as strait-forward as possible rather than check conditions each time in the spaghetti-function.
 
-if n_thr == 1:
-    import src.sorter_modules.single_thread as srt_module
-else:
-    import src.sorter_modules.parallel as srt_module
+FAST5_srt_module = None
+QA_srt_module = None
+utw_module = None
+
+if len(fq_fa_list) != 0:
+    if n_thr == 1:
+        import src.sorter_modules.single_thread_QA as QA_srt_module
+    else:
+        import src.sorter_modules.parallel_QA as QA_srt_module
+    # end if
 # end if
 
-srt_module.logfile = logfile
-srt_module.tax_annot_res_dir = tax_annot_res_dir
-srt_module.sens = sens
-srt_module.n_thr = n_thr
-srt_module.outdir_path = outdir_path
-srt_module.min_ph33_qual = min_ph33_qual
-srt_module.min_qlen = min_qlen
-minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
-srt_module.minlen_fmt_str = minlen_fmt_str
+if len(fast5_list) != 0:
 
+    # Will be None if unwtisting is disabled and True/False otherwise
+    use_old_index = None
+
+    if untwist_fast5:
+        use_old_index = build_index()
+        # We do not need this function if we do not make new index
+        if not use_old_index:
+            if n_thr == 1:
+                import src.sorter_modules.single_thread_FAST5_utwfunc as utw_module
+            else:
+                import src.sorter_modules.parallel_FAST5_utwfunc as utw_module
+            # end if
+        # end if
+    # end if
+
+    if use_old_index is None:
+        # If untwisting is disabled:
+        if n_thr == 1:
+            import src.sorter_modules.single_thread_FAST5_srtfunc as FAST5_srt_module
+        else:
+            import src.sorter_modules.parallel_FAST5_srtfunc as FAST5_srt_module
+        # end if
+    else:
+        # If untwisting is enabled:
+        if n_thr == 1:
+            import src.sorter_modules.single_thread_FAST5_srtfunc_utw as FAST5_srt_module
+        else:
+            import src.sorter_modules.parallel_FAST5_srtfunc_utw as FAST5_srt_module
+        # end if
+    # end if
+# end if
+
+for module in filter( lambda m: False if m is None else True,
+    (QA_srt_module, FAST5_srt_module, utw_module) ):
+
+    module.logfile = logfile
+    module.tax_annot_res_dir = tax_annot_res_dir
+    module.sens = sens
+    module.n_thr = n_thr
+    module.outdir_path = outdir_path
+    module.min_ph33_qual = min_ph33_qual
+    module.min_qlen = min_qlen
+    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
+    module.minlen_fmt_str = minlen_fmt_str
+# end for
 
 
 from threading import Thread, Event
@@ -761,382 +753,6 @@ def status_printer(get_inc_val, stop):
 # end def status_printer
 
 
-# If FAST5-untwisting is enabled, we need to import 'shelve' and define two functions.
-# And we do not need them otherwise.
-if untwist_fast5:
-
-    from shelve import open as open_shelve
-
-    # Names of index files
-    index_name = "fast5_to_tsvtaxann_idx"
-
-    # Create index directory
-    index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
-    if not os.path.isdir(index_dirpath):
-        try:
-            os.makedirs(index_dirpath)
-        except OSError as oserr:
-            printl(err_fmt("cannot create index directory"))
-            printl("Directory that cannot be created: '{}'".format(index_dirpath))
-            printl("Reason: '{}'".format( str(oserr) ))
-            platf_depend_exit(1)
-        # end try
-    # end if
-
-    use_old_index = False
-
-    if len(os.listdir(index_dirpath)) != 0:
-        printl("Attention! Index file created by '-u' (--untwist_fast5) option exists (left from previous run).")
-
-        error = True
-
-        while error:
-            reply = input("""  Press ENTER to make new index file
-  or enter 'u' to use old index file:>>""")
-            if reply == "":
-                error = False
-            elif reply == 'u':
-                use_old_index = True
-                error = False
-            else:
-                print("Invalid reply!\n")
-            # end if
-        # end while
-        printl("You have chosen to {} index file.\n".format("use old" if use_old_index else "make new"))
-    # end if
-
-    # We do not need this function if we do not make new index
-    if not use_old_index:
-        def map_f5reads_2_taxann(fast5_list):
-            """
-            Function perform mapping of all reads stored in input FAST5 files
-                to existing TSV files containing taxonomic annotation info.
-
-            It creates an index DBM file.
-
-            Generally speaking, reads from one FAST5 are spread between several
-            FASTQ (and hence, TSV-taxann) files.
-            Structure of our index allows to minimize times needed to read plain
-            (i.e. sequential access) TSV files.
-            Well, structure of our index is following:
-
-            <DBM file>:
-            {
-                <path_to_FAST5_1>: {
-                                    <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-                                    <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-                                    ...
-                                    <path_to_TSV_1.M>: [<read_ID_1.M.1>, <read_ID_1.M.2>, ..., <read_ID_1.M.N>]
-                                 },
-                <path_to_FAST5_2>: {
-                                    <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-                                    <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-                                    ...
-                                    <path_to_TSV_2.M>: [<read_ID_2.M.1>, <read_ID_2.M.2>, ..., <read_ID_2.M.N>]
-                                 },
-                ...
-                <path_to_FAST5_K>: {
-                                    <path_to_TSV_K.1>: [<read_ID_K.1.1>, <read_ID_K.1.2>, ..., <read_ID_K.1.N>],
-                                    <path_to_TSV_K.2>: [<read_ID_K.2.1>, <read_ID_K.2.2>, ..., <read_ID_K.2.N>],
-                                    ...
-                                    <path_to_TSV_K.M>: [<read_ID_K.M.1>, <read_ID_K.M.2>, ..., <read_ID_K.M.N>]
-                                 },
-            }
-            """
-
-            # Get all directories nested in 'tax_annot_res_dir'
-            taxann_dir_lst = list(filter(lambda f: True if os.path.isdir(f) else False,
-                glob( os.path.join(tax_annot_res_dir, "*") )))
-
-            # Exclude "local_database" and "fast5_to_fastq_idx" from this list
-            for dir_to_exclude in (index_name, "local_database"):
-                ldb_dir_path = os.path.join(tax_annot_res_dir, dir_to_exclude)
-                if ldb_dir_path in taxann_dir_lst:
-                    taxann_dir_lst.remove(ldb_dir_path)
-                # end if
-            # end for
-
-            # Get path to TSV files containing taxonomy annotation info
-            tsv_taxann_lst = list()
-            for taxann_dir in taxann_dir_lst:
-                putative_tsvs = glob("{}{}*.tsv".format(taxann_dir, os.sep))
-                if len(putative_tsvs) == 1:
-                    tsv_taxann_lst.append(putative_tsvs[0])
-                elif len(putative_tsvs) == 0:
-                    printl("""Warning!  There is no taxonomic annotation info in the following directory:
-      '{}'
-    Omitting this directory.\n""".format(taxann_dir))
-                else:
-                    printl("""Error!  Multiple TSV files in the following directory:
-      '{}'
-    Please, remove extra files and leave only one, which contains actual taxononic annotation info.""".format(taxann_dir))
-                    platf_depend_exit(1)
-                # end if
-            # end for
-            del taxann_dir_lst
-
-            printl("{} - Untwisting started.".format(getwt()))
-
-            # Open index files overwriting existing data ('n' parameter)
-            index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, index_name), 'n' )
-
-            global inc_val
-            inc_val = 0
-            get_inc_val = lambda: inc_val # merely return this value (1 thread)
-
-            # Launch printer
-            printer = Thread(target=status_printer, args=(get_inc_val, stop)) # create thread
-            stop = Event()
-            stop.set() # raise the flag
-            printer.start() # start waiting
-
-            # Iterate over FAST5 files
-            for j, f5_path in enumerate(fast5_list):
-
-                f5_file = h5py.File(f5_path, 'r')# open FAST5 file
-                readids_to_seek = list(fast5_readids(f5_file))
-                idx_dict = dict() # dictionary for index
-
-                # This saving is needed to compare with 'len(readids_to_seek)'
-                #    after all TSV will be looked through in order to
-                #    determine if some reads miss taxonomic annotation.
-                len_before = len(readids_to_seek)
-
-                # Iterate over TSV-taaxnn file
-                for tsv_taxann_fpath in tsv_taxann_lst:
-
-                    with open(tsv_taxann_fpath, 'r') as taxann_file:
-
-                        # Get all read IDs in current TSV
-                        readids_in_tsv = list( map(lambda l: l.split('\t')[0], taxann_file.readlines()) )
-
-                        # Iterate over all other reads in current FAST5
-                        #    ('reversed' is necessary because we remove items from list in this loop)
-                        for readid in reversed(readids_to_seek):
-                            if fmt_read_id(readid) in readids_in_tsv:
-                                # If not first -- write data to dict (and to index later)
-                                try:
-                                    idx_dict[tsv_taxann_fpath].append(readid) # append to existing list
-                                except KeyError:
-                                    idx_dict[tsv_taxann_fpath] = [readid] # create a new list
-                                finally:
-                                    readids_to_seek.remove(readid)
-                                    inc_val += 1
-                                # end try
-                            # end if
-                        # end for
-                    # end with
-                    if len(readids_to_seek) == 0:
-                        break
-                    # end if
-                # end for
-
-                # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
-                #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
-                if len(readids_to_seek) == len_before:
-                    printl(err_fmt("reads from FAST5 file not found"))
-                    printl("FAST5 file: '{}'".format(f5_path))
-                    printl("Some reads reads have not undergone taxonomic annotation.")
-                    missing_log = "missing_reads_lst.txt"
-                    printl("List of missing reads are in following file:\n  '{}'\n".format(missing_log))
-                    with open(missing_log, 'w') as missing_logfile:
-                        missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
-                        for readid in readids_to_seek:
-                            missing_logfile.write(fmt_read_id(readid) + '\n')
-                        # end for
-                    index_f5_2_tsv.close()
-                    try:
-                        for path in glob( os.path.join(index_dirpath, '*') ):
-                            os.unlink(path)
-                        # end for
-                        os.rmdir(index_dirpath)
-                    except OSError as oserr:
-                        printl("error while removing index directory: {}".format(oserr))
-                    finally:
-                        platf_depend_exit(3)
-                    # end try
-                # end if
-
-                # Update index
-                index_f5_2_tsv[f5_path] = idx_dict
-            # end for
-
-            # Stop printer
-            stop = True # lower the flag
-            printer.join()
-            printl()
-
-            index_f5_2_tsv.close()
-            printl("{} - Untwisting is completed.".format(getwt()))
-            printl('-'*20+'\n')
-        # end def map_f5reads_2_taxann
-    # end if
-
-
-    def sort_fast5_file(f5_path):
-        """
-        Function sorts FAST5 file with untwisting.
-
-        :param f5_path: path to FAST5 file meant to be processed;
-        :type f5_path: str;
-        """
-
-        seqs_pass = 0
-        seqs_fail = 0
-        srt_file_dict = dict()
-
-        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
-                minlen_fmt_str))
-
-        from_f5 = h5py.File(f5_path, 'r') # open source FAST5
-        num_reads = len(from_f5) # get number of reads in it
-
-        # singleFAST5 and multiFAST5 files should be processed in different ways
-        # "Raw" group always in singleFAST5 root and never in multiFAST5 root
-        if "Raw" in from_f5.keys():
-            f5_cpy_func = copy_single_f5
-        else:
-            f5_cpy_func = copy_read_f5_2_f5
-        # end if
-
-        try:
-            readids_to_seek = list(from_f5.keys()) # list of not-sorted-yet read IDs
-        except Exception as e:
-            print(str(e))
-            exit(0)
-        # end try
-
-        # Fill the list 'readids_to_seek'
-        for read_name in fast5_readids(from_f5):
-            # Get rid of "read_"
-            readids_to_seek.append(sys.intern(read_name))
-        # end for
-
-        # Walk through the index
-        index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, index_name), 'r' )
-
-        if not f5_path in index_f5_2_tsv.keys():
-            printl(err_fmt("Source FAST5 file not found in index"))
-            printl("Try to rebuild index")
-            platf_depend_exit(1)
-        # end if
-
-        for tsv_path in index_f5_2_tsv[f5_path].keys():
-
-            read_names = index_f5_2_tsv[f5_path][tsv_path]
-            resfile_lines = configure_resfile_lines(tsv_path)
-
-            for read_name in read_names:
-                try:
-                    hit_name, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))]
-                except KeyError:
-                    printl(err_fmt("missing taxonomic annotation info for read '{}'".format(fmt_read_id(read_name))))
-                    printl("It is stored in '{}' FAST5 file".format(f5_path))
-                    printl("Try to make new index file (press ENTER on corresponding prompt).")
-                    printl("""Or, if does not work for you, make sure that taxonomic annotation info
-  for this read is present in one of TSV files generated by 'prober.py' and 'barapost.py'.""")
-                    index_f5_2_tsv.close()
-                    platf_depend_exit(1)
-                else:
-                    q_len = SeqLength(q_len)
-                    if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
-                        # Get name of result FASTQ file to write this read in
-                        if trash_fpath not in srt_file_dict.keys():
-                            srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
-                        # end if
-                        f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
-                        seqs_fail += 1
-                    else:
-                        # Get name of result FASTQ file to write this read in
-                        sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                        if sorted_file_path not in srt_file_dict.keys():
-                            srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
-                        # end if
-                        f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
-                        seqs_pass += 1
-                    # end if
-                # end try
-            # end for
-
-        index_f5_2_tsv.close()
-        # Close all sorted files
-        for file_obj in srt_file_dict.values():
-            file_obj.close()
-        # end for
-        return (seqs_pass, seqs_fail)
-    # end def sort_fast5_file
-
-else: # if untwisting is not enabled, this function will be different
-
-    def sort_fast5_file(f5_path):
-        """
-        Function sorts FAST5 file without untwisting.
-
-        :param f5_path: path to FAST5 file meant to be processed;
-        :type f5_path: str;
-        """
-
-        seqs_pass = 0
-        seqs_fail = 0
-        srt_file_dict = dict()
-
-        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
-                minlen_fmt_str))
-
-        new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
-        tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-        resfile_lines = configure_resfile_lines(tsv_res_fpath)
-
-        from_f5 = h5py.File(f5_path, 'r')
-        num_reads = len(from_f5)
-
-        # singleFAST5 and multiFAST5 files should be processed in different ways
-        # "Raw" group always in singleFAST5 root and never in multiFAST5 root
-        if "Raw" in from_f5.keys():
-            f5_cpy_func = copy_single_f5
-        else:
-            f5_cpy_func = copy_read_f5_2_f5
-        # end if
-
-        for i, read_name in enumerate(fast5_readids(from_f5)):
-
-            try:
-                hit_name, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))] # omit 'read_' in the beginning of FAST5 group's name
-            except KeyError:
-                printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
-      This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
-                printl("Try running sorter with '-u' (--untwist-fast5') flag.\n")
-                platf_depend_exit(1)
-            # If read is found in TSV file:
-            else:
-                q_len = SeqLength(q_len)
-                if ph33_qual != '-' and ph33_qual < min_ph33_qual:
-                    # Get name of result FASTQ file to write this read in
-                    if trash_fpath not in srt_file_dict.keys():
-                        srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
-                    # end if
-                    f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
-                    seqs_fail += 1
-                else:
-                    # Get name of result FASTQ file to write this read in
-                    sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                    if sorted_file_path not in srt_file_dict.keys():
-                        srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
-                    # end if
-                    f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
-                    seqs_pass += 1
-                # end if
-            # end try
-        # end for
-        # Close all sorted files
-        for file_obj in srt_file_dict.values():
-            file_obj.close()
-        # end for
-        return (seqs_pass, seqs_fail)
-    # end def sort_fast5_file
-# end if
-
-
 # |===== Proceed =====|
 
 printl(" - Output directory: '{}';".format(outdir_path))
@@ -1147,8 +763,6 @@ printl(" - Threads: {}".format(n_thr))
 if untwist_fast5:
     printl(" - \"FAST5 untwisting\" is enabled.")
 # end if
-
-num_files = len(fq_fa_list) + len(fast5_list)
 
 s_letter = '' if num_files == 1 else 's'
 printl("\n {} file{} will be processed.".format( num_files, s_letter))
@@ -1171,22 +785,18 @@ if untwist_fast5 and not use_old_index:
     map_f5reads_2_taxann(fast5_list)
 # end if
 
+from functools import partial
 
-def kernel(fpath):
 
-    seqs_pass, seqs_fail = 0, 0
+def kernel(fpath, srt_func):
+
     parallel = n_thr != 1
 
     if not parallel:
         global inc_val
     # end if
 
-    # Interface of interaction with HDF5 files are quite different from plain text ones.
-    # So it is beter to write a separate function for them.
-    srt_func = srt_module.sort_fastqa_file if not fpath.endswith(".fast5") else srt_module.sort_fast5_file
-    buff_res = srt_func(fpath)
-    seqs_pass += buff_res[0]
-    seqs_fail += buff_res[1]
+    res_stats = srt_func(fpath)
 
     if parallel:
         with inc_val_lock:
@@ -1196,7 +806,7 @@ def kernel(fpath):
         inc_val += 1
     # end if
 
-    return (seqs_pass, seqs_fail)
+    return res_stats
 # end if
 
 
@@ -1216,16 +826,19 @@ if n_thr == 1:
     printer.start() # start waiting
 
     # Sort FAST5 files:
-    res_stats.extend( list(map(kernel, fast5_list)) )
+    if len(fast5_list) != 0:
+        res_stats.extend( list(map(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
+            fast5_list)) )
+    # end if
 
     # Sort FASTA and FASTQ files:
-    res_stats.extend( list(map(kernel, fq_fa_list)) )
-
-    # Summarize statistics
-    seqs_pass = sum(map(lambda x: x[0], buff_res))
-    seqs_fail = sum(map(lambda x: x[1], buff_res))
+    if len(fq_fa_list) != 0:
+        res_stats.extend( list(map(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
+            fq_fa_list)) )
+    # end if
 
 else:
+
     inc_val = mp.Value('i', 0)
     get_inc_val = lambda: inc_val.value # get shared value (multiple threads)
 
@@ -1237,25 +850,33 @@ else:
     printer.start() # start waiting
 
     # Sort FAST5 files:
-    pool = mp.Pool(n_thr, initializer=srt_module.init_paral_sorting, initargs=(write_lock, inc_val, inc_val_lock))
-    res_stats.extend(pool.starmap(kernel, [(sublist,) for sublist in fast5_list]))
-    pool.close()
-    pool.join()
+    if len(fast5_list) != 0:
+        pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
+            initargs=(write_lock, inc_val, inc_val_lock))
+        res_stats.extend(pool.starmap(partial(kernel, srt_func=FAST5_srt_module.sort_fast5_file),
+            [(sublist,) for sublist in fast5_list]))
+        pool.close()
+        pool.join()
+    # end if
 
     # Sort FASTA and FASTQ files:
-    pool = mp.Pool(n_thr, initializer=srt_module.init_paral_sorting, initargs=(write_lock, inc_val, inc_val_lock))
-    res_stats.extend(pool.starmap(kernel, [(sublist,) for sublist in fq_fa_list]))
-    pool.close()
-    pool.join()
-
-    # Summarize statistics
-    seqs_pass = sum(map(lambda t: t[0], res_stats))
-    seqs_fail = sum(map(lambda t: t[1], res_stats))
+    if len(fq_fa_list) != 0:
+        pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
+            initargs=(write_lock, inc_val, inc_val_lock))
+        res_stats.extend(pool.starmap(partial(kernel, srt_func=QA_srt_module.sort_fastqa_file),
+            [(sublist,) for sublist in fq_fa_list]))
+        pool.close()
+        pool.join()
+    # end if
 # end if
 
 # Stop printer
 stop.clear() # lower the flag
 printer.join()
+
+# Summarize statistics
+seqs_pass = sum(map(lambda x: x[0], res_stats))
+seqs_fail = sum(map(lambda x: x[1], res_stats))
 printl()
 
 
@@ -1280,7 +901,7 @@ fastqa_res_files = list(filter(is_fastqa, glob(os.path.join(outdir_path, '*'))))
 
 # Exit now if there is nothing to compress
 
-if len(fastqa_res_files) == 0 and not compress:
+if len(fastqa_res_files) == 0 or not compress:
     end_time = time()
     printl('\n'+getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Sorting is completed!\n")
     platf_depend_exit(0)
@@ -1310,6 +931,7 @@ if util_found:
         :param fpath: path to file to compress;
         :type fpath: str;
         """
+
         try:
             os.system("{} {}".format(gzip_util, fpath))
         except OSError as oserr:
@@ -1348,11 +970,11 @@ else:
 
 if n_thr == 1: # single-thread compressing
 
-    gzip_func(fastqa_res_files)
+    map(gzip_func, fastqa_res_files)
 
 else: # compress in parallel
     pool = mp.Pool(n_thr)
-    pool.starmap(gzip_func, [(fastqa_sublist,) for fastqa_sublist in fastqa_res_files])
+    pool.starmap(gzip_func, [(sublist,) for sublist in fastqa_res_files])
     pool.close()
     pool.join()
 # end if
