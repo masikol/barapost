@@ -95,6 +95,7 @@ def fast5_readids(fast5_file):
     return
 # end def fast5_readids
 
+
 def sort_fast5_file(f5_path):
     """
     Function sorts FAST5 file with untwisting.
@@ -110,7 +111,29 @@ def sort_fast5_file(f5_path):
     trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
             minlen_fmt_str))
 
-    from_f5 = h5py.File(f5_path, 'r') # open source FAST5
+    # Validation of the file:
+    #   RuntimeError will be raised if FAST5 file is broken.
+    try:
+        # File existance checking is performed while parsing CL arguments.
+        # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
+        if not h5py.is_hdf5(f5_path):
+            raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
+        # end if
+
+        from_f5 = h5py.File(f5_path, 'r')
+
+        for _ in from_f5:
+            break
+        # end for
+    except RuntimeError as runterr:
+        printl(err_fmt("FAST5 file is broken"))
+        printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl("Reason: {}".format( str(runterr) ))
+        printl("Omitting this file...\n")
+        # Return zeroes -- inc_val won't be incremented and this file will be omitted
+        return (0, 0)
+    # end try
+
     num_reads = len(from_f5) # get number of reads in it
 
     # singleFAST5 and multiFAST5 files should be processed in different ways
