@@ -1,16 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
-def printl(text=""):
-    """
-    Function for printing text to console and to log file.
-    """
-    print(text)
-    logfile.write(str(text).strip('\r') + '\n')
-    logfile.flush()
-# end def printl
-
-
 from src.sorter_modules.common import *
 
 

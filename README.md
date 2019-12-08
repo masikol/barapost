@@ -8,7 +8,7 @@
 - [Pre-requirements](#pre-requirements)
 - [1. prober](#prober)
 - [2. barapost](#barapost)
-- [3. fastQA sorter](#fastQA-sorter)
+- [3. fastQA5-sorter](#fastQA5-sorter)
   - [FAST5 sorting](#FAST5-sorting)
   - [FAST5 untwisting](#FAST5-untwisting)
   - [BCsummarizer](#BCsummarizer)
@@ -79,7 +79,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.l; 2019.11.19 edition;
+Version 1.12.k; 2019.12.07 edition;
 
 ### Description:
 
@@ -191,7 +191,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.6.b; 2019.11.19 edition;
+Version 3.6.c; 2019.12.07 edition;
 
 ### Description:
 
@@ -304,7 +304,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 3.4.b; 2019.11.19 edition;
+Version 4.0.a; 2019.12.07 edition;
 
 ### Description:
 
@@ -369,6 +369,11 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
         Compression affects only FASTA and FASTQ files;
         Values: 'true', 'false' (see Example #2).
         'true' by default.
+
+    -t (--threads) --- number of threads to launch.
+        Affects only FASTA and FASTQ sorting (for resons see section "Notes about sorting" #6).
+        Sorter processes FAST5 files in 1 thread anyway
+        (but it can perform "FAST5 untwisting" in parallel);
 ```
 
 ### Notes about sorting:
@@ -390,6 +395,8 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
 5. All sequences that do not pass quality and/or length controle will be written to one "trash"-file named in the following way:
 
     `qual_less_Q<min_quality>_len_less_<min_length>.fastq.gz`.
+
+6. Parallel FAST5 sorting is not embedded and perhaps won't be -- it gives no performance profit. The point is that writing to FAST5 files takes much more time than 'calculating'. Thus threads mostly just stay in a queue for writing rather than doinig their work.
 
 ### Examples:
 
@@ -471,7 +478,7 @@ This problem leads us to an auxiliary script "BCsummarizer.py".
 
 ## BCsummarizer
 
-Version 1.1.b; 2019.11.19 edition;
+Version 1.1.c; 2019.12.07 edition;
 
 ### Description:
 

@@ -117,7 +117,7 @@ def sort_fast5_file(f5_path):
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
 
-    # Validation of the file:
+    # File validation:
     #   RuntimeError will be raised if FAST5 file is broken.
     try:
         # File existance checking is performed while parsing CL arguments.

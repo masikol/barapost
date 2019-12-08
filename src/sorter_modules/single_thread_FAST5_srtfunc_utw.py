@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from src.sorter_modules.common import *
-
 try:
     import h5py
 except ImportError as imperr:
@@ -12,6 +10,12 @@ except ImportError as imperr:
     print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
     platf_depend_exit(1)
 # end try
+
+
+from src.sorter_modules.common import *
+from shelve import open as open_shelve
+
+index_name = "fast5_to_tsvtaxann_idx"
 
 
 def copy_read_f5_2_f5(from_f5, read_name, to_f5):
@@ -108,31 +112,12 @@ def sort_fast5_file(f5_path):
     seqs_fail = 0
     srt_file_dict = dict()
 
+    index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
+
     trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
             minlen_fmt_str))
 
-    # Validation of the file:
-    #   RuntimeError will be raised if FAST5 file is broken.
-    try:
-        # File existance checking is performed while parsing CL arguments.
-        # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
-        if not h5py.is_hdf5(f5_path):
-            raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
-        # end if
-
-        from_f5 = h5py.File(f5_path, 'r')
-
-        for _ in from_f5:
-            break
-        # end for
-    except RuntimeError as runterr:
-        printl(err_fmt("FAST5 file is broken"))
-        printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
-        printl("Reason: {}".format( str(runterr) ))
-        printl("Omitting this file...\n")
-        # Return zeroes -- inc_val won't be incremented and this file will be omitted
-        return (0, 0)
-    # end try
+    from_f5 = h5py.File(f5_path, 'r')
 
     num_reads = len(from_f5) # get number of reads in it
 
@@ -144,12 +129,7 @@ def sort_fast5_file(f5_path):
         f5_cpy_func = copy_read_f5_2_f5
     # end if
 
-    try:
-        readids_to_seek = list(from_f5.keys()) # list of not-sorted-yet read IDs
-    except Exception as e:
-        print(str(e))
-        exit(0)
-    # end try
+    readids_to_seek = list(from_f5.keys()) # list of not-sorted-yet read IDs
 
     # Fill the list 'readids_to_seek'
     for read_name in fast5_readids(from_f5):
@@ -169,7 +149,7 @@ def sort_fast5_file(f5_path):
     for tsv_path in index_f5_2_tsv[f5_path].keys():
 
         read_names = index_f5_2_tsv[f5_path][tsv_path]
-        resfile_lines = configure_resfile_lines(tsv_path)
+        resfile_lines = configure_resfile_lines(tsv_path, sens)
 
         for read_name in read_names:
             try:

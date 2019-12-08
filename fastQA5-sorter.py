@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.4.b"
+__version__ = "4.0.a"
 # Year, month, day
-__last_update_date__ = "2019-11-19"
+__last_update_date__ = "2019-12-07"
 
 # |===== Check python interpreter version =====|
 
@@ -89,6 +89,8 @@ Wildcards do work: './fastQA5-sorter.py my_directory/*' will process all files i
         Compression affects only FASTA and FASTQ files;
         Values: 'true', 'false' (see Example #2).
         'true' by default.""")
+    print("""-t (--threads) --- number of threads to launch.
+        Affects only FASTA and FASTQ sorting. Sorter processes FAST5 files in 1 thread anyway.""")
 
     if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
@@ -583,6 +585,15 @@ if untwist_fast5:
                 reply = input("""  Press ENTER to make new index file
       or enter 'u' to use old index file:>>""")
                 if reply == "":
+                    try:
+                        for path in glob( os.path.join(index_dirpath, '*') ):
+                            os.unlink(path)
+                        # end for
+                    except OSError as oserr:
+                        printl(err_fmt("Cannot remove old index files!"))
+                        printl( str(oserr) )
+                        platf_depend_exit(1)
+                    # end try
                     error = False
                 elif reply == 'u':
                     use_old_index = True
@@ -626,52 +637,70 @@ if not os.path.exists(outdir_path):
 # |=== Module assembling ===|
 
 # Here we are going to define different functions for different use cases:
-#   prallel and single-thread procesing requires different functions that
+#   parallel and single-thread procesing requires different functions that
 #   performs writing to and sorting plain (FASTA, FASTQ) files.
 # It is better to check number of threads once and define functions that will
-#   be as strait-forward as possible rather than check conditions each time in the spaghetti-function.
+#   be as strait-forward as possible rather than check conditions each time in a spaghetti-function.
 
+global inc_val
 FAST5_srt_module = None
 QA_srt_module = None
 utw_module = None
 
-if len(fq_fa_list) != 0:
-    if n_thr == 1:
-        import src.sorter_modules.single_thread_QA as QA_srt_module
-    else:
-        import src.sorter_modules.parallel_QA as QA_srt_module
-    # end if
-# end if
+try:
 
-if len(fast5_list) != 0:
-
-    # Will be None if unwtisting is disabled and True/False otherwise
-    use_old_index = None
-
-    if untwist_fast5:
-        use_old_index = whether_to_build_index()
-        # We do not need this function if we do not make new index
-        if not use_old_index:
-            if n_thr == 1:
-                import src.sorter_modules.single_thread_FAST5_utwfunc as utw_module
-            else:
-                import src.sorter_modules.parallel_FAST5_utwfunc as utw_module
-            # end if
+    if len(fq_fa_list) != 0:
+        if n_thr == 1:
+            import src.sorter_modules.single_thread_QA as QA_srt_module
+        else:
+            import src.sorter_modules.parallel_QA as QA_srt_module
         # end if
     # end if
 
-    if use_old_index is None:
-        # If untwisting is disabled:
-        import src.sorter_modules.single_thread_FAST5_srtfunc as FAST5_srt_module
-    else:
-        # If untwisting is enabled:
-        import src.sorter_modules.single_thread_FAST5_srtfunc_utw as FAST5_srt_module
+
+    if len(fast5_list) != 0:
+
+        # Will be None if unwtisting is disabled and True/False otherwise
+        use_old_index = None
+
+        if untwist_fast5:
+            use_old_index = whether_to_build_index()
+            # We do not need this function if we do not make new index
+            if not use_old_index:
+                if n_thr == 1:
+                    import src.sorter_modules.single_thread_FAST5_utwfunc as utw_module
+
+                    inc_val = 0
+                    get_inc_val = lambda: inc_val # merely return this value (1 thread)
+                else:
+                    import src.sorter_modules.parallel_FAST5_utwfunc as utw_module
+
+                    inc_val = mp.Value('i', 0)
+                    get_inc_val = lambda: inc_val.value # merely return this value (1 thread)
+                # end if
+            # end if
+        # end if
+
+        if use_old_index is None:
+            # If untwisting is disabled:
+            import src.sorter_modules.single_thread_FAST5_srtfunc as FAST5_srt_module
+        else:
+            # If untwisting is enabled:
+            import src.sorter_modules.single_thread_FAST5_srtfunc_utw as FAST5_srt_module
+        # end if
     # end if
-# end if
+except ImportError as imperr:
+    printl(err_fmt("module integrity is corrupted!"))
+    printl( str(imperr) )
+    platf_depend_exit(1)
+# end try
 
 for module in filter( lambda m: False if m is None else True,
     (QA_srt_module, FAST5_srt_module, utw_module) ):
 
+    module.printl = printl
+    module.printn = printn
+    module.getwt = getwt
     module.logfile = logfile
     module.tax_annot_res_dir = tax_annot_res_dir
     module.sens = sens
@@ -686,11 +715,8 @@ for module in filter( lambda m: False if m is None else True,
 
 from threading import Thread, Event
 
-# Value that contains number of processed files:
-global inc_val
 
-
-def status_printer(get_inc_val, stop):
+def status_printer(get_inc_val, stop, nfiles):
     """
     Function meant to be launched as threading.Thread in order to indicate progress each second.
 
@@ -699,7 +725,6 @@ def status_printer(get_inc_val, stop):
     :type stop: threading.Event;
     """
 
-    nfiles = len(fq_fa_list) + len(fast5_list)
     printn("{} - 0/{} files processed. Working...".format(getwt(), nfiles))
     saved_val = get_inc_val()
 
@@ -718,8 +743,53 @@ def status_printer(get_inc_val, stop):
 # end def status_printer
 
 
+def get_tsv_taxann_lst(tax_annot_res_dir, index_name):
+    """
+    Function returns list of path to TSV files that contain taxonomic annotation.
+
+    :param tax_annot_res_dir: path to '-r' directory;
+    :type tax_annot_res_dir: str;
+    :param index_name: basename of index file;
+    :type index_name: str;
+    """
+
+    index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
+
+    # Get all directories nested in 'tax_annot_res_dir'
+    taxann_dir_lst = list(filter(lambda f: True if os.path.isdir(f) else False,
+        glob( os.path.join(tax_annot_res_dir, "*") )))
+
+    # Exclude "local_database" and "fast5_to_fastq_idx" from this list
+    for dir_to_exclude in (index_name, "local_database"):
+        ldb_dir_path = os.path.join(tax_annot_res_dir, dir_to_exclude)
+        if ldb_dir_path in taxann_dir_lst:
+            taxann_dir_lst.remove(ldb_dir_path)
+        # end if
+    # end for
+
+    # Get path to TSV files containing taxonomy annotation info
+    tsv_taxann_lst = list()
+    for taxann_dir in taxann_dir_lst:
+        putative_tsvs = glob("{}{}*.tsv".format(taxann_dir, os.sep))
+        if len(putative_tsvs) == 1:
+            tsv_taxann_lst.append(putative_tsvs[0])
+        elif len(putative_tsvs) == 0:
+            pass
+        else:
+            printl("""Error! Multiple TSV files in the following directory:
+'{}'
+Please, remove extra files and leave only one, which contains actual taxononic annotation info.""".format(taxann_dir))
+            platf_depend_exit(1)
+        # end if
+    # end for
+
+    return tsv_taxann_lst
+# end def get_tsv_taxann_lst
+
+
 # |===== Proceed =====|
 
+printl('-' * 30)
 printl(" - Output directory: '{}';".format(outdir_path))
 printl(" - Sorting sensitivity: '{}';".format(sens))
 printl(" - Minimum mean Phred33 quality of a read to keep: {};".format(min_ph33_qual))
@@ -742,13 +812,59 @@ for path in fast5_list:
     i += 1
 # end for
 
+
+# |=== Proceed "FAST5-untwisting" if enabled ===|
+
 printl('-' * 30 + '\n')
 
-seqs_pass, seqs_fail = 0, 0
-
 if untwist_fast5 and not use_old_index:
-    map_f5reads_2_taxann(fast5_list)
+
+    printl("{} - Untwisting started.".format(getwt()))
+
+    tsv_taxann_lst = get_tsv_taxann_lst(tax_annot_res_dir, index_name)
+
+    stop = Event()
+    stop.set() # raise the flag
+
+    # Launch printer
+    printer = Thread(target=status_printer, args=(get_inc_val, stop, len(fast5_list))) # create thread
+    printer.start() # start waiting
+
+    try:
+        if n_thr == 1:
+            for f5_path in fast5_list:
+                utw_module.map_f5reads_2_taxann(f5_path, tsv_taxann_lst)
+                inc_val += 1
+            # end for
+        else:
+            pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,
+                initargs=(mp.Lock(), inc_val, mp.Lock()))
+            pool.starmap(utw_module.map_f5reads_2_taxann, [(sublist, tsv_taxann_lst,) for sublist in fast5_list])
+            pool.close()
+            pool.join()
+        # end if
+    except Exception as error:
+        printl("{} - {}".format(getwt(), err_fmt( str(error) )))
+        # Stop printer
+        stop.clear() # lower the flag
+        printer.join()
+        if n_thr != 1:
+            pool.close()
+            pool.join()
+        # end if
+        platf_depend_exit(1)
+    # end try
+
+    stop.clear()
+    printer.join()
+
+    printl("\n{} - Untwisting is completed.".format(getwt()))
+    printl("Index file that maps reads stored in input FAST5 files to\n  TSV files containing taxonomic classification is created.")
+    printl('-'*20+'\n')
 # end if
+
+
+# |=== Proceed sorting ===|
 
 from functools import partial
 
@@ -803,8 +919,8 @@ if n_thr == 1 or len(fast5_list) != 0:
 
 if n_thr != 1:
 
-    get_inc_val = lambda: inc_val.value # get shared value (multiple threads)
     inc_val = mp.Value('i', 0)
+    get_inc_val = lambda: inc_val.value # get shared value (multiple threads)
 
     write_lock = mp.Lock()
     inc_val_lock = mp.Lock()
@@ -842,7 +958,8 @@ stop.set() # raise the flag
 res_stats = list()
 
 # Launch printer
-printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
+printer = Thread(target=status_printer, args=(get_inc_val, stop,
+    num_files), daemon=True) # create thread
 printer.start() # start waiting
 
 if len(fast5_list) != 0:
