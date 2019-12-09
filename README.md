@@ -322,7 +322,8 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
   nested in current directory;
 - minimum mean quality of a read to keep (`-q` option): 20 (Phred33);
 - length filtering (`-m` option) is disabled by default;
-- "FAST5 untwisting" is disaled by default;
+- "FAST5 untwisting" is disalbed by default;
+- Number of threads to launch (`-t` option): 1;
 
 ### Options:
 
