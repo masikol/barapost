@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2019-12-10 edition (bug fix)
+
+### Noteworthy changes:
+
+1. prober, barapost: error while processing .fasta and .fasta.gz files fixed;
+
+### Version changes:
+
+1. prober: `1.12.k --> 1.12.m`;
+2. barapost: `3.6.c --> 3.6.d`;
+
 ## 2019-12-07 edition (parallel sorting enabled)
 
 ### Noteworthy changes:
@@ -9,6 +20,8 @@
 3. sorter: `-z (--gzip)` option added;
 
 Parallel FAST5 sorting is not embedded and perhaps won't be -- it gives no performance profit. The point is that writing to FAST5 files takes much more time than 'calculating'. Thus threads mostly just stay in a queue for writing rather than doinig their work.
+
+### Version changes:
 
 1. prober: `1.12.l --> 1.12.k`;
 2. barapost: `3.6.b --> 3.6.c`;

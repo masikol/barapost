@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.k"
+__version__ = "1.12.m"
 # Year, month, day
-__last_update_date__ = "2019-12-07"
+__last_update_date__ = "2019-12-10"
 
 # |===== Check python interpreter version =====|
 
@@ -339,15 +339,18 @@ print() # just print new line
 for file in fq_fa_list:
     how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
     if is_fastq(file):
-        n_seqs = int( sum(1 for line in how_to_open(file, 'r')) / FASTQ_LINES_PER_READ )
+        seqs_at_all += int( sum(1 for line in how_to_open(file)) / FASTQ_LINES_PER_READ )
     else:
-        n_seqs = sum(1 if line[0] == '>' else 0 for line in how_to_open(file, 'r'))
+        fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
+
+        seqs_at_all = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+            map(fmt_func, how_to_open(file).readlines()))))
     # end if
-    seqs_at_all += n_seqs
     if seqs_at_all >= probing_batch_size:
         break
     # end if
 # end for
+
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
@@ -613,6 +616,7 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
     fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+    fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
     fastq_patt = r".*\.f(ast)?q(\.gz)?$"
 
@@ -622,10 +626,6 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
         printl("\n{}. '{}' --> FASTA".format(i+1, os.path.basename(fq_fa_path)))
 
         global FASTQ_LINES_PER_READ
-
-        # Get ready to process gzipped files
-        # how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
-        fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
         with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:
 
@@ -678,10 +678,11 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
     # We've got FASTA source file
     # We need only number of sequences in it.
     else:
-        global FASTA_LINES_PER_SEQ
 
-        num_reads = sum(1 if line[0] == '>' else 0 for line in how_to_open(fq_fa_path, 'r'))
+        num_reads = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+            map(fmt_func, how_to_open(fq_fa_path).readlines()))))
         fasta_path = fq_fa_path
+        return {"fpath": fasta_path, "nreads": num_reads}
     # end if
 
     return {"fpath": fasta_path+".gz", "nreads": num_reads}

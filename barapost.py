@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.6.c"
+__version__ = "3.6.d"
 # Year, month, day
-__last_update_date__ = "2019-12-07"
+__last_update_date__ = "2019-12-10"
 
 # |===== Check python interpreter version =====|
 
@@ -569,7 +569,8 @@ def fastq2fasta(fq_fa_path, new_dpath):
     # If we've got FASTA source file
     # We need only number of sequences in it.
     else:
-        num_reads = sum(1 for line in how_to_open(fq_fa_path) if fmt_func(line)[0] == '>')
+        num_reads = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+            map(fmt_func, how_to_open(fq_fa_path).readlines()))))
         # If we've got FASTA source file we do not need to copy it
         fasta_path = fq_fa_path
         return {"fpath": fasta_path, "nreads": num_reads}

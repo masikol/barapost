@@ -79,7 +79,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.k; 2019.12.07 edition;
+Version 1.12.m; 2019.12.10 edition;
 
 ### Description:
 
@@ -191,7 +191,7 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.6.c; 2019.12.07 edition;
+Version 3.6.d; 2019.12.10 edition;
 
 ### Description:
 
