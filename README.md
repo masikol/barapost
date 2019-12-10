@@ -79,7 +79,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.12.m; 2019.12.10 edition;
+Version 1.13.a; 2019.12.10 edition;
 
 ### Description:
 
@@ -112,6 +112,7 @@ If you have your own FASTA files that can be used as database to blast against, 
 - output directory (`-o` option): directory named `barapost_result`
   nested in current directory;
 - no email information (`-e` option) is send to NCBI;
+- prober sends sequences intact (i.e. does not prune them (see '-x' option));
 
 ### Options:
 
@@ -153,6 +154,10 @@ If you have your own FASTA files that can be used as database to blast against, 
 
     -e (--email) --- your email. Please, specify your email when you run "prober.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.
+
+    -x (--max-seq-len) --- maximum length of a sequence that will be sent to NCBI BLAST.
+        It means that prober can prune your sequences before sending in order to spare NCBI servers.
+        This feature is disabled by default;
 ```
 
 - More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:

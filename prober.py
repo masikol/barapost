@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.12.m"
+__version__ = "1.13.a"
 # Year, month, day
 __last_update_date__ = "2019-12-10"
 
@@ -27,7 +27,6 @@ def platf_depend_exit(exit_code):
 
     :type exit_code: int;
     """
-
     if platform.startswith("win"):
         input("Press ENTER to exit:")
     # end if
@@ -56,14 +55,15 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
       names of Genbank records that can be used for building a database on your local machine by "barapost.py".""")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
-        print("  - all FASTQ and FASTA files in current directory will be processed;")
-        print("  - packet size (see '-p' option): 100 sequences;")
-        print("  - probing batch size (see '-b' option): 200 sequences;")
-        print("  - algorithm (see '-a' option): `megaBlast`;")
-        print("  - organisms (see '-g' option): full 'nt' database, i.e. no slices;")
-        print("  - output directory ('-o' option): directory named 'barapost_result'")
-        print("    nested in current directory;")
-        print("  - no email information ('-e' option) is send to NCBI;")
+        print(" - all FASTQ and FASTA files in current directory will be processed;")
+        print(" - packet size (see '-p' option): 100 sequences;")
+        print(" - probing batch size (see '-b' option): 200 sequences;")
+        print(" - algorithm (see '-a' option): `megaBlast`;")
+        print(" - organisms (see '-g' option): full 'nt' database, i.e. no slices;")
+        print(" - output directory ('-o' option): directory named 'barapost_result'")
+        print("   nested in current directory;")
+        print(" - no email information ('-e' option) is send to NCBI;")
+        print(" - prober sends sequences intact (i.e. does not prune them (see '-x' option));")
         print("----------------------------------------------------------\n")
     # end if
 
@@ -102,6 +102,9 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
         Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
         so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.""")
+    print("""-x (--max-seq-len) --- maximum length of a sequence that will be sent to NCBI BLAST.
+        It means that prober can prune your sequences before sending in order to spare NCBI servers.
+        This feature is disabled by default;""")
 
     if "--help" in argv[1:]:
         print("----------------------------------------------------------\n")
@@ -166,9 +169,10 @@ def printn(text):
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(argv[1:], "hvd:o:p:a:g:b:e:",
-        ["help", "version", "indir=", "outdir=", "packet-size=", "algorithm=", "organisms=", "probing-batch-size=",
-        "email="])
+    opts, args = getopt.gnu_getopt(argv[1:], "hvd:o:p:a:g:b:e:x:",
+        ["help", "version", "indir=", "outdir=", "packet-size=",
+        "algorithm=", "organisms=", "probing-batch-size=", "email=",
+        "max-seq-len="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -186,6 +190,7 @@ send_all = False
 blast_algorithm = "megaBlast"
 taxid_list = list() # default is whole 'nt' database
 user_email = ""
+max_seq_len = None # maximum length of a sequence sent to NCBI
 
 # Add positional arguments to fq_fa_list
 for arg in args:
@@ -276,6 +281,19 @@ for opt, arg in opts:
             platf_depend_exit(1)
         # end if
         user_email = arg
+
+    elif opt in ("-x", "--max-seq-len"):
+
+        try:
+            max_seq_len = int(arg)
+            if max_seq_len <= 0:
+                raise ValueError
+            # end if
+        except ValueError:
+            print(err_fmt("maximum sequence length must bu positive interger number!"))
+            print("Your value: '{}'".format(arg))
+            platf_depend_exit(1)
+        # end try
     # end if
 # end for
 
@@ -955,7 +973,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
         line = get_next_line()
         if line.startswith('>'):
-            line = '>' + fmt_read_id(line) # prune sequence ID
+            line = fmt_read_id(line) # prune sequence ID
         # end if
 
         # If some sequences have been passed, this if-statement will be executed.
@@ -983,14 +1001,14 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
                 line = get_next_line()
                 if line.startswith('>'):
-                    line = '>' + fmt_read_id(line)
+                    line = '\n' + fmt_read_id(line) + '\n'
                     i += 1
                 # end if
                 
                 if line == "": # if end of file (data) is reached
                     break
                 # end if
-                packet += line+'\n' # add line to packet
+                packet += line # add line to packet
             # end while
 
             if line != "":
@@ -1010,7 +1028,12 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
                 return
             # end if
 
-            yield {"fasta": packet.strip(), "names": names}
+            if max_seq_len is None:
+                yield {"fasta": packet.strip(), "names": names}
+            else:
+                yield {"fasta": prune_seqs(packet.strip(), 'l', max_seq_len),
+                    "names": names}
+            # end if
 
             # Reset packet
             if not next_id_line is None:
@@ -1288,6 +1311,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     if "[blastsrv4.REAL]" in respond_text:
         printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
+        printl("All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
         return None
     # end if
 
@@ -1300,23 +1324,52 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 # end def wait_for_align
 
 
-def halve_seqs(packet):
+def prune_seqs(packet, mode, value):
     """
-    Function halves all sequences in packet, leaving 5'-half of the sequence.
+    Function prunes all sequences in packet, leaving 5'-half of the sequence.
 
     :param packet: FASTA data;
     :type packet: str;
+    :param mode: available values: 'l' (for length) and 'f' (for fraction).
+        Meaning: if mode is 'l', all sequences are pruned from the 5'-end to position 'value' (value > 1),
+                 if mode is 'f', all sequences are pruned from the 5'-end to position L*value (0<value<1),
+    :type mode: str;
+    :param value: see description if 'mode' parameter above;
+    :type value:str;
     """
 
     lines = packet.splitlines()
 
-    for i in range(1, len(lines), 2):
-        seq = lines[i]
-        lines[i] = seq[: len(seq)//2]
-    # end for
+    if mode == 'l':
+
+        if value < 1:
+            raise ValueError("Invalid value of parameter 'value': it must be > 1")
+        # end if
+
+        for i in range(1, len(lines), 2):
+            seq = lines[i]
+            try:
+                lines[i] = seq[: value]
+            except IndexError:
+                pass
+            # end try
+        # end for
+
+    elif mode == 'f':
+        if value <= 0 or value >= 1:
+            raise ValueError("Invalid value of parameter 'value': it must be in interval (0, 1)")
+        for i in range(1, len(lines), 2):
+            seq = lines[i]
+            lines[i] = seq[: int(len(seq) * value)]
+        # end for
+
+    else:
+        raise ValueError("Invalid 'mode' argument passed to function prune_seqs: '{}'".format(mode))
+    # end if
+# end for
 
     return '\n'.join(lines).strip()
-# end def halve_seqs
+# end def prune_seqs
 
 
 def save_txt_align_result(server, filename, pack_to_send, rid):
@@ -1618,6 +1671,9 @@ if user_email != "":
 printl(" - Probing batch size: {} sequences;".format(probing_batch_size))
 printl(" - Packet size: {} sequences;".format(packet_size))
 printl(" - BLAST algorithm: {};".format(blast_algorithm))
+if not max_seq_len is None:
+    printl(" - Maximum length of a sequence sent: {} bp;".format(max_seq_len))
+# end if
 printl(" - Database: nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
@@ -1774,9 +1830,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 # end if
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --
-                #    shorten all sequences in packet twice and resend it.
+                #    shorten all sequences in packet twofold and resend it.
                 if align_xml_text is None:
-                    packet["fasta"] = halve_seqs(packet["fasta"])
+                    packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
                 # end if
             # end while
 

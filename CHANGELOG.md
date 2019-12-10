@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2019-12-10 evening edition (prober's '-x' option added)
+
+### Noteworthy changes:
+
+1. prober: '-x' ('--max-seq-len') option enabled. It is now possible to prune sequences that prober sends to NCBI in order to spare NCBI BLAST servers;
+
+### Version changes:
+
+1. prober: `1.12.m --> 1.13.a`;
+
 ## 2019-12-10 edition (bug fix)
 
 ### Noteworthy changes:
