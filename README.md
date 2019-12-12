@@ -79,7 +79,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.13.a; 2019.12.10 edition;
+Version 1.13.b; 2019.12.12 edition;
 
 ### Description:
 

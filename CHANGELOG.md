@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2019-12-12 edition
+
+### Noteworthy changes:
+
+1. prober: seq IDs formatting fixed;
+
+### Version changes:
+
+1. prober: `1.13.a --> 1.13.b`;
+
 ## 2019-12-10 evening edition (prober's '-x' option added)
 
 ### Noteworthy changes:

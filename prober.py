@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.13.a"
+__version__ = "1.13.b"
 # Year, month, day
-__last_update_date__ = "2019-12-10"
+__last_update_date__ = "2019-12-12"
 
 # |===== Check python interpreter version =====|
 
@@ -893,7 +893,7 @@ def fmt_read_id(read_id):
     if srch_ont_read is None:
         return read_id.partition(' ')[0]
     else:
-        return srch_ont_read.group(1)
+        return '>' + srch_ont_read.group(1)
 # end def fmt_read_id
 
 
@@ -914,12 +914,12 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
         i = 0
         while i <= num_done_reads:
 
-            line = '>' + fmt_func(fasta_file.readline())
+            line = fmt_func(fasta_file.readline())
             if line == "":
                 return ""
             # end if
-            if line .startswith('>'):
-                line = '>' + fmt_read_id(line)
+            if line.startswith('>'):
+                line = fmt_read_id(line)
                 next_id_line = line
                 i += 1
             # end if
@@ -1001,14 +1001,14 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
 
                 line = get_next_line()
                 if line.startswith('>'):
-                    line = '\n' + fmt_read_id(line) + '\n'
+                    line = fmt_read_id(line)
                     i += 1
                 # end if
                 
                 if line == "": # if end of file (data) is reached
                     break
                 # end if
-                packet += line # add line to packet
+                packet += line + '\n' # add line to packet
             # end while
 
             if line != "":
@@ -1198,22 +1198,22 @@ def lingering_https_get_request(server, url):
             resp_content = str(response.read(), "utf-8") # get response text
             conn.close()
         except OSError as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
             printl("   " + str(err))
             error = True
             sleep(30)
         except http.client.RemoteDisconnected as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
             printl("   " + str(err))
             error = True
             sleep(30)
         except socket.gaierror as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
             printl("   " + str(err))
             error = True
             sleep(30)
         except http.client.CannotSendRequest as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
             printl("   " + str(err))
             error = True
             sleep(30)
@@ -1466,7 +1466,7 @@ def parse_align_results_xml(xml_text, seq_names):
         query_len = iter_elem.find("Iteration_query-len").text
 
         if not qual_dict is None:
-            ph33_qual = qual_dict[query_name]
+            ph33_qual = qual_dict['>' + query_name]
             miscall_prop = round(10**(ph33_qual/-10), 3)
             accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
             qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
@@ -1719,7 +1719,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Configure quality dictionary
     qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
-    
+
     # Create the result directory with the name of FASTQ of FASTA file being processed:
     new_dpath = create_result_directory(fq_fa_path, outdir_path)
 
