@@ -328,6 +328,7 @@ import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
 import socket
+import shelve
 
 # |===== Functionality for proper processing of gzipped files =====|
 
@@ -349,6 +350,13 @@ DELIM = '\t'
 # File format constants:
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
+
+indsxml_path = os.path.join(outdir_path, "indsxml.gbc.xml")
+taxonomy_dir = os.path.join(outdir_path, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
@@ -1388,6 +1396,59 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 # end def save_txt_align_result
 
 
+def get_lineage(gi, hit_def, hit_acc):
+
+    global acc_dict
+
+    if not hit_acc in acc_dict.keys():
+
+        retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
+
+        error = True
+        while error:
+            try:
+                urllib.request.urlretrieve(retrieve_url, indsxml_path)
+            except OSError:
+                print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
+                if os.path.exists(indsxml_path):
+                    os.unlink(indsxml_path)
+                # end if
+                sleep(30)
+            else:
+                error = False
+            # end try
+        # end while
+
+        text = open(indsxml_path, 'r').read()
+
+        try:
+            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+)"
+            org_name = re_search(org_name_regex, text).group(1)
+
+            spec_name = re_search(r" ([a-z]+)", org_name).group(1)
+
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+            lineage = re_search(lin_regex, text).group(1)
+
+            lineage += ";" + spec_name
+            lineage = lineage.replace(' ', '')# just in case
+
+        except AttributeError:
+            lineage = hit_name
+        # end try
+
+        with shelve.open(taxonomy_path, 'c') as tax_file:
+            tax_file[hit_acc] = hit_taxa_names
+    else:
+        with shelve.open(taxonomy_path, 'c') as tax_file:
+            lineage = tax_file[hit_acc]
+    # end if
+
+    return lineage
+
+# end def get_lineage
+
+
 def parse_align_results_xml(xml_text, seq_names):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
@@ -1478,53 +1539,94 @@ def parse_align_results_xml(xml_text, seq_names):
             qual_info_to_print = ""
         # end if
 
-        # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
-        hit = iter_hit.find("Hit")
-        if hit is not None:
+        # Check if there are any hits
+        chck_h = iter_hit.find("Hit")
 
-            # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-            hit_name = hit.find("Hit_def").text
-            # Format hit name (get rid of stuff after comma)
-            hit_taxa_name = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
-            hit_taxa_name = hit_taxa_name.replace(" complete genome", "") # sometimes there are no comma before it
-            hit_taxa_name = hit_taxa_name.replace(' ', '_')
-
-            hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
-            gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
-            hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-            try:
-                new_acc_dict[hit_acc][2] += 1
-            except KeyError:
-                new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
-            # end try
-
-            # Find the first HSP (we need only the first one)
-            hsp = next(hit.find("Hit_hsps").iter("Hsp"))
-
-            align_len = hsp.find("Hsp_align-len").text.strip()
-
-            pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
-
-            gaps = hsp.find("Hsp_gaps").text # get number of gaps
-
-            evalue = hsp.find("Hsp_evalue").text # get e-value
-
-            pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-            gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-
-            printl("""\n '{}' -- '{}';
-    Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, hit_taxa_name,
-                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
-
-            # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
-        else:
+        if chck_h is None:
             # If there is no hit for current sequence
             printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+        else:
+            # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
+            # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
+            top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
+
+            lineages = list()
+
+            for hit in iter_hit:
+
+                # Find the first HSP (we need only the first one)
+                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
+
+                if hsp.find("Hsp_bit-score").text != top_bitscore:
+                    break
+                # end if
+
+                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
+                hit_name = hit.find("Hit_def").text
+
+                # Format hit name (get rid of stuff after comma)
+                hit_taxa_names = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
+                hit_taxa_names = hit_taxa_names.replace(" complete genome", "") # sometimes there are no comma before it
+                hit_taxa_names = hit_taxa_names.replace(' ', '_')
+
+                hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
+                gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
+                hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
+
+                try:
+                    lineages.append(get_lineage(hit_gi, hit_taxa_names, hit_acc).split(';'))
+                except OSError as oserr:
+                    print(err_fmt(str(oserr)))
+                    platf_depend_exit(1)
+                # end try
+
+                try:
+                    new_acc_dict[hit_acc][2] += 1
+                except KeyError:
+                    new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
+                # end try
+
+                # Find the first HSP (we need only the first one)
+                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
+
+                align_len = hsp.find("Hsp_align-len").text.strip()
+
+                pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
+
+                gaps = hsp.find("Hsp_gaps").text # get number of gaps
+
+                evalue = hsp.find("Hsp_evalue").text # get e-value
+
+                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
+                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
+            # end for
+
+            lineage = list()
+
+            for i in range(len(lineages[0])):
+                if len(set(map(lambda t: t[i], lineages))) == 1:
+                    lineage.append(lineages[0][i]) 
+                else:
+                    break
+                # end if
+            # end for
+
+            if len(lineage) != 0:
+                lineage = ';'.join(lineage)
+                printl("""\n '{}' -- '{}';
+    Query length - {} nt;
+    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
+                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
+                # Append new tsv line containing recently collected information
+                result_tsv_lines.append( DELIM.join( (query_name, lineage, hit_acc, query_len,
+                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
+            else:
+                printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+                result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
+                    "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+            # end if
         # end if
         println(qual_info_to_print)
     # end for
@@ -1848,16 +1950,20 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         pack_to_send += 1
 
         if seqs_processed >= probing_batch_size:
-            remove_tmp_files(tmp_fpath)
+            # remove_tmp_files(tmp_fpath) # --------------------------------------------------- UNCOMMENT !!
             stop = True
             break
         # end if
     # end for
-    remove_tmp_files(tmp_fpath)
+    # remove_tmp_files(tmp_fpath) # --------------------------------------------------- UNCOMMENT !!
     if stop:
         break
     # end if
 # end for
+
+if os.path.exists(indsxml_path):
+    os.unlink(indsxml_path)
+# end if
 
 def get_undr_sep_number(number):
     undr_sep_num = str(number)
@@ -1882,7 +1988,7 @@ printl("They are sorted by their occurence in probing batch:")
 #   [2] -- get 3-rd element (occurence)
 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
     s_letter = "s" if other_info[2] > 1 else ""
-    printl(" {} sequence{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
+    printl(" {} hit{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
         s_letter, acc, other_info[1]))
 # end for
 
@@ -1890,7 +1996,7 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
 unkn_num = glob_seqs_processed - sum( map(lambda x: x[2], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
-    printl(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
+    printl(" {} hit{} - No significant similarity found".format(unkn_num, s_letter))
 # end if
 
 printl("""\nThey are saved in following file:

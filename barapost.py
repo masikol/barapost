@@ -394,6 +394,7 @@ import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
 import socket
+import shelve
 
 
 # There some troubles with file extention on Windows, so let's make a .txt file for it:
@@ -486,6 +487,14 @@ DELIM = '\t'
 # |=== File format constants ===|
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
+
+indsxml_path = os.path.join(tax_annot_res_dir, "indsxml.gbc.xml")
+taxonomy_dir = os.path.join(tax_annot_res_dir, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
+own_seq_regex = r"OWN_SEQ_[0-9]+"
 
 
 from shutil import copyfileobj as shutil_copyfileobj
@@ -1036,6 +1045,8 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     # Find directories with results left from using old database (they will be renamed):
                     putative_dirs = list( map(lambda f: os.path.join(tax_annot_res_dir, f), os.listdir(tax_annot_res_dir)) )
                     old_dirs = list( filter(lambda f: True if os.path.isdir(f) and not f.endswith("local_database") else False, putative_dirs) )
+                    old_dirs = list( filter(lambda f: not f.endswith("taxonomy") and not f.endswith("fast5_to_tsvtaxann_idx"), old_dirs) )
+                    old_dirs = list( filter(lambda f: not f.endswith("queries-tmp"), old_dirs) )
                     if len(old_dirs) > 0:
                         printl("\n Directories with results of using old database are found.")
                         printl("Renaming them...")
@@ -1064,7 +1075,14 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # end for
         printl()
     # end if
-    
+
+    tax_exist_accs = shelve.open(taxonomy_path, 'r').keys()
+    for acc in acc_dict.keys():
+        if not acc in tax_exist_accs:
+            download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
+        # end if
+    # end for
+
     # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
 
@@ -1149,7 +1167,10 @@ Enter 'r' to remove all files in this directory and build the database from the 
                             # in order to retrieve them securely with regex later.
                             if line.startswith('>'):
                                 own_seq_counter += 1
-                                line = ">" + "OWN_SEQ_{} (_{}_)_".format(own_seq_counter, assm_path) + line[1:]
+                                own_acc = "OWN_SEQ_{}".format(own_seq_counter)
+                                own_def = "(_{}_)_" + line[1:]
+                                shelve.open(taxonomy_path, 'c')[own_acc] = own_def
+                                line = ">" + "{} {}".format(own_acc, own_def)
                             # end if
                             fasta_db.write(line + '\n')
                         # end for
@@ -1174,7 +1195,9 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
                     if line.startswith('>'):
                         own_seq_counter += 1
-                        line = ">" + "OWN_SEQ_{} ".format(own_seq_counter) + line[1:]
+                        own_acc = "OWN_SEQ_{}".format(own_seq_counter)
+                        shelve.open(taxonomy_path, 'c')[own_acc] = line[1:]
+                        line = ">" + own_acc + ' ' + line[1:]
                     # end if
                     
                     fasta_db.write(line + '\n')
@@ -1272,7 +1295,9 @@ def launch_blastn(packet, blast_algorithm):
     # end with
 
     # Configure command line
-    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
+    # blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
+    #     local_fasta, blast_algorithm, use_index)
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -use_index {}".format(query_path,
         local_fasta, blast_algorithm, use_index)
 
     pipe = sp_Popen(blast_cmd, shell=True, stdout=sp_PIPE, stderr=sp_PIPE)
@@ -1351,6 +1376,68 @@ def configure_qual_dict(fastq_path):
 # end def configure_qual_dict
 
 
+
+def download_lineage(gi, hit_def, acc):
+
+    tax_file = shelve.open(taxonomy_path, 'r')
+
+    if not re_search(own_seq_regex, hit_acc) is None:
+        tax_file[hit_acc] = hit_def
+    else:
+        retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
+
+        error = True
+        while error:
+            try:
+                urllib.request.urlretrieve(retrieve_url, indsxml_path)
+            except OSError:
+                print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
+                if os.path.exists(indsxml_path):
+                    os.unlink(indsxml_path)
+                # end if
+                sleep(30)
+            else:
+                error = False
+            # end try
+        # end while
+
+        text = open(indsxml_path, 'r').read()
+
+        try:
+            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+)"
+            org_name = re_search(org_name_regex, text).group(1)
+
+            spec_name = re_search(r" ([a-z]+)", org_name).group(1)
+
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+            lineage = re_search(lin_regex, text).group(1)
+
+            lineage += ";" + spec_name
+            lineage = lineage.replace(' ', '')# just in case
+        except AttributeError:
+            lineage = hit_name
+        # end try
+
+        tax_file[hit_acc] = hit_taxa_names
+    # end if
+    return lineage
+# end def download_lineage
+
+
+def get_lineage(hit_acc):
+
+    try:
+        lineage = shelve.open(taxonomy_path, 'r')[hit_acc]
+    except KeyError:
+        print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
+        print("Please, contact the developer.")
+        platf_depend_exit(1)
+    else:
+        return lineage
+    # end try
+# end def get_lineage
+
+
 def parse_align_results_xml(xml_text, seq_names, qual_dict):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
@@ -1375,6 +1462,10 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     """
 
     result_tsv_lines = list()
+
+    # with open("smth.txt", 'w') as ty:
+    #     ty.write(xml_text)
+    # exit(0)
 
     # /=== Validation ===/
 
@@ -1415,7 +1506,6 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     
         # "Iteration" node contains query name information
         query_name = iter_elem.find("Iteration_query-def").text
-
         query_len = iter_elem.find("Iteration_query-len").text
 
         if not qual_dict is None:
@@ -1428,43 +1518,63 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
             accuracy = "-" # expected percent of correctly called bases
         # end if
 
-        # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
-        hit = iter_hit.find("Hit")
-        if hit is not None:
+        # Check if there are any hits
+        chck_h = iter_hit.find("Hit")
 
-            # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-            hit_name = hit.find("Hit_def").text
-            # Format hit name (get rid of stuff after comma)
-            hit_taxa_name = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
-            hit_taxa_name = hit_taxa_name.replace(" complete genome", "") # sometimes there are no comma before it
-            hit_taxa_name = hit_taxa_name.replace(' ', '_')
-
-            hit_acc = hit.find("Hit_accession").text # get hit accession
-
-            # Find the first HSP (we need only the first one)
-            hsp = next(hit.find("Hit_hsps").iter("Hsp"))
-
-            align_len = hsp.find("Hsp_align-len").text.strip()
-
-            pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
-
-            gaps = hsp.find("Hsp_gaps").text # get number of gaps
-
-            evalue = hsp.find("Hsp_evalue").text # get e-value
-            # If E-value is low enough -- add this subject sequence to 'acc_dict' to further downloading
-
-            pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-            gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-
-            # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
-        else:
+        if chck_h is None:
             # If there is no hit for current sequence
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+        else:
+            # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
+            # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
+            top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
+
+            for hit in iter_hit:
+
+                # Find the first HSP (we need only the first one)
+                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
+
+                if hsp.find("Hsp_bit-score").text != top_bitscore:
+                    break
+                # end if
+
+                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
+                hit_name = hit.find("Hit_def").text
+
+                # Format hit name (get rid of stuff after comma)
+                hit_taxa_names = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
+                hit_taxa_names = hit_taxa_names.replace(" complete genome", "") # sometimes there are no comma before it
+                hit_taxa_names = hit_taxa_names.replace(' ', '_')
+
+                hit_acc = hit.find("Hit_accession").text # get hit accession
+
+                try:
+                    hit_taxa_names = get_lineage(hit_acc)
+                except OSError as oserr:
+                    print(err_fmt(str(oserr)))
+                    platf_depend_exit(1)
+                # end try
+
+                align_len = hsp.find("Hsp_align-len").text.strip()
+
+                pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
+
+                gaps = hsp.find("Hsp_gaps").text # get number of gaps
+
+                evalue = hsp.find("Hsp_evalue").text # get e-value
+                # If E-value is low enough -- add this subject sequence to 'acc_dict' to further downloading
+
+                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
+                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
+
+                # Append new tsv line containing recently collected information
+                result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_names, hit_acc, query_len,
+                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
+            # end for
         # end if
     # end for
+
     return result_tsv_lines
 # end def parse_align_results_xml
 
@@ -1544,7 +1654,7 @@ def create_curr_res_dir(new_dpath):
 
 def configure_acc_dict(acc_fpath):
     """
-    Fucntion couffigures accession dictionary according to accessin file generated by 'prober.py':
+    Fucntion configures accession dictionary according to accession file generated by 'prober.py':
        keys are accessions, values are tuples of the following format:
         (<GI_number>, <sequence_name_aka_definition>).
 
@@ -2064,6 +2174,10 @@ else:
 stop.clear() # lower the flag
 printer.join()
 printl()
+
+if os.path.exists(indsxml_path):
+    os.unlink(indsxml_path)
+# end if
 
 # Remove all in 'queries_tmp_dir'
 try:
