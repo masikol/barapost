@@ -1381,8 +1381,8 @@ def download_lineage(gi, hit_def, acc):
 
     tax_file = shelve.open(taxonomy_path, 'r')
 
-    if not re_search(own_seq_regex, hit_acc) is None:
-        tax_file[hit_acc] = hit_def
+    if not re_search(own_seq_regex, acc) is None:
+        tax_file[acc] = hit_def
     else:
         retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
 
@@ -1415,10 +1415,10 @@ def download_lineage(gi, hit_def, acc):
             lineage += ";" + spec_name
             lineage = lineage.replace(' ', '')# just in case
         except AttributeError:
-            lineage = hit_name
+            lineage = hit_def
         # end try
 
-        tax_file[hit_acc] = hit_taxa_names
+        tax_file[acc] = lineage
     # end if
     return lineage
 # end def download_lineage
@@ -1462,10 +1462,6 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
     """
 
     result_tsv_lines = list()
-
-    # with open("smth.txt", 'w') as ty:
-    #     ty.write(xml_text)
-    # exit(0)
 
     # /=== Validation ===/
 
@@ -1530,6 +1526,8 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
             # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
             top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
+            hit_accs = list()
+
             for hit in iter_hit:
 
                 # Find the first HSP (we need only the first one)
@@ -1547,10 +1545,10 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
                 hit_taxa_names = hit_taxa_names.replace(" complete genome", "") # sometimes there are no comma before it
                 hit_taxa_names = hit_taxa_names.replace(' ', '_')
 
-                hit_acc = hit.find("Hit_accession").text # get hit accession
-
+                curr_acc = intern(hit.find("Hit_accession").text) # get hit accession
+                hit_accs.append( curr_acc ) 
                 try:
-                    hit_taxa_names = get_lineage(hit_acc)
+                    hit_taxa_names = get_lineage(curr_acc)
                 except OSError as oserr:
                     print(err_fmt(str(oserr)))
                     platf_depend_exit(1)
@@ -1567,11 +1565,10 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
 
                 pident_ratio = round( float(pident) / int(align_len) * 100, 2)
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-
-                # Append new tsv line containing recently collected information
-                result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_names, hit_acc, query_len,
-                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
             # end for
+            # Append new tsv line containing recently collected information
+            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_names, ';'.join(hit_accs), query_len,
+                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
         # end if
     # end for
 
@@ -2136,8 +2133,18 @@ if n_thr <= len(fq_fa_list):
         printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
         printer.start() # start waiting
 
-        pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, inc_lock, inc_val))
-        pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
+        try:
+            pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, inc_lock, inc_val))
+            pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
+        except Exception as e:
+            printl("{} - {}".format(getwt(), err_fmt( str(e) )))
+            # Stop printer
+            stop.clear() # lower the flag
+            printer.join()
+            pool.close()
+            pool.join()
+            platf_depend_exit(1)
+        # end try
 
         # Reaping zombies
         pool.close()
@@ -2152,7 +2159,15 @@ if n_thr <= len(fq_fa_list):
         printer.start() # start waiting
 
         # Single-thread mode do not differ much from 'many_files'-parallel mode.
-        process_multiple_files(fq_fa_list, parallel=False)
+        try:
+            process_multiple_files(fq_fa_list, parallel=False)
+        except Exception as e:
+            printl("{} - {}".format(getwt(), err_fmt( str(e) )))
+            # Stop printer
+            stop.clear() # lower the flag
+            printer.join()
+            platf_depend_exit(1)
+        # end try
     # end if
 else:
 
@@ -2164,9 +2179,17 @@ else:
     printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
     printer.start() # start waiting
 
-    for i, fq_fa_path in enumerate(fq_fa_list):
-        process_single_file_in_paral(fq_fa_path, i)
-    # end for
+    try:
+        for i, fq_fa_path in enumerate(fq_fa_list):
+            process_single_file_in_paral(fq_fa_path, i)
+        # end for
+    except Exception as e:
+        printl("{} - {}".format(getwt(), err_fmt( str(e) )))
+        # Stop printer
+        stop.clear() # lower the flag
+        printer.join()
+        platf_depend_exit(1)
+    # end try
 
 # end if
 

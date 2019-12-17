@@ -1398,9 +1398,9 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 
 def get_lineage(gi, hit_def, hit_acc):
 
-    global acc_dict
+    tax_acc_exist = shelve.open(taxonomy_path, 'c').keys()
 
-    if not hit_acc in acc_dict.keys():
+    if not hit_acc in tax_acc_exist:
 
         retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
 
@@ -1434,14 +1434,15 @@ def get_lineage(gi, hit_def, hit_acc):
             lineage = lineage.replace(' ', '')# just in case
 
         except AttributeError:
+            tax_file[str(hit_acc)] = hit_def
             lineage = hit_name
         # end try
 
         with shelve.open(taxonomy_path, 'c') as tax_file:
-            tax_file[hit_acc] = hit_taxa_names
+            tax_file[str(hit_acc)] = lineage
     else:
         with shelve.open(taxonomy_path, 'c') as tax_file:
-            lineage = tax_file[hit_acc]
+            lineage = tax_file[str(hit_acc)]
     # end if
 
     return lineage
@@ -1553,6 +1554,7 @@ def parse_align_results_xml(xml_text, seq_names):
             top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
             lineages = list()
+            hit_accs = list()
 
             for hit in iter_hit:
 
@@ -1571,21 +1573,22 @@ def parse_align_results_xml(xml_text, seq_names):
                 hit_taxa_names = hit_taxa_names.replace(" complete genome", "") # sometimes there are no comma before it
                 hit_taxa_names = hit_taxa_names.replace(' ', '_')
 
-                hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
+                curr_acc = intern(hit.find("Hit_accession").text)
+                hit_accs.append( curr_acc ) # get hit accession
                 gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
                 hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
                 try:
-                    lineages.append(get_lineage(hit_gi, hit_taxa_names, hit_acc).split(';'))
+                    lineages.append(get_lineage(hit_gi, hit_taxa_names, hit_accs[len(hit_accs)-1]).split(';'))
                 except OSError as oserr:
                     print(err_fmt(str(oserr)))
                     platf_depend_exit(1)
                 # end try
 
                 try:
-                    new_acc_dict[hit_acc][2] += 1
+                    new_acc_dict[curr_acc][2] += 1
                 except KeyError:
-                    new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
+                    new_acc_dict[curr_acc] = [hit_gi, hit_name, 1]
                 # end try
 
                 # Find the first HSP (we need only the first one)
@@ -1620,7 +1623,7 @@ def parse_align_results_xml(xml_text, seq_names):
     Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
                 # Append new tsv line containing recently collected information
-                result_tsv_lines.append( DELIM.join( (query_name, lineage, hit_acc, query_len,
+                result_tsv_lines.append( DELIM.join( (query_name, lineage, ';'.join(hit_accs), query_len,
                     align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
             else:
                 printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
