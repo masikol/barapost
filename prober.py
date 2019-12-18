@@ -101,7 +101,7 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
         Value: positive integer number.
         Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
-        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.""")
+        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.\n""")
     print("""-x (--max-seq-len) --- maximum length of a sequence that will be sent to NCBI BLAST.
         It means that prober can prune your sequences before sending in order to spare NCBI servers.
         This feature is disabled by default;""")
@@ -1347,36 +1347,46 @@ def prune_seqs(packet, mode, value):
     """
 
     lines = packet.splitlines()
+    packet = ""
+    mode = 'f'
+    value = 0.05
 
     if mode == 'l':
-
         if value < 1:
             raise ValueError("Invalid value of parameter 'value': it must be > 1")
         # end if
 
-        for i in range(1, len(lines), 2):
-            seq = lines[i]
+        def prune(seq, value):
             try:
-                lines[i] = seq[: value]
+                return seq[: value]
             except IndexError:
-                pass
+                return seq
             # end try
-        # end for
-
+        # end def prune
     elif mode == 'f':
-        if value <= 0 or value >= 1:
+        if value < 0.0 + 1e-9 or value > 1.0 - 1e-9:
             raise ValueError("Invalid value of parameter 'value': it must be in interval (0, 1)")
-        for i in range(1, len(lines), 2):
-            seq = lines[i]
-            lines[i] = seq[: int(len(seq) * value)]
-        # end for
+        # end if
 
+        def prune(seq, value):
+            return seq[: int(len(seq) * value)]
+        # end def prune
     else:
         raise ValueError("Invalid 'mode' argument passed to function prune_seqs: '{}'".format(mode))
     # end if
-# end for
 
-    return '\n'.join(lines).strip()
+    id_line_idxs = list(map(lines.index, filter(lambda x: x.startswith('>'), lines)))
+    id_line_idxs.append(len(lines)) # fictive last id line
+
+    for id_curr, id_next in zip(id_line_idxs[:-1], id_line_idxs[1:]):
+        is_seq = lambda seq_i: seq_i > id_curr and seq_i < id_next
+        seq_lines = map(lambda j: lines[j], filter(is_seq, range(len(lines))))
+        seq = "".join(seq_lines)
+        seq = prune(seq, value)
+        packet += lines[id_curr] + '\n' + seq + '\n'
+    # end for
+
+    return packet
 # end def prune_seqs
 
 
@@ -1953,12 +1963,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         pack_to_send += 1
 
         if seqs_processed >= probing_batch_size:
-            # remove_tmp_files(tmp_fpath) # --------------------------------------------------- UNCOMMENT !!
+            remove_tmp_files(tmp_fpath)
             stop = True
             break
         # end if
     # end for
-    # remove_tmp_files(tmp_fpath) # --------------------------------------------------- UNCOMMENT !!
+    remove_tmp_files(tmp_fpath)
     if stop:
         break
     # end if
