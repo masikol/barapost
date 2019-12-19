@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2019-12-19 edition
+
+### Noteworthy changes:
+
+1. prober: '-x' sequence pruning fixed;
+2. prober: resuming bug fixed;
+
+### Version changes:
+
+1. prober: `1.13.b --> 1.13.c`;
+
 ## 2019-12-12 edition
 
 ### Noteworthy changes:

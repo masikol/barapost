@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.13.b"
+__version__ = "1.13.c"
 # Year, month, day
-__last_update_date__ = "2019-12-12"
+__last_update_date__ = "2019-12-19"
 
 # |===== Check python interpreter version =====|
 
@@ -852,7 +852,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
+            # saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
@@ -861,7 +861,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             # There is no need to disturb a user, merely resume.
             return {
-                "sv_npck": int(num_done_reads / packet_size),
+                # "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -871,7 +871,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                "sv_npck": saved_npack,
+                # "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -1339,36 +1339,44 @@ def prune_seqs(packet, mode, value):
     """
 
     lines = packet.splitlines()
+    packet = ""
 
     if mode == 'l':
-
         if value < 1:
             raise ValueError("Invalid value of parameter 'value': it must be > 1")
         # end if
 
-        for i in range(1, len(lines), 2):
-            seq = lines[i]
+        def prune(seq, value):
             try:
-                lines[i] = seq[: value]
+                return seq[: value]
             except IndexError:
-                pass
+                return seq
             # end try
-        # end for
-
+        # end def prune
     elif mode == 'f':
-        if value <= 0 or value >= 1:
+        if value < 0.0 + 1e-9 or value > 1.0 - 1e-9:
             raise ValueError("Invalid value of parameter 'value': it must be in interval (0, 1)")
-        for i in range(1, len(lines), 2):
-            seq = lines[i]
-            lines[i] = seq[: int(len(seq) * value)]
-        # end for
+        # end if
 
+        def prune(seq, value):
+            return seq[: int(len(seq) * value)]
+        # end def prune
     else:
         raise ValueError("Invalid 'mode' argument passed to function prune_seqs: '{}'".format(mode))
     # end if
-# end for
 
-    return '\n'.join(lines).strip()
+    id_line_idxs = list(map(lines.index, filter(lambda x: x.startswith('>'), lines)))
+    id_line_idxs.append(len(lines)) # fictive last id line
+
+    for id_curr, id_next in zip(id_line_idxs[:-1], id_line_idxs[1:]):
+        is_seq = lambda seq_i: seq_i > id_curr and seq_i < id_next
+        seq_lines = map(lambda j: lines[j], filter(is_seq, range(len(lines))))
+        seq = "".join(seq_lines)
+        seq = prune(seq, value)
+        packet += lines[id_curr] + '\n' + seq + '\n'
+    # end for
+
+    return packet
 # end def prune_seqs
 
 
@@ -1739,7 +1747,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
-        saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
+        # saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
@@ -1747,7 +1755,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        saved_npack = previous_data["sv_npck"] # get number of last sent packet
+        # saved_npack = previous_data["sv_npck"] # get number of last sent packet
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
@@ -1792,10 +1800,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         send = True
 
         # If current packet has been already send, we can try to get it and not to send it again
-        if pack_to_send == saved_npack and saved_RID is not None:
+        if not saved_RID is None:
 
             align_xml_text = wait_for_align(saved_RID, contin_rtoe,
                 pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
+            saved_RID = None
 
             # If request is not expired get he result and not send it again
             if align_xml_text != "expired":
