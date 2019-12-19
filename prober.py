@@ -351,11 +351,11 @@ DELIM = '\t'
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
 
-indsxml_path = os.path.join(outdir_path, "indsxml.gbc.xml")
 taxonomy_dir = os.path.join(outdir_path, "taxonomy")
 if not os.path.isdir(taxonomy_dir):
     os.makedirs(taxonomy_dir)
 # end if
+indsxml_path = os.path.join(taxonomy_dir, "indsxml.gbc.xml")
 taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
 
@@ -842,7 +842,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 printl("\nHere are Genbank records encountered during previous run:")
                 for acc in acc_dict.keys():
                     s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    printl(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
+                    printl(" {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
                 # end for
                 print()
             # end try
@@ -860,7 +860,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
+            # saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
@@ -869,7 +869,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             # There is no need to disturb a user, merely resume.
             return {
-                "sv_npck": int(num_done_reads / packet_size),
+                # "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -879,7 +879,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                "sv_npck": saved_npack,
+                # "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -1348,8 +1348,6 @@ def prune_seqs(packet, mode, value):
 
     lines = packet.splitlines()
     packet = ""
-    mode = 'f'
-    value = 0.05
 
     if mode == 'l':
         if value < 1:
@@ -1438,10 +1436,19 @@ def get_lineage(gi, hit_def, hit_acc):
             spec_name = re_search(r" ([a-z]+)", org_name).group(1)
 
             lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
-            lineage = re_search(lin_regex, text).group(1)
+            lineage = re_search(lin_regex, text).group(1).strip('.')
 
-            lineage += ";" + spec_name
-            lineage = lineage.replace(' ', '')# just in case
+            gen_spec_regex = r"([A-Z][a-z]+ [a-z]+).?$"
+            gen_spec_in_lin = re_search(gen_spec_regex, lineage)
+
+            if not gen_spec_in_lin is None:
+                repl_str = gen_spec_in_lin.group(1)
+                lineage = lineage.replace(repl_str, spec_name)
+            else:
+                lineage += ";" + spec_name
+            # emd if
+
+            lineage = lineage.replace(' ', '')
 
         except AttributeError:
             tax_file[str(hit_acc)] = hit_def
@@ -1453,6 +1460,10 @@ def get_lineage(gi, hit_def, hit_acc):
     else:
         with shelve.open(taxonomy_path, 'c') as tax_file:
             lineage = tax_file[str(hit_acc)]
+    # end if
+
+    if os.path.exists(indsxml_path):
+        os.unlink(indsxml_path)
     # end if
 
     return lineage
@@ -1854,7 +1865,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
-        saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
+        # saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
@@ -1862,7 +1873,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        saved_npack = previous_data["sv_npck"] # get number of last sent packet
+        # saved_npack = previous_data["sv_npck"] # get number of last sent packet
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
@@ -1900,17 +1911,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             break
         # end if
 
-        printl("\nGo to BLAST (" + blast_algorithm + ")!")
-        printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
-            packs_at_all, len(packet["names"])))
-
         send = True
 
         # If current packet has been already send, we can try to get it and not to send it again
-        if pack_to_send == saved_npack and saved_RID is not None:
+        if saved_RID is not None:
 
             align_xml_text = wait_for_align(saved_RID, contin_rtoe,
                 pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
+            saved_RID = None
 
             # If request is not expired get he result and not send it again
             if align_xml_text != "expired":
@@ -1927,6 +1935,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         # end if
 
         if send:
+
+            printl("\nGo to BLAST (" + blast_algorithm + ")!")
+            printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
+                packs_at_all, len(packet["names"])))
 
             align_xml_text = None
             while align_xml_text is None: # untill successfull attempt
@@ -1961,9 +1973,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
         # end if
         pack_to_send += 1
+        remove_tmp_files(tmp_fpath)
 
         if seqs_processed >= probing_batch_size:
-            remove_tmp_files(tmp_fpath)
             stop = True
             break
         # end if

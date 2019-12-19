@@ -1410,10 +1410,19 @@ def download_lineage(gi, hit_def, acc):
             spec_name = re_search(r" ([a-z]+)", org_name).group(1)
 
             lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
-            lineage = re_search(lin_regex, text).group(1)
+            lineage = re_search(lin_regex, text).group(1).strip('.')
 
-            lineage += ";" + spec_name
-            lineage = lineage.replace(' ', '')# just in case
+            gen_spec_regex = r"([A-Z][a-z]+ [a-z]+).?$"
+            gen_spec_in_lin = re_search(gen_spec_regex, lineage)
+
+            if not gen_spec_in_lin is None:
+                repl_str = gen_spec_in_lin.group(1)
+                lineage = lineage.replace(repl_str, spec_name)
+            else:
+                lineage += ";" + spec_name
+            # emd if
+
+            lineage = lineage.replace(' ', '')
         except AttributeError:
             lineage = hit_def
         # end try
