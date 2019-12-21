@@ -860,7 +860,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            # saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
@@ -869,7 +868,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             # There is no need to disturb a user, merely resume.
             return {
-                # "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -879,7 +877,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                # "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -1405,6 +1402,19 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 
 
 def get_lineage(gi, hit_def, hit_acc):
+    """
+    Function retrieves lineage of a hit from NCBI.
+    It downloads INSDSeq XML file, since it is the smallest one among those containing lineage.
+    Moreover, it saves this lineage in 'taxonomy' DBM file:
+        {<accession>: <lineage_str>}
+
+    :param gi: GI number of a hit;
+    :type gi: str;
+    :param hit_def: definition line of a hit;
+    :type hit_def: str;
+    :param hit_acc: hit accession;
+    :type hit_acc: str;
+    """
 
     tax_acc_exist = shelve.open(taxonomy_path, 'c').keys()
 
@@ -1430,10 +1440,10 @@ def get_lineage(gi, hit_def, hit_acc):
         text = open(indsxml_path, 'r').read()
 
         try:
-            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+)"
+            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
             org_name = re_search(org_name_regex, text).group(1)
 
-            spec_name = re_search(r" ([a-z]+)", org_name).group(1)
+            spec_name = re_search(r" ([a-z]+(\. [a-zA-Z0-9]+)?)", org_name).group(1)
 
             lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
             lineage = re_search(lin_regex, text).group(1).strip('.')
@@ -1599,6 +1609,7 @@ def parse_align_results_xml(xml_text, seq_names):
                 gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
                 hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
+                # Get lineage
                 try:
                     lineages.append(get_lineage(hit_gi, hit_taxa_names, hit_accs[len(hit_accs)-1]).split(';'))
                 except OSError as oserr:
@@ -1606,14 +1617,12 @@ def parse_align_results_xml(xml_text, seq_names):
                     platf_depend_exit(1)
                 # end try
 
+                # Update accession dictionary
                 try:
                     new_acc_dict[curr_acc][2] += 1
                 except KeyError:
                     new_acc_dict[curr_acc] = [hit_gi, hit_name, 1]
                 # end try
-
-                # Find the first HSP (we need only the first one)
-                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
 
@@ -1644,7 +1653,7 @@ def parse_align_results_xml(xml_text, seq_names):
     Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
                 # Append new tsv line containing recently collected information
-                result_tsv_lines.append( DELIM.join( (query_name, lineage, ';'.join(hit_accs), query_len,
+                result_tsv_lines.append( DELIM.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
                     align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
             else:
                 printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
@@ -1865,15 +1874,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
-        # saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
         tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
         acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
+        saved_RID = None
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        # saved_npack = previous_data["sv_npck"] # get number of last sent packet
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
@@ -1973,14 +1981,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
         # end if
         pack_to_send += 1
-        remove_tmp_files(tmp_fpath)
+        # remove_tmp_files(tmp_fpath)
 
         if seqs_processed >= probing_batch_size:
             stop = True
             break
         # end if
     # end for
-    remove_tmp_files(tmp_fpath)
+    # remove_tmp_files(tmp_fpath)
     if stop:
         break
     # end if

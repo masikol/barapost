@@ -1076,9 +1076,14 @@ Enter 'r' to remove all files in this directory and build the database from the 
         printl()
     # end if
 
+    if not os.path.exists(taxonomy_path):
+        shelve.open(taxonomy_path, 'с')
+    # end if
     tax_exist_accs = shelve.open(taxonomy_path, 'r').keys()
+
     for acc in acc_dict.keys():
         if not acc in tax_exist_accs:
+            print('MORON')
             download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
         # end if
     # end for
@@ -1378,6 +1383,19 @@ def configure_qual_dict(fastq_path):
 
 
 def download_lineage(gi, hit_def, acc):
+    """
+    Function retrieves lineage of a hit from NCBI.
+    It downloads INSDSeq XML file, since it is the smallest one among those containing lineage.
+    Moreover, it saves this lineage in 'taxonomy' DBM file:
+        {<accession>: <lineage_str>}
+
+    :param gi: GI number of a hit;
+    :type gi: str;
+    :param hit_def: definition line of a hit;
+    :type hit_def: str;
+    :param acc: hit accession;
+    :type acc: str;
+    """
 
     tax_file = shelve.open(taxonomy_path, 'r')
 
@@ -1404,10 +1422,10 @@ def download_lineage(gi, hit_def, acc):
         text = open(indsxml_path, 'r').read()
 
         try:
-            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+)"
+            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
             org_name = re_search(org_name_regex, text).group(1)
 
-            spec_name = re_search(r" ([a-z]+)", org_name).group(1)
+            spec_name = re_search(r" ([a-z]+(\. [a-zA-Z0-9]+)?)", org_name).group(1)
 
             lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
             lineage = re_search(lin_regex, text).group(1).strip('.')
@@ -1434,6 +1452,12 @@ def download_lineage(gi, hit_def, acc):
 
 
 def get_lineage(hit_acc):
+    """
+    Function returnes lineage by given accession from 'taxonomy' DBM file.
+
+    :param hit_acc: hit accession;
+    :type hit_acc: str;
+    """
 
     try:
         lineage = shelve.open(taxonomy_path, 'r')[hit_acc]
@@ -1441,6 +1465,10 @@ def get_lineage(hit_acc):
         print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
         print("Please, contact the developer.")
         platf_depend_exit(1)
+    except OSError as oserr:
+        print(err_fmt(str(oserr)))
+        platf_depend_exit(1)
+    # end try
     else:
         return lineage
     # end try
@@ -1535,6 +1563,7 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
             # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
             top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
+            lineages = list()
             hit_accs = list()
 
             for hit in iter_hit:
@@ -1546,22 +1575,9 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
                     break
                 # end if
 
-                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                hit_name = hit.find("Hit_def").text
-
-                # Format hit name (get rid of stuff after comma)
-                hit_taxa_names = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
-                hit_taxa_names = hit_taxa_names.replace(" complete genome", "") # sometimes there are no comma before it
-                hit_taxa_names = hit_taxa_names.replace(' ', '_')
-
                 curr_acc = intern(hit.find("Hit_accession").text) # get hit accession
-                hit_accs.append( curr_acc ) 
-                try:
-                    hit_taxa_names = get_lineage(curr_acc)
-                except OSError as oserr:
-                    print(err_fmt(str(oserr)))
-                    platf_depend_exit(1)
-                # end try
+                hit_accs.append( curr_acc )
+                lineages.append(get_lineage(curr_acc))
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
 
@@ -1575,9 +1591,36 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
                 pident_ratio = round( float(pident) / int(align_len) * 100, 2)
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
+
+            own_seq_hits = list(filter(lambda h: h.strip().count(' ') != 0, lineages))
+
+            if len(own_seq_hits) == 0:
+                lineages = list(map(lambda l: l.split(';'), lineages))
+                lineage = list()
+
+                for i in range(len(lineages[0])):
+                    if len(set(map(lambda t: t[i], lineages))) == 1:
+                        lineage.append(lineages[0][i])
+                    else:
+                        break
+                    # end if
+                # end for
+                lineage = ';'.join(lineage)
+            elif len(own_seq_hits) == 1:
+                lineage = own_seq_hits[0]
+
+            elif len(own_seq_hits) > 1:
+                lineage = '&&'.join(own_seq_hits)
+            # end if
+
             # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_names, ';'.join(hit_accs), query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
+            if len(lineage) == 0:
+                result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
+                "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+            else:
+                result_tsv_lines.append( DELIM.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
+                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
+            # end if
         # end if
     # end for
 

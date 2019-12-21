@@ -74,7 +74,7 @@ Wildcards do work: './fastQA5-sorter.py my_directory/*' will process all files i
     print("-o (--outdir) --- output directory;\n")
     print("""-s (--sorting-sensitivity) --- sorting sensitivity,
         i.e. the lowest taxonomy rank that will be used in names of resut files;
-        Available values: 'genus', 'species', 'strain'; Default is 'genus'.\n""")
+        Available values: 'genus', 'species'; Default is 'genus'.\n""")
     print("""-q (--min-ph33-qual) --- minimum mean Phred33 quality of a read to keep;
         Reads of lower quality will be written to separate "trash" file;
         Default value: 20;\n""")
@@ -213,9 +213,9 @@ for opt, arg in opts:
         tax_annot_res_dir = os.path.abspath(arg)
 
     elif opt in ("-s", "--sorting-sensitivity"):
-        if arg not in ("genus", "species", "strain"):
+        if arg not in ("genus", "species"):
             print(err_fmt("invalid value specified with '-s' option!\n"))
-            print("Available values: 'genus', 'species', 'strain'")
+            print("Available values: 'genus', 'species'")
             print("\nType for help:\n    ./fastQA5-sorter.py -h")
             platf_depend_exit(1)
         # end if

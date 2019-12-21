@@ -151,7 +151,7 @@ def sort_fast5_file(f5_path):
     for i, read_name in enumerate(fast5_readids(from_f5)):
 
         try:
-            hit_name, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))] # omit 'read_' in the beginning of FAST5 group's name
+            hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
             printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
   This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
@@ -168,12 +168,14 @@ def sort_fast5_file(f5_path):
             f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath])
             seqs_fail += 1
         else:
-            # Get name of result FASTQ file to write this read in
-            sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-            if sorted_file_path not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
-            # end if
-            f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
+            for hit_name in hit_names.split("&&"):
+                # Get name of result FASTQ file to write this read in
+                sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                if sorted_file_path not in srt_file_dict.keys():
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                # end if
+                f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path])
+            # end for
             seqs_pass += 1
         # end if
     # end for

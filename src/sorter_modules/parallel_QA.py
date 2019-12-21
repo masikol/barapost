@@ -154,7 +154,7 @@ def sort_fastqa_file(fq_fa_path):
             read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])) # get ID of the sequence
 
             try:
-                hit_name, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
+                hit_names, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
             except KeyError:
                 printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
 This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
@@ -169,10 +169,12 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
                 to_write[read_name] = (fastqa_rec, trash_fpath)
                 seqs_fail += 1
             else:
-                # Get name of result FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
-                    'q' if is_fastq(fq_fa_path) else 'a'))
-                to_write[read_name] = (fastqa_rec, sorted_file_path)
+                for hit_name in hit_names.split("&&"):
+                    # Get name of result FASTQ file to write this read in
+                    sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
+                        'q' if is_fastq(fq_fa_path) else 'a'))
+                    to_write[read_name] = (fastqa_rec, sorted_file_path)
+                # end for
                 seqs_pass += 1
             # end if
         # end for
