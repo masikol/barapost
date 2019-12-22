@@ -1,6 +1,6 @@
 # Barapost toolkit
 
-**"Barapost"** command line toolkit is designed for determination the taxonomic position of nucleotide sequences and subsequent sorting. In other words, it performs taxonomic annotation of sets of nucleotide sequences and then separates these sets into different files.
+**"Barapost"** command line toolkit is designed for FASTA, FASTQ and FAST5 files sorting (i.e. separation into different files) according to taxonomic classification of nucleotide sequences stored in them.
 
 - [Motivation](#motivation)
 - [The default workflow](#the-default-workflow-looks-like)
@@ -24,13 +24,12 @@ It is awful to sit in front of the computer for hours sending all these sequence
 
 ## Default workflow
 
-**!** - these scripts cannot be executed by Python interpreter version < 3.0.
+**Warning!** - these scripts cannot be executed by Python interpreter version < 3.0.
 
-1. **prober.py** -- this script sends several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxonomic units are present in data set. "prober.py" saves information about the best hit of each sequence from probing batch.
+1. **prober.py** -- this script sends several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxonomic units are "present" in data set. "prober.py" saves information about the best hit(s) of each sequence from probing batch.
 Processing all sequences in this way takes too much time, what leads us to "barapost.py".
 
-2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database. Database building and "BLASTing" is performed by using "BLAST+" toolkit.
-Results of taxonomic annotation are written in TSV file named according to name of input file(s).
+2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to build a database on your local machine and finally aligns the rest of data set against builded database in order to perform texonomic annotation. Database building and "BLASTing" is performed by "BLAST+" toolkit.
 
 3. **fastQA5-sorter.py** -- this script performs sorting (dividing into separate files) of your data set according to results of "prober.py" and "barapost.py"
 
@@ -63,7 +62,7 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 3. [**h5py**](https://www.h5py.org/) Python package is used by "fastQA5-sorter.py" for sorting FAST5 files.
 
-   This package is not necessary if you do not intend to sort FAST5 files.
+   This package is not necessary if you don't intend to sort FAST5 files.
 
    To build `h5py`, `libhdf5-dev` is in turn required.
 
@@ -79,27 +78,22 @@ Way 2: download ZIP archive (green button at the top right of this page "Clone o
 
 ## prober
 
-Version 1.13.b; 2019.12.12 edition;
+Version 1.14.a; 2019.12.22 edition;
 
 ### Description:
 
 **prober.py** -- this script is designed for determination the taxonomic position
-of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.
+of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit (and several hits, if Bit scores of several hits are equal).
 
 The main goal of this script is to send a probing batch (see `-b` option) of sequences to NCBI BLAST server and discover, what Genbank records can be downloaded and used for building a database on your local machine by "barapost.py".
 
 It means that you should not process all your data by "prober.py' -- it would take long time. "barapost.py" will process the rest of you sequences in the same way like "prober.py", but on your local computer.
 
-Obviously, a probing batch cannot cover all variety of a data set, so some sequences can be recognized as "unknown" while processing by "barapost.py". But you always can run "prober.py" again on "unknown" sequences.
+Obviously, a probing batch cannot cover all variety of a data set, so some sequences can be spuriously recognized as "unknown" while processing by "barapost.py". But you always can run "prober.py" again on "unknown" sequences.
 
 This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
 
-Results of taxonomic annotation are written in TSV file named according to name of input file(s), that can be found in result directory.
-
-"prober.py" also generates a file named `...probe_acc_list.tsv`. It contains accessions and names of Genbank records (these "best hits" mentioned above) that
-  can be used for building a database on your local machine by "barapost.py".
-
-If you have your own FASTA files that can be used as database to blast against, you can omit "prober.py" step and go to "barapost.py" (see `-l` option in "barapost.py" description).
+If you have your own FASTA files that can be used as database to align against, you can omit "prober.py" step and go to "barapost.py" (see `-l` option in "barapost.py" description).
 
 
 ### Default parameters:
@@ -108,11 +102,11 @@ If you have your own FASTA files that can be used as database to blast against, 
 - packet size (see `-p` option): 100 sequences;
 - probing batch size (see `-b` option): 200 sequences;
 - algorithm (see `-a` option): `megaBlast`;
-- organisms (see `-g` option): full `nt` database, i.e. no slices;
+- databse slices (see `-g` option): full `nt` database, i.e. no slices;
 - output directory (`-o` option): directory named `barapost_result`
   nested in current directory;
 - no email information (`-e` option) is send to NCBI;
-- prober sends sequences intact (i.e. does not prune them (see '-x' option));
+- prober sends sequences intact (i.e. does not prune them (see `-x` option));
 
 ### Options:
 
@@ -126,12 +120,14 @@ If you have your own FASTA files that can be used as database to blast against, 
     -v (--version) --- show version;
 
     -d (--indir) --- directory which contains FASTQ or FASTA files meant to be processed.
-        I.e. all FASTQ and FASTA files in this direcory will be processed; Files can be gzipped.
+        I.e. all FASTQ and FASTA files in this direcory will be processed. Files can be gzipped;
 
     -o (--outdir) --- output directory.
         Default value: `barapost_result`;
 
-    -p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
+    -p (--packet-size) --- number of sequence to send to NCBI BLAST server in one request.
+        It means there can be miltiple requests during one prober run.
+        E.g. processing 100 sequences you can send 2 requests 50 sequeneces both.
         Value: integer number [1, 500]. Default value is 100;
 
     -a (--algorithm) --- BLASTn algorithm to use for aligning.
@@ -163,12 +159,23 @@ If you have your own FASTA files that can be used as database to blast against, 
 - More clearly, functionality of `-g` option is totally equal to "Organism" text boxes on this BLASTn page:
     https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome.
 
+### Explanation of output files
+
+- `"hits_to_download.tsv"` file in root of output directory. In this file you can find: accessions, GI numbers and definitions of Genbank records meant to be downloaded by "barapost.py" in order to make a database on your local machine.
+
+- `"classification.tsv"` file in directory corresponding to a particular input file (for example, for input file `something.fastq` result directory name will be `something`). In this file you can find:
+
+  - ID of classified sequence;
+  - classification (usually lineage);
+  - accession(s) of best hit(s) divided with `&&`;
+  - some alignment statistics;
+  - quality information (for FASTQ files).
 
 ### Examples:
 
 Note for Windows users: `./prober.py` won't work on Windows -- type `py -3 prober.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x prober.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
+Assumming that scripts are in the working directory, examples are following:
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
@@ -196,20 +203,18 @@ Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:
 
 ## barapost
 
-Version 3.6.d; 2019.12.10 edition;
+Version 3.7.a; 2019.12.22 edition;
 
 ### Description:
 
 **barapost.py** -- this script is designed for taxonomic annotation of nucleotide sequences by "BLASTing" each of them with 'blastn' script from "BLAST+" toolkit
-and regarding the best hit.
+and regarding the best hit(s).
 
 "barapost.py" is meant to be used just after 'prober.py'.
 
-"barapost.py" downloads records-hits from Genbank according to results (`...probe_acc_list.tsv`) generated by "prober.py", builds a database (on your local machine) which consists of downloaded sequences, and continues aligning the rest of your with "BLAST+" toolkit.
+"barapost.py" downloads records-hits from Genbank according to results (`hits_to_download.tsv`) generated by "prober.py", builds a database on your local machine which consists of downloaded sequences, and continues aligning the rest of your with "BLAST+" toolkit.
 
 Script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.
-
-"barapost.py" writes (actually appends) it's results in the same TSV file as "prober.py" does.
 
 Files processed by this script are meant to be sorted afterwards by 'fastQA5_sorter.py'.
 
@@ -256,23 +261,41 @@ If you have your own FASTA files that can be used as database to blast against, 
     -t (--threads) --- number of threads to launch;
 ```
 
+### Explanation of output files
+
+- `"classification.tsv"` file in directory corresponding to a particular input file (for example, for input file `something.fastq` result directory name will be `something`). In this file you can find:
+
+  - ID of classified sequence;
+  - classification (usually lineage);
+  - accession(s) of best hit(s) divided with `&&`;
+  - some alignment statistics;
+  - quality information (for FASTQ files).
+
+  It is the same file that "prober.py" generates. "barapost.py" appends it's classification results to this file, if this file exists.
+
 ### Notes about using your own FASTA files as database:
 
-1. Besides using `-l` option, you can specify your own FASTA files using accession TSV file generated by "prober.py". To do this, just write your FASTA file's path to this TSV file in new line.
+1. Besides using `-l` option, you can specify your own FASTA files using accession TSV file generated by "prober.py". To do this, just write your FASTA file's path to this TSV file in a new line.
 
-2. "makeblastdb" utility from "BLAST+" toolkit considers first word (it separates words by spaces) of sequence ID in FASTA file as sequence accession. Naturally, duplicated accessions are not allowed. Therefore, in order to avoid this duplication, "barapost.py" uses modified sequence IDs of your own sequences in FASTA files while database creating. It adds custom accession number in the beginning of sequence IDs. This custom accessions have following format: OWN_SEQ_<N>, where <N> is an integer number. Actually, it is order number of this sequence (I mean order of adding to database). These modified sequence IDs are used only in database -- your own FASTA files will be kept intact.
+2. "makeblastdb" utility from "BLAST+" toolkit considers first word (it separates words by spaces) of sequence ID in FASTA file as sequence accession. Naturally, duplicated accessions are not allowed. Therefore, in order to avoid this duplication, "barapost.py" uses modified sequence IDs of your own sequences in FASTA files while database creating. It adds custom accession number in the beginning of sequence IDs. This custom accessions have following format: OWN_SEQ_<N>, where <N> is an integer number. Actually, it is order number of this sequence (I mean order of adding to database). These modified sequence IDs are used only in the database -- your own FASTA files will be kept intact.
 
 3. If you include SPAdes or a5 assembly FASTA file in the database with "barapost.py", sequence IDs will be modified in a specific (i.e. *ad hoc*) way. If there are **more than one** assembly file generated by **one** assembler (e.g. two files named "contigs.fasta" generated by SPAdes), paths to these "contigs.fasta" files will be added to sequence IDs while database creation. So, sequence IDs will look like, e.g. for SPAdes:
 
     `OWN_SEQ_4 /some/happy/path/contigs.fasta_NODE_3_length_546787_cov_102.642226`
 
-    Sequences from assembly files affect on sorting process in their own specific way (see "Notes about sorting" section in "fastQA5-sorter.py" decsription below, note number 4).
+    Sequences from assembly files affect sorting process in their own specific way (see "Notes about sorting" section in "fastQA5-sorter.py" decsription below, note number 4).
+
+4. If several hits have equal top value:
+
+  - if there is a user's (`-l`) sequence and a downloaded one among hits -- user's sequence takes precedence;
+
+  - if there are several user's sequences among hits -- all these user's sequeneces will be written to TSV file. And, further, sorter will duplicate sequence that aligns against several sequences good enough and place this sequence to multiple files.
 
 ### Examples:
 
 Note for Windows users: `./barapost.py` won't work on Windows -- type `py -3 barapost.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x barapost.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
+Assumming that scripts are in the working directory, examples are following:
 
   1. Process all FASTA and FASTQ files in working directory with default settings:
 
@@ -309,7 +332,7 @@ Sure, you can do the same thing on Unix-like systems, but you might face problem
 ## fastQA5 sorter
 (fast**Q**, fast**A** and fast**5** sorter)
 
-Version 4.0.a; 2019.12.07 edition;
+Version 4.1.a; 2019.12.22 edition;
 
 ### Description:
 
@@ -404,11 +427,17 @@ Moreover, it can sort FAST5 files according to taxonomic annotation of FASTQ fil
 
 6. Parallel FAST5 sorting is not embedded and perhaps won't be -- it gives no performance profit. The point is that writing to FAST5 files takes much more time than 'calculating'. Thus threads mostly just stay in a queue for writing rather than doinig their work.
 
+### Explanation of output files
+
+- "trash" file in which too short (see `-m` option) and/or with too low Phred33 quality (see `-q` option) sequences will pe placed;
+- "unknown" file in which unclassified sequences will be placed;
+- sorted files named according to taxonomic classification of input sequences (e.g. `Pseudomonas.fastq.gz`, `Pectobacterium_carotovorum.fast5` and so on);
+
 ### Examples:
 
 Note for Windows users: `./fastQA5-sorter.py` won't work on Windows -- type `py -3 fastQA5-sorter.py` instead.
 
-Sure, you can do the same thing on Unix-like systems, but you might face problems with path completions if you call Python interpreter explicitly. Therefore I recommend to make .py-file executable (by running `chmod +x fastQA5-sorter.py`) and run it as it is shown in examples below (assumming that scripts are in working directory).
+Assumming that scripts are in the working directory, examples are following:
 
   1. Process all FASTA, FASTQ and FAST5 files in working directory with default settings:
 

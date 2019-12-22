@@ -51,9 +51,9 @@ def fmt_read_id(read_id):
     """
     srch_ont_read = re_search(ont_read_signature, read_id)
     if srch_ont_read is None:
-        return read_id.partition(' ')[0].replace('>', '')
+        return read_id.partition(' ')[0].replace('>', '').strip()
     else:
-        return srch_ont_read.group(1)
+        return srch_ont_read.group(1).strip()
 # end def fmt_read_id
 
 
@@ -123,7 +123,7 @@ def get_res_tsv_fpath(new_dpath):
     :type new_dpath: str;
     """
 
-    brpst_resfile_patt = r".+_result\.tsv$"
+    brpst_resfile_patt = r".*classification\.tsv$"
 
     is_similar_to_tsv_res = lambda f: True if not re_search(brpst_resfile_patt, f) is None else False
 
@@ -187,7 +187,11 @@ def format_taxonomy_name(hit_name, sens):
             if not match_obj is None:
 
                 # Find path to file with assembly:
-                assm_path = re_search(path_patt, modif_hit_name).group(1)
+                try:
+                    assm_path = re_search(path_patt, modif_hit_name).group(1)
+                except AttributeError:
+                    assm_path = None
+                # end
 
                 node_or_scaff = match_obj.group(1) # get word "NODE" or "scaffold"
                 node_scaff_num = match_obj.group(2) # get it's number
@@ -200,7 +204,7 @@ def format_taxonomy_name(hit_name, sens):
                     assmblr_name = "a5"
                 # There cannot be enything else
                 else:
-                    print(err_fmt("signature of seq id from assembly not recognized: '{}'".format(hit_name)))
+                    print(err_fmt("signature of sequence ID from assembly not recognized: '{}'".format(hit_name)))
                     platf_depend_exit(1)
                 # end if
 
