@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2019-12-22 edition. Classification algorithm modified
+
+- Full lineages are now used for classification instead of just hit definitions;
+- If several best hits have equal Bit scores, lowest common ancestor (LCA) of these hits will be determined and used for classification;
+
+### Version changes:
+
+1. prober: `1.13.c --> 1.14.a`;
+2. barapost: `3.6.d --> 3.7.a`;
+3. sorter: `4.0.a --> 4.1.a`;
+
 ## 2019-12-19 edition
 
 ### Noteworthy changes:

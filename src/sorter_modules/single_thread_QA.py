@@ -74,7 +74,7 @@ def sort_fastqa_file(fq_fa_path):
         read_name = sys.intern(fmt_read_id(fastq_rec["seq_id"])) # get ID of the sequence
 
         try:
-            hit_name, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
+            hit_names, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
         except KeyError:
             printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
 This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
@@ -92,13 +92,15 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
             write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
             seqs_fail += 1
         else:
-            # Get name of result FASTQ file to write this read in
-            sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
-                'q' if is_fastq(fq_fa_path) else 'a'))
-            if sorted_file_path not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
-            # end if
-            write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
+            for hit_name in hit_names.split("&&"):
+                # Get name of result FASTQ file to write this read in
+                sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
+                    'q' if is_fastq(fq_fa_path) else 'a'))
+                if sorted_file_path not in srt_file_dict.keys():
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                # end if
+                write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
+            # end for
             seqs_pass += 1
         # end if
     # end for

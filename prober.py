@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.13.c"
+__version__ = "1.14.a"
 # Year, month, day
-__last_update_date__ = "2019-12-19"
+__last_update_date__ = "2019-12-22"
 
 # |===== Check python interpreter version =====|
 
@@ -51,7 +51,7 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
         print("""This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
     Results of taxonomic annotation are written in TSV file named according to name of input file(s),
       that can be found in result directory.\n""")
-        print(""""prober.py" also generates a file named '...probe_acc_list.tsv'. It contains accessions and
+        print(""""prober.py" also generates a file named 'hits_to_download.tsv'. It contains accessions and
       names of Genbank records that can be used for building a database on your local machine by "barapost.py".""")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
@@ -101,7 +101,7 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
         Value: positive integer number.
         Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
-        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.""")
+        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.\n""")
     print("""-x (--max-seq-len) --- maximum length of a sequence that will be sent to NCBI BLAST.
         It means that prober can prune your sequences before sending in order to spare NCBI servers.
         This feature is disabled by default;""")
@@ -328,6 +328,7 @@ import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
 import socket
+import shelve
 
 # |===== Functionality for proper processing of gzipped files =====|
 
@@ -349,6 +350,13 @@ DELIM = '\t'
 # File format constants:
 FASTQ_LINES_PER_READ = 4
 FASTA_LINES_PER_SEQ = 2
+
+taxonomy_dir = os.path.join(outdir_path, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+indsxml_path = os.path.join(taxonomy_dir, "indsxml.gbc.xml")
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
@@ -759,9 +767,9 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     # Form path to temporary file
     tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
     # Form path to result file
-    tsv_res_fpath = "{}_{}_result.tsv".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
+    tsv_res_fpath = "{}.tsv".format(os.path.join(new_dpath, "classification"))
     # Form path to accession file
-    acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
+    acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
 
     num_done_reads = None # variable to keep number of succeffdully processed sequences
 
@@ -794,7 +802,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     last_seq_id = last_line.split(DELIM)[0]
                 # end with
             except Exception as err:
-                printl("\nData in result file '{}' not found or broken. Reason:".format(tsv_res_fpath))
+                printl("\nData in classification file '{}' not found or broken. Reason:".format(tsv_res_fpath))
                 printl( ' ' + str(err) )
                 printl("Start from the beginning.")
                 rename_file_verbosely(tsv_res_fpath, new_dpath)
@@ -834,7 +842,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 printl("\nHere are Genbank records encountered during previous run:")
                 for acc in acc_dict.keys():
                     s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    printl(" {} sequence{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
+                    printl(" {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
                 # end for
                 print()
             # end try
@@ -852,7 +860,7 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
             with open(tmp_fpath, 'r') as tmp_file:
                 temp_lines = tmp_file.readlines()
             # end with
-            # saved_npack = int(re_search(r"sent_packet_num: ([0-9]+)", temp_lines[0]).group(1).strip())
+
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
             # If aligning is performed on local machine, there is no reason for requesting results.
             # Therefore this packet will be aligned once again.
@@ -861,7 +869,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
 
             # There is no need to disturb a user, merely resume.
             return {
-                # "sv_npck": int(num_done_reads / packet_size),
                 "RID": None,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -871,7 +878,6 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
         else:
             # Return data from previous run
             return {
-                # "sv_npck": saved_npack,
                 "RID": RID_save,
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
@@ -1198,23 +1204,23 @@ def lingering_https_get_request(server, url):
             resp_content = str(response.read(), "utf-8") # get response text
             conn.close()
         except OSError as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
-            printl("   " + str(err))
+            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("  " + str(err))
             error = True
             sleep(30)
         except http.client.RemoteDisconnected as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
-            printl("   " + str(err))
+            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("  " + str(err))
             error = True
             sleep(30)
         except socket.gaierror as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
-            printl("   " + str(err))
+            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("  " + str(err))
             error = True
             sleep(30)
         except http.client.CannotSendRequest as err:
-            printl("{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.\n".format(get_work_time()))
-            printl("   " + str(err))
+            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
+            printl("  " + str(err))
             error = True
             sleep(30)
         else:
@@ -1396,6 +1402,104 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 # end def save_txt_align_result
 
 
+def get_lineage(gi, hit_def, hit_acc):
+    """
+    Function retrieves lineage of a hit from NCBI.
+    It downloads INSDSeq XML file, since it is the smallest one among those containing lineage.
+    Moreover, it saves this lineage in 'taxonomy' DBM file:
+        {<accession>: <lineage_str>}
+
+    :param gi: GI number of a hit;
+    :type gi: str;
+    :param hit_def: definition line of a hit;
+    :type hit_def: str;
+    :param hit_acc: hit accession;
+    :type hit_acc: str;
+    """
+
+    # Get all accessions in taxonomy file:
+    tax_acc_exist = shelve.open(taxonomy_path, 'c').keys()
+
+    # If we've got a new accession -- download lineage
+    if not hit_acc in tax_acc_exist:
+
+        retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
+
+        error = True
+        while error:
+            try:
+                urllib.request.urlretrieve(retrieve_url, indsxml_path)
+            except OSError:
+                print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
+                if os.path.exists(indsxml_path):
+                    os.unlink(indsxml_path)
+                # end if
+                sleep(30)
+            else:
+                error = False
+            # end try
+        # end while
+
+        # Get downloaded text:
+        text = open(indsxml_path, 'r').read()
+
+        try:
+            # Find genus name and species name:
+            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
+            org_name = re_search(org_name_regex, text).group(1)
+
+            # Get species name:
+            spec_name = re_search(r" ([a-z]+(\. [a-zA-Z0-9]+)?)", org_name).group(1)
+
+            # Get full lineage
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+            lineage = re_search(lin_regex, text).group(1).strip('.')
+
+            # Check if species name is in lineage:
+            gen_spec_regex = r"([A-Z][a-z]+ [a-z]+).?$"
+            gen_spec_in_lin = re_search(gen_spec_regex, lineage)
+
+            # All taxonomy names in lineage will be divided by semicolon:
+            if not gen_spec_in_lin is None:
+                repl_str = gen_spec_in_lin.group(1)
+                lineage = lineage.replace(repl_str, spec_name)
+            else:
+                lineage += ";" + spec_name
+            # emd if
+
+            # Remove all spaces:
+            lineage = lineage.replace(' ', '')
+
+        except AttributeError:
+            # If there is no lineage -- use hit definition instead of it
+
+            # Format hit definition (get rid of stuff after comma)
+            hit_def = hit_def[: hit_def.find(',')] if ',' in hit_def else hit_def
+            hit_def = hit_def.replace(" complete genome", "") # sometimes there are no comma before it
+            hit_def = hit_def.replace(' ', '_')
+
+            shelve.open(taxonomy_path, 'c')[hit_acc] = hit_def
+            lineage = hit_def
+        # end try
+
+        # Write lineage to taxonomy file
+        with shelve.open(taxonomy_path, 'c') as tax_file:
+            tax_file[str(hit_acc)] = lineage
+    else:
+        # If hit is not new -- simply retrieve it from taxonomy file
+        with shelve.open(taxonomy_path, 'c') as tax_file:
+            lineage = tax_file[str(hit_acc)]
+    # end if
+
+    # Remove tmp xml file
+    if os.path.exists(indsxml_path):
+        os.unlink(indsxml_path)
+    # end if
+
+    return lineage
+# end def get_lineage
+
+
 def parse_align_results_xml(xml_text, seq_names):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
@@ -1486,53 +1590,90 @@ def parse_align_results_xml(xml_text, seq_names):
             qual_info_to_print = ""
         # end if
 
-        # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
-        hit = iter_hit.find("Hit")
-        if hit is not None:
+        # Check if there are any hits
+        chck_h = iter_hit.find("Hit")
 
-            # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-            hit_name = hit.find("Hit_def").text
-            # Format hit name (get rid of stuff after comma)
-            hit_taxa_name = hit_name[: hit_name.find(',')] if ',' in hit_name else hit_name
-            hit_taxa_name = hit_taxa_name.replace(" complete genome", "") # sometimes there are no comma before it
-            hit_taxa_name = hit_taxa_name.replace(' ', '_')
-
-            hit_acc = intern(hit.find("Hit_accession").text) # get hit accession
-            gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
-            hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-            try:
-                new_acc_dict[hit_acc][2] += 1
-            except KeyError:
-                new_acc_dict[hit_acc] = [hit_gi, hit_name, 1]
-            # end try
-
-            # Find the first HSP (we need only the first one)
-            hsp = next(hit.find("Hit_hsps").iter("Hsp"))
-
-            align_len = hsp.find("Hsp_align-len").text.strip()
-
-            pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
-
-            gaps = hsp.find("Hsp_gaps").text # get number of gaps
-
-            evalue = hsp.find("Hsp_evalue").text # get e-value
-
-            pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-            gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-
-            printl("""\n '{}' -- '{}';
-    Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, hit_taxa_name,
-                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
-
-            # Append new tsv line containing recently collected information
-            result_tsv_lines.append( DELIM.join( (query_name, hit_taxa_name, hit_acc, query_len,
-                align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
-        else:
+        if chck_h is None:
             # If there is no hit for current sequence
             printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+        else:
+            # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
+            # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
+            top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
+
+            lineages = list()
+            hit_accs = list()
+
+            for hit in iter_hit:
+
+                # Find the first HSP (we need only the first one)
+                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
+
+                if hsp.find("Hsp_bit-score").text != top_bitscore:
+                    break
+                # end if
+
+                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
+                hit_def = hit.find("Hit_def").text
+
+                curr_acc = intern(hit.find("Hit_accession").text)
+                hit_accs.append( curr_acc ) # get hit accession
+                gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
+                hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
+
+                # Get lineage
+                try:
+                    lineages.append(get_lineage(hit_gi, hit_def, hit_accs[len(hit_accs)-1]).split(';'))
+                except OSError as oserr:
+                    print(err_fmt(str(oserr)))
+                    platf_depend_exit(1)
+                # end try
+
+                # Update accession dictionary
+                try:
+                    new_acc_dict[curr_acc][2] += 1
+                except KeyError:
+                    new_acc_dict[curr_acc] = [hit_gi, hit_def, 1]
+                # end try
+
+                align_len = hsp.find("Hsp_align-len").text.strip()
+                pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
+                gaps = hsp.find("Hsp_gaps").text # get number of gaps
+
+                evalue = hsp.find("Hsp_evalue").text # get e-value
+                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
+                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
+            # end for
+
+            # Finc LCA:
+            lineage = list()
+
+            for i in range(len(lineages[0])):
+                if len(set(map(lambda t: t[i], lineages))) == 1:
+                    lineage.append(lineages[0][i]) 
+                else:
+                    break
+                # end if
+            # end for
+
+            if len(lineage) != 0:
+                # Divide taxonomic names with semicolon
+                lineage = ';'.join(lineage)
+                printl("""\n '{}' -- '{}';
+    Query length - {} nt;
+    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
+                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
+                # Append new tsv line containing recently collected information
+                result_tsv_lines.append( DELIM.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
+                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
+            else:
+                # If hits are from different domains (i.e. Bacteria, Archaea, Eukaryota) -- no let it be unknown
+                printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+                result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
+                    "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
+            # end if
         # end if
         println(qual_info_to_print)
     # end for
@@ -1573,7 +1714,7 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
     global acc_dict
     global new_acc_dict
     global blast_algorithm
-    acc_file_path = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm))
+    acc_file_path = os.path.join(outdir_path, "hits_to_download.tsv")
 
     with open(acc_file_path, 'w') as acc_file:
         acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
@@ -1747,15 +1888,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
-        # saved_npack = None # number of last sent packet (there is no such stuff for de novo run)
-        tsv_res_path = "{}_{}_result.tsv".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm) # form result tsv file path
+        tsv_res_path = "{}.tsv".format(os.path.join(new_dpath,
+            "classification")) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             fasta_hname), blast_algorithm) # form temporary file path
-        acc_fpath = os.path.join(outdir_path, "{}_probe_acc_list.tsv".format(blast_algorithm)) # form path to accession file
+        acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv") # form path to accession file
+        saved_RID = None
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
-        # saved_npack = previous_data["sv_npck"] # get number of last sent packet
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
@@ -1793,10 +1933,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             break
         # end if
 
-        printl("\nGo to BLAST (" + blast_algorithm + ")!")
-        printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
-            packs_at_all, len(packet["names"])))
-
         send = True
 
         # If current packet has been already send, we can try to get it and not to send it again
@@ -1821,6 +1957,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         # end if
 
         if send:
+
+            printl("\nGo to BLAST (" + blast_algorithm + ")!")
+            printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
+                packs_at_all, len(packet["names"])))
 
             align_xml_text = None
             while align_xml_text is None: # untill successfull attempt
@@ -1855,9 +1995,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
         # end if
         pack_to_send += 1
+        remove_tmp_files(tmp_fpath)
 
         if seqs_processed >= probing_batch_size:
-            remove_tmp_files(tmp_fpath)
             stop = True
             break
         # end if
@@ -1867,6 +2007,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         break
     # end if
 # end for
+
+if os.path.exists(indsxml_path):
+    os.unlink(indsxml_path)
+# end if
 
 def get_undr_sep_number(number):
     undr_sep_num = str(number)
@@ -1891,7 +2035,7 @@ printl("They are sorted by their occurence in probing batch:")
 #   [2] -- get 3-rd element (occurence)
 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
     s_letter = "s" if other_info[2] > 1 else ""
-    printl(" {} sequence{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
+    printl(" {} hit{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
         s_letter, acc, other_info[1]))
 # end for
 
@@ -1899,7 +2043,7 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
 unkn_num = glob_seqs_processed - sum( map(lambda x: x[2], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
-    printl(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
+    printl(" {} hit{} - No significant similarity found".format(unkn_num, s_letter))
 # end if
 
 printl("""\nThey are saved in following file:
