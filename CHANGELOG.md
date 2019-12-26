@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2019-12-26 edition.
+
+- prober, barapost: lineage downloading optimized;
+
+### Version changes:
+
+1. prober: `1.14.a --> 1.14.b`;
+2. barapost: `3.7.a --> 3.7.b`;
+
+
 ## 2019-12-22 edition. Classification algorithm modified
 
 - Full lineages are now used for classification instead of just hit definitions;

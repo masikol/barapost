@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.14.a"
+__version__ = "1.14.b"
 # Year, month, day
-__last_update_date__ = "2019-12-22"
+__last_update_date__ = "2019-12-26"
 
 # |===== Check python interpreter version =====|
 
@@ -329,6 +329,9 @@ from urllib.error import HTTPError
 import urllib.parse
 import socket
 import shelve
+
+import multiprocessing as mp
+import threading
 
 # |===== Functionality for proper processing of gzipped files =====|
 
@@ -1402,6 +1405,38 @@ def save_txt_align_result(server, filename, pack_to_send, rid):
 # end def save_txt_align_result
 
 
+def waiter(path):
+
+    while not os.path.exists(path):
+        sleep(0.1)
+    # end while
+
+    lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+
+    while re_search(lin_regex, open(path).read()) is None:
+        sleep(0.1)
+    # end while
+# end def waiter
+
+
+def downloader(retrieve_url, indsxml_path):
+    error = True
+    while error:
+        try:
+            urllib.request.urlretrieve(retrieve_url, indsxml_path)
+        except OSError:
+            print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
+            if os.path.exists(indsxml_path):
+                os.unlink(indsxml_path)
+            # end if
+            sleep(30)
+        else:
+            error = False
+        # end try
+    # end while
+# end def downloader
+
+
 def get_lineage(gi, hit_def, hit_acc):
     """
     Function retrieves lineage of a hit from NCBI.
@@ -1425,20 +1460,14 @@ def get_lineage(gi, hit_def, hit_acc):
 
         retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
 
-        error = True
-        while error:
-            try:
-                urllib.request.urlretrieve(retrieve_url, indsxml_path)
-            except OSError:
-                print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
-                if os.path.exists(indsxml_path):
-                    os.unlink(indsxml_path)
-                # end if
-                sleep(30)
-            else:
-                error = False
-            # end try
-        # end while
+        waiter_thread = threading.Thread(target=waiter, args=(indsxml_path,))
+        downloader_proc = mp.Process(target=downloader, args=(retrieve_url, indsxml_path))
+
+        waiter_thread.start()
+        downloader_proc.start()
+        waiter_thread.join()
+        downloader_proc.terminate()
+        downloader_proc.join()
 
         # Get downloaded text:
         text = open(indsxml_path, 'r').read()
@@ -1661,7 +1690,7 @@ def parse_align_results_xml(xml_text, seq_names):
             if len(lineage) != 0:
                 # Divide taxonomic names with semicolon
                 lineage = ';'.join(lineage)
-                printl("""\n '{}' -- '{}';
+                printl("""\n{} - {}
     Query length - {} nt;
     Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))

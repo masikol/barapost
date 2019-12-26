@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.a"
+__version__ = "3.7.b"
 # Year, month, day
-__last_update_date__ = "2019-12-22"
+__last_update_date__ = "2019-12-26"
 
 # |===== Check python interpreter version =====|
 
@@ -1086,6 +1086,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
             download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
         # end if
     # end for
+    exit(0)
 
     # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
@@ -1405,27 +1406,53 @@ def download_lineage(gi, hit_def, acc):
     else:
         retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
 
-        error = True
-        while error:
-            try:
-                urllib.request.urlretrieve(retrieve_url, indsxml_path)
-            except OSError:
-                print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
-                if os.path.exists(indsxml_path):
-                    os.unlink(indsxml_path)
-                # end if
-                sleep(30)
-            else:
-                error = False
-            # end try
-        # end while
+        def waiter(path):
+
+            while not os.path.exists(path):
+                sleep(0.1)
+            # end while
+
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+
+            while re_search(lin_regex, open(path).read()) is None:
+                sleep(0.1)
+            # end while
+        # end def waiter
+
+        def downloader(retrieve_url, indsxml_path):
+            error = True
+            while error:
+                try:
+                    urllib.request.urlretrieve(retrieve_url, indsxml_path)
+                except OSError:
+                    print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
+                    if os.path.exists(indsxml_path):
+                        os.unlink(indsxml_path)
+                    # end if
+                    sleep(30)
+                else:
+                    error = False
+                # end try
+            # end while
+        # end def downloader
+
+        waiter_thread = Thread(target=waiter, args=(indsxml_path,))
+        downloader_proc = mp.Process(target=downloader, args=(retrieve_url, indsxml_path))
+
+        waiter_thread.start()
+        downloader_proc.start()
+        waiter_thread.join()
+        downloader_proc.terminate()
+        downloader_proc.join()
 
         # Get downloaded text:
         text = open(indsxml_path, 'r').read()
 
         try:
+
             # Find genus name and species name:
             org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
+
             org_name = re_search(org_name_regex, text).group(1)
 
             # Get species name:
