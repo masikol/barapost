@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.14.b"
+__version__ = "1.14.c"
 # Year, month, day
-__last_update_date__ = "2019-12-26"
+__last_update_date__ = "2019-12-27"
 
 # |===== Check python interpreter version =====|
 
@@ -1453,7 +1453,9 @@ def get_lineage(gi, hit_def, hit_acc):
     """
 
     # Get all accessions in taxonomy file:
-    tax_acc_exist = shelve.open(taxonomy_path, 'c').keys()
+    with shelve.open(taxonomy_path, 'c') as tax_file:
+        tax_acc_exist = tuple(tax_file.keys())
+    # end with
 
     # If we've got a new accession -- download lineage
     if not hit_acc in tax_acc_exist:

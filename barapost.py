@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.b"
+__version__ = "3.7.c"
 # Year, month, day
-__last_update_date__ = "2019-12-26"
+__last_update_date__ = "2019-12-27"
 
 # |===== Check python interpreter version =====|
 
@@ -1077,7 +1077,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end if
 
     if not os.path.exists(taxonomy_path):
-        shelve.open(taxonomy_path, 'с')
+        shelve.open(taxonomy_path, 'c')
     # end if
     tax_exist_accs = shelve.open(taxonomy_path, 'r').keys()
 
@@ -1086,7 +1086,6 @@ Enter 'r' to remove all files in this directory and build the database from the 
             download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
         # end if
     # end for
-    exit(0)
 
     # Get list of GI numbers. Function 'get_gi_by_acc' will print the list of GIs to console.
     gi_list = list( map(get_gi_by_acc, acc_dict.keys()) )
@@ -1489,6 +1488,10 @@ def download_lineage(gi, hit_def, acc):
 
         # Write lineage to taxonomy file
         tax_file[acc] = lineage
+    # end if
+
+    if os.path.exists(indsxml_path):
+        os.unlink(indsxml_path)
     # end if
     return lineage
 # end def download_lineage
