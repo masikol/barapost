@@ -1397,7 +1397,7 @@ def download_lineage(gi, hit_def, acc):
     """
 
     # Get all accessions in taxonomy file:
-    tax_file = shelve.open(taxonomy_path, 'r')
+    tax_file = shelve.open(taxonomy_path, 'c')
 
     # If we've got a new accession -- download lineage
     if not re_search(own_seq_regex, acc) is None:

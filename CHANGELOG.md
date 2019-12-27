@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2019-12-26 evening edition.
+
+- barapost: shelve open mode bug fixed;
+
+### Version changes:
+
+2. barapost: `3.7.b --> 3.7.c`;
+
+
 ## 2019-12-26 edition.
 
 - prober, barapost: lineage downloading optimized;
