@@ -1509,7 +1509,8 @@ def get_lineage(gi, hit_def, hit_acc):
             hit_def = hit_def.replace(" complete genome", "") # sometimes there are no comma before it
             hit_def = hit_def.replace(' ', '_')
 
-            shelve.open(taxonomy_path, 'c')[hit_acc] = hit_def
+            with shelve.open(taxonomy_path, 'c') as tax_file:
+                tax_file[hit_acc] = hit_def
             lineage = hit_def
         # end try
 

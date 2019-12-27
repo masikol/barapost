@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.c"
+__version__ = "3.7d"
 # Year, month, day
 __last_update_date__ = "2019-12-27"
 
@@ -1077,7 +1077,9 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end if
 
     if not os.path.exists(taxonomy_path):
-        shelve.open(taxonomy_path, 'c')
+        with shelve.open(taxonomy_path, 'c'): # just create
+            pass
+        # end with
     # end if
     tax_exist_accs = shelve.open(taxonomy_path, 'r').keys()
 
@@ -1173,7 +1175,9 @@ Enter 'r' to remove all files in this directory and build the database from the 
                                 own_seq_counter += 1
                                 own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                                 own_def = "(_{}_)_" + line[1:]
-                                shelve.open(taxonomy_path, 'c')[own_acc] = own_def
+                                with shelve.open(taxonomy_path, 'c') as tax_file:
+                                    tax_file[own_acc] = own_def
+                                # end with
                                 line = ">" + "{} {}".format(own_acc, own_def)
                             # end if
                             fasta_db.write(line + '\n')
@@ -1200,7 +1204,9 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     if line.startswith('>'):
                         own_seq_counter += 1
                         own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                        shelve.open(taxonomy_path, 'c')[own_acc] = line[1:]
+                        with shelve.open(taxonomy_path, 'c') as tax_file:
+                            tax_file[own_acc] = line[1:]
+                        # end fith
                         line = ">" + own_acc + ' ' + line[1:]
                     # end if
                     
@@ -1506,7 +1512,9 @@ def get_lineage(hit_acc):
     """
 
     try:
-        lineage = shelve.open(taxonomy_path, 'r')[hit_acc]
+        with shelve.open(taxonomy_path, 'r') as tax_file:
+            lineage = tax_file[hit_acc]
+        # end with
     except KeyError:
         print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
         print("Please, contact the developer.")

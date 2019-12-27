@@ -2,12 +2,20 @@
 
 ## 2019-12-26 evening edition.
 
+- prober, barapost: shelve open-keys bugs fixed;
+
+### Version changes:
+
+1. prober: `1.14.b --> 1.14.c`;
+2. barapost: `3.7.b --> 3.7.c`;
+
+## 2019-12-26 evening edition.
+
 - barapost: shelve open mode bug fixed;
 
 ### Version changes:
 
-2. barapost: `3.7.b --> 3.7.c`;
-
+1. barapost: `3.7.b --> 3.7.c`;
 
 ## 2019-12-26 edition.
 
