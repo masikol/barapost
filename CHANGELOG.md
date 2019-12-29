@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2019-12-29 edition.
+
+- barapost, sorter: task distributing among processes improved;
+
+### Version changes:
+
+1. barapost: `3.7.d --> 3.7.e`;
+2. sorter: `4.1.a --> 4.1.b`
+
 ## 2019-12-26 evening edition.
 
 - prober, barapost: shelve open-keys bugs fixed;

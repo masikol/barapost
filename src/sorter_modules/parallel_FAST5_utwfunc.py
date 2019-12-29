@@ -105,119 +105,121 @@ def init_paral_utw(write_lock_buff, inc_val_buff, inc_val_lock_buff):
 # }
 
 
-def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
+def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
     """
     Function perform mapping of all reads stored in input FAST5 files
         to existing TSV files containing taxonomic annotation info.
 
     It creates an DBM index file.
     
-    :param f5_path: path to current FAST5 file;
-    :type f5_path: str;
+    :param f5_fpaths: list of paths to current FAST5 file;
+    :type f5_fpaths: list<str>;
     :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
     :type tsv_taxann_lst: list<str>;
     """
 
     index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
 
-    # File validation:
-    #   RuntimeError will be raised if FAST5 file is broken.
-    try:
-        # File existance checking is performed while parsing CL arguments.
-        # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
-        if not h5py.is_hdf5(f5_path):
-            raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
-        # end if
-
-        f5_file = h5py.File(f5_path, 'r')
-
-        for _ in f5_file:
-            break
-        # end for
-    except RuntimeError as runterr:
-        printl(err_fmt("FAST5 file is broken"))
-        printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
-        printl("Reason: {}".format( str(runterr) ))
-        printl("Omitting this file...\n")
-        return
-    # end try
-
-    readids_to_seek = list(fast5_readids(f5_file))
-    idx_dict = dict() # dictionary for index
-
-    # This saving is needed to compare with 'len(readids_to_seek)'
-    #    after all TSV will be looked through in order to
-    #    determine if some reads miss taxonomic annotation.
-    len_before = len(readids_to_seek)
-
-    # Iterate over TSV-taaxnn file
-    for tsv_taxann_fpath in tsv_taxann_lst:
-
-        with open(tsv_taxann_fpath, 'r') as taxann_file:
-
-            # Get all read IDs in current TSV
-            readids_in_tsv = list( map(lambda l: l.split('\t')[0], taxann_file.readlines()) )
-
-            # Iterate over all other reads in current FAST5
-            #    ('reversed' is necessary because we remove items from list in this loop)
-            for readid in reversed(readids_to_seek):
-                if fmt_read_id(readid) in readids_in_tsv:
-                    # If not first -- write data to dict (and to index later)
-                    try:
-                        idx_dict[tsv_taxann_fpath].append(readid) # append to existing list
-                    except KeyError:
-                        idx_dict[tsv_taxann_fpath] = [readid] # create a new list
-                    finally:
-                        readids_to_seek.remove(readid)
-                    # end try
-                # end if
-            # end for
-        # end with
-        if len(readids_to_seek) == 0:
-            break
-        # end if
-    # end for
-
-    # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
-    #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
-    if len(readids_to_seek) == len_before:
-        printl(err_fmt("reads from FAST5 file not found"))
-        printl("FAST5 file: '{}'".format(f5_path))
-        printl("Some reads reads have not undergone taxonomic annotation.")
-        missing_log = "missing_reads_lst.txt"
-        printl("List of missing reads are in following file:\n  '{}'\n".format(missing_log))
-        with open(missing_log, 'w') as missing_logfile:
-            missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
-            for readid in readids_to_seek:
-                missing_logfile.write(fmt_read_id(readid) + '\n')
-            # end for
+    for f5_path in f5_fpaths:
+        # File validation:
+        #   RuntimeError will be raised if FAST5 file is broken.
         try:
-            for path in glob( os.path.join(index_dirpath, '*') ):
-                os.unlink(path)
+            # File existance checking is performed while parsing CL arguments.
+            # Therefore, this if-statement will trigger only if f5_path's file is not a valid HDF5 file.
+            if not h5py.is_hdf5(f5_path):
+                raise RuntimeError("file is not of HDF5 (i.e. not FAST5) format")
+            # end if
+
+            f5_file = h5py.File(f5_path, 'r')
+
+            for _ in f5_file:
+                break
             # end for
-            os.rmdir(index_dirpath)
-        except OSError as oserr:
-            printl("error while removing index directory: {}".format(oserr))
-        finally:
-            platf_depend_exit(3)
+        except RuntimeError as runterr:
+            printl(err_fmt("FAST5 file is broken"))
+            printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+            printl("Reason: {}".format( str(runterr) ))
+            printl("Omitting this file...\n")
+            return
         # end try
-    else:
-        with inc_val_lock:
-            inc_val.value += 1
-        # end with
-    # end if
 
-    with write_lock:
-        try:
-            # Open index files appending to existing data ('c' parameter)
-            with open_shelve( os.path.join(index_dirpath, index_name), 'c' ) as index_f5_2_tsv:
-                # Update index
-                index_f5_2_tsv[f5_path] = idx_dict
+        readids_to_seek = list(fast5_readids(f5_file))
+        idx_dict = dict() # dictionary for index
+
+        # This saving is needed to compare with 'len(readids_to_seek)'
+        #    after all TSV will be looked through in order to
+        #    determine if some reads miss taxonomic annotation.
+        len_before = len(readids_to_seek)
+
+        # Iterate over TSV-taaxnn file
+        for tsv_taxann_fpath in tsv_taxann_lst:
+
+            with open(tsv_taxann_fpath, 'r') as taxann_file:
+
+                # Get all read IDs in current TSV
+                readids_in_tsv = list( map(lambda l: l.split('\t')[0], taxann_file.readlines()) )
+
+                # Iterate over all other reads in current FAST5
+                #    ('reversed' is necessary because we remove items from list in this loop)
+                for readid in reversed(readids_to_seek):
+                    if fmt_read_id(readid) in readids_in_tsv:
+                        # If not first -- write data to dict (and to index later)
+                        try:
+                            idx_dict[tsv_taxann_fpath].append(readid) # append to existing list
+                        except KeyError:
+                            idx_dict[tsv_taxann_fpath] = [readid] # create a new list
+                        finally:
+                            readids_to_seek.remove(readid)
+                        # end try
+                    # end if
+                # end for
             # end with
-        except OSError as oserr:
-            printl(err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
-            printl( str(oserr) )
-            platf_depend_exit(1)
-        # end try
-    # end with
+            if len(readids_to_seek) == 0:
+                break
+            # end if
+        # end for
+
+        # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
+        #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
+        if len(readids_to_seek) == len_before:
+            printl(err_fmt("reads from FAST5 file not found"))
+            printl("FAST5 file: '{}'".format(f5_path))
+            printl("Some reads reads have not undergone taxonomic annotation.")
+            missing_log = "missing_reads_lst.txt"
+            printl("List of missing reads are in following file:\n  '{}'\n".format(missing_log))
+            with open(missing_log, 'w') as missing_logfile:
+                missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
+                for readid in readids_to_seek:
+                    missing_logfile.write(fmt_read_id(readid) + '\n')
+                # end for
+            try:
+                for path in glob( os.path.join(index_dirpath, '*') ):
+                    os.unlink(path)
+                # end for
+                os.rmdir(index_dirpath)
+            except OSError as oserr:
+                printl("error while removing index directory: {}".format(oserr))
+            finally:
+                platf_depend_exit(3)
+            # end try
+        else:
+            with inc_val_lock:
+                inc_val.value += 1
+            # end with
+        # end if
+
+        with write_lock:
+            try:
+                # Open index files appending to existing data ('c' parameter)
+                with open_shelve( os.path.join(index_dirpath, index_name), 'c' ) as index_f5_2_tsv:
+                    # Update index
+                    index_f5_2_tsv[f5_path] = idx_dict
+                # end with
+            except OSError as oserr:
+                printl(err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
+                printl( str(oserr) )
+                platf_depend_exit(1)
+            # end try
+        # end with
+    # end for
 # end def map_f5reads_2_taxann

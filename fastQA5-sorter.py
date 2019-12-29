@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.1.a"
+__version__ = "4.1.b"
 # Year, month, day
-__last_update_date__ = "2019-12-22"
+__last_update_date__ = "2019-12-29"
 
 # |===== Check python interpreter version =====|
 
@@ -787,6 +787,29 @@ Please, remove extra files and leave only one, which contains actual taxononic a
 # end def get_tsv_taxann_lst
 
 
+def spread_files_equally(fq_fa_list, n_thr):
+    """
+    Function distributes files among processes equally.
+    :param fq_fa_list: list of paths to files meant to be processed:
+    :type fq_fa_list: list<str>;
+    :param n_thr: number of therads to launch;
+    :type n_thr: int;
+    """
+
+    glst = [list() for _ in range(n_thr)]
+
+    for i, fpath in enumerate(fq_fa_list):
+        glst[i % n_thr].append(fpath)
+    # end for
+
+    for sublist in glst:
+        yield sublist
+    # end for
+
+# end def spread_files_equally
+
+
+
 # |===== Proceed =====|
 
 printl('-' * 30)
@@ -841,7 +864,7 @@ if untwist_fast5 and not use_old_index:
         else:
             pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,
                 initargs=(mp.Lock(), inc_val, mp.Lock()))
-            pool.starmap(utw_module.map_f5reads_2_taxann, [(sublist, tsv_taxann_lst,) for sublist in fast5_list])
+            pool.starmap(utw_module.map_f5reads_2_taxann, [(sublist, tsv_taxann_lst,) for sublist in spread_files_equally(fast5_list, n_thr)])
             pool.close()
             pool.join()
         # end if
@@ -935,7 +958,7 @@ if n_thr != 1:
                 pool = mp.Pool(n_thr, initializer=QA_srt_module.init_paral_sorting,
                     initargs=(write_lock, inc_val, inc_val_lock))
                 res_stats = pool.starmap(partial(kernel, srt_func=str_func),
-                    [(sublist,) for sublist in fpath_list])
+                    [(sublist,) for sublist in spread_files_equally(fpath_list, n_thr)])
                 pool.close()
                 pool.join()
             # end if

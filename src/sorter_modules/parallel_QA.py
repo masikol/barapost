@@ -106,96 +106,100 @@ def init_paral_sorting(write_lock_buff, inc_val_buff, inc_val_lock_buff):
 # end def init_paral_sorting
 
 
-def sort_fastqa_file(fq_fa_path):
+def sort_fastqa_file(fq_fa_lst):
     """
     Function for parallel sorting FASTQ and FASTA files.
+    Actually sorts multiple files.
 
-    :param fq_fa_path: path to FASTQ (of FASTA) file meant to be processed;
-    :type fq_fa_path: str;
+    :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
+    :type fq_fa_lst: list<str>;
     """
 
     seqs_pass = 0
     seqs_fail = 0
 
-    new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
-    tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-    resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
+    for fq_fa_path in fq_fa_lst:
 
-    # Configure path to trash file
-    if is_fastq(fq_fa_path):
-        seq_records_generator = fastq_records
-        write_fun =  write_fastq_record
-        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_ph33_qual),
-            minlen_fmt_str))
-    else:
-        seq_records_generator = fasta_records
-        write_fun = write_fasta_record
-        trash_fpath = os.path.join(outdir_path, "len_less_{}.fasta".format(min_qlen))
-    # end if
+        new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
+        tsv_res_fpath = get_res_tsv_fpath(new_dpath)
+        resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
 
-    # Create an iterator that will yield records
-    seq_records_iterator = iter(seq_records_generator(fq_fa_path))
-    # Dict for storing batches of sequences meant to be written to output files:
-    to_write = dict()
-    stop = False # for outer while-loop
+        # Configure path to trash file
+        if is_fastq(fq_fa_path):
+            seq_records_generator = fastq_records
+            write_fun =  write_fastq_record
+            trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_ph33_qual),
+                minlen_fmt_str))
+        else:
+            seq_records_generator = fasta_records
+            write_fun = write_fasta_record
+            trash_fpath = os.path.join(outdir_path, "len_less_{}.fasta".format(min_qlen))
+        # end if
 
-    while not stop:
+        # Create an iterator that will yield records
+        seq_records_iterator = iter(seq_records_generator(fq_fa_path))
+        # Dict for storing batches of sequences meant to be written to output files:
+        to_write = dict()
+        stop = False # for outer while-loop
 
-        # Extract batch of records of 'n_thr' size and find their destination paths:
-        for _ in range(n_thr):
+        while not stop:
 
-            try:
-                fastqa_rec = next(seq_records_iterator)
-            except StopIteration:
-                stop = True # for outer while-loop
-                break
-            # end try
+            # Extract batch of records of 'n_thr' size and find their destination paths:
+            for _ in range(n_thr):
 
-            read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])) # get ID of the sequence
+                try:
+                    fastqa_rec = next(seq_records_iterator)
+                except StopIteration:
+                    stop = True # for outer while-loop
+                    break
+                # end try
 
-            try:
-                hit_names, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
-            except KeyError:
-                printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
-This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
-                printl("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
-                platf_depend_exit(1)
-            # end try
+                read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])) # get ID of the sequence
 
-            # If read is found in TSV file:
-            q_len = SeqLength(q_len)
-            if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
-                # Place this sequence to trash file
-                to_write[read_name] = (fastqa_rec, trash_fpath)
-                seqs_fail += 1
-            else:
-                for hit_name in hit_names.split("&&"):
-                    # Get name of result FASTQ file to write this read in
-                    sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
-                        'q' if is_fastq(fq_fa_path) else 'a'))
-                    to_write[read_name] = (fastqa_rec, sorted_file_path)
+                try:
+                    hit_names, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
+                except KeyError:
+                    printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
+    This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
+                    printl("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
+                    platf_depend_exit(1)
+                # end try
+
+                # If read is found in TSV file:
+                q_len = SeqLength(q_len)
+                if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
+                    # Place this sequence to trash file
+                    to_write[read_name] = (fastqa_rec, trash_fpath)
+                    seqs_fail += 1
+                else:
+                    for hit_name in hit_names.split("&&"):
+                        # Get name of result FASTQ file to write this read in
+                        sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
+                            'q' if is_fastq(fq_fa_path) else 'a'))
+                        to_write[read_name] = (fastqa_rec, sorted_file_path)
+                    # end for
+                    seqs_pass += 1
+                # end if
+            # end for
+
+            # Write batch of records to output files:
+            with write_lock:
+                for record, fpath in to_write.values():
+                    write_fun(fpath, record)
                 # end for
-                seqs_pass += 1
-            # end if
-        # end for
+            # end with
+            to_write.clear()
+        # end while
 
-        # Write batch of records to output files:
-        with write_lock:
-            for record, fpath in to_write.values():
-                write_fun(fpath, record)
-            # end for
-        # end with
-        to_write.clear()
-    # end while
-
-    # Write the rest of 'uneven' data to output files:
-    if len(to_write) != 0:
-        with write_lock:
-            for record, fpath in to_write.values():
-                write_fun(fpath, record)
-            # end for
-        # end with
-    # end if
+        # Write the rest of 'uneven' data to output files:
+        if len(to_write) != 0:
+            with write_lock:
+                for record, fpath in to_write.values():
+                    write_fun(fpath, record)
+                # end for
+            # end with
+        # end if
+    # end for
 
     return (seqs_pass, seqs_fail)
 # end def sort_fastqa_file
