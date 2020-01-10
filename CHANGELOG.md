@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2020-01-10 edition.
+
+- barapost, prober: fmt_seq_id function fixed;
+- barapost: more secure database index handling;
+
+### Version changes:
+
+1. prober: `1.14.c --> 1.14.d`;
+2. barapost: `3.7.e --> 3.7.f`;
+
 ## 2019-12-29 edition.
 
 - barapost, sorter: task distributing among processes improved;

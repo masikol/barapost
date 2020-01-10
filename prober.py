@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.14.c"
+__version__ = "1.14.d"
 # Year, month, day
-__last_update_date__ = "2019-12-27"
+__last_update_date__ = "2020-01-10"
 
 # |===== Check python interpreter version =====|
 
@@ -594,17 +594,24 @@ def get_read_avg_qual(qual_str):
 
 
 def configure_qual_dict(fastq_path):
+    """
+    Fucntion coufigures quality dictionary:
+        keys are sequence IDs, values are their average Phred33 qualities.
+
+    :param fastq_path: path to FASTQ file meant to be processed;
+    :type fastq_path: str;
+    """
 
     qual_dict = dict()
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq_path) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq_path) ]
 
     with how_to_open(fastq_path) as fastq_file:
-        counter = 1
+        counter = 1 # variable for counting lines
         line = fmt_func(fastq_file.readline())
         while line != "":
             if counter == 1:
-                seq_id = intern( fmt_read_id(line).replace('@', '') )
+                seq_id = intern( fmt_read_id(line)[1:] )
             # end if
             
             counter += 1
@@ -900,7 +907,7 @@ def fmt_read_id(read_id):
 
     srch_ont_read = re_search(ont_read_signature, read_id)
     if srch_ont_read is None:
-        return read_id.partition(' ')[0]
+        return '>' + read_id.partition(' ')[0][1:]
     else:
         return '>' + srch_ont_read.group(1)
 # end def fmt_read_id
@@ -1610,7 +1617,7 @@ def parse_align_results_xml(xml_text, seq_names):
         query_len = iter_elem.find("Iteration_query-len").text
 
         if not qual_dict is None:
-            ph33_qual = qual_dict['>' + query_name]
+            ph33_qual = qual_dict[query_name]
             miscall_prop = round(10**(ph33_qual/-10), 3)
             accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
             qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.e"
+__version__ = "3.7.f"
 # Year, month, day
-__last_update_date__ = "2019-12-29"
+__last_update_date__ = "2020-01-10"
 
 # |===== Check python interpreter version =====|
 
@@ -41,7 +41,7 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
     print("\n  barapost.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
     print("""This script is designed for taxonomic annotation of nucleotide sequences by "BLASTing"
-  each of them with 'blastn' script from "BLAST+" toolkit and regarding the best hit.\n""")
+  each of them with 'blastn' program from "BLAST+" toolkit and regarding the best hit.\n""")
     print("\"barapost.py\" is meant to be used just after 'prober.py'.\n")
 
     if "--help" in argv[1:]:
@@ -384,7 +384,6 @@ else:
 del db_exists
 
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
-from shutil import get_terminal_size
 from gzip import open as open_as_gzip # input files might be gzipped
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from sys import intern
@@ -703,7 +702,7 @@ def fmt_read_id(read_id):
 
     srch_ont_read = re_search(ont_read_signature, read_id)
     if srch_ont_read is None:
-        return read_id.partition(' ')[0]
+        return '>' + read_id.partition(' ')[0][1:]
     else:
         return '>' + srch_ont_read.group(1)
 # end def fmt_read_id
@@ -1289,7 +1288,7 @@ def launch_blastn(packet, blast_algorithm):
         blast_algorithm = "dc-megablast"
     # end if
 
-    if blast_algorithm != "dc-megablast":
+    if blast_algorithm != "dc-megablast" and len(glob(os.path.join(tax_annot_res_dir, "local_database", "*idx"))) != 0:
         use_index = "true"
     else:
         use_index = "false"
@@ -1305,8 +1304,6 @@ def launch_blastn(packet, blast_algorithm):
     # end with
 
     # Configure command line
-    # blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 1 -use_index {}".format(query_path,
-    #     local_fasta, blast_algorithm, use_index)
     blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -use_index {}".format(query_path,
         local_fasta, blast_algorithm, use_index)
 
@@ -1370,7 +1367,7 @@ def configure_qual_dict(fastq_path):
         line = fmt_func(fastq_file.readline())
         while line != "":
             if counter == 1:
-                seq_id = intern( fmt_read_id(line).replace('>', '') )
+                seq_id = intern( fmt_read_id(line)[1:] )
             # end if
             
             counter += 1
@@ -1630,6 +1627,7 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
 
                 curr_acc = intern(hit.find("Hit_accession").text) # get hit accession
                 hit_accs.append( curr_acc )
+
                 lineages.append(get_lineage(curr_acc))
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
@@ -2140,6 +2138,13 @@ acc_dict = configure_acc_dict(acc_fpath)
 
 # Build a database
 local_fasta = build_local_db(acc_dict, tax_annot_res_dir)
+if not os.path.exists(local_fasta) and len(glob(os.path.join(tax_annot_res_dir, "local_database", "*.fasta*"))) != 0:
+    local_fasta = glob(os.path.join(tax_annot_res_dir, "local_database", "*.fasta*"))[0]
+    local_fasta = "".join(local_fasta.partition(".fasta")[0:2])
+else:
+    print(err_fmt("database menaging error"))
+    platf_depend_exit(1)
+# end if
 
 # Create temporary directory for query files:
 queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
