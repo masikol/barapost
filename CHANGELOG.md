@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-01-13 edition.
+
+- prober: 'blastsrv4.REAL'-error handling on resumption fixed;
+
+### Version changes:
+
+1. prober: `1.14.d --> 1.14.e`;
+
 ## 2020-01-10 edition.
 
 - barapost, prober: fmt_seq_id function fixed;

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.14.d"
+__version__ = "1.14.e"
 # Year, month, day
-__last_update_date__ = "2020-01-10"
+__last_update_date__ = "2020-01-13"
 
 # |===== Check python interpreter version =====|
 
@@ -558,10 +558,10 @@ def ask_for_resumption():
     while resume is None:
         resume = input("""
 Would you like to resume the previous run?
-    1. Resume!
-    2. Start from the beginning.
+   1 -- Resume!
+   2 -- Start from the beginning.
 
-Enter the number (1 or 2):>> """)
+Enter a number (1 or 2):>> """)
         # Check if entered value is integer number. If no, give another attempt.
         try:
             resume = int(resume)
@@ -570,10 +570,11 @@ Enter the number (1 or 2):>> """)
                 print("\n   Not a VALID number entered!\a\n" + '~'*20)
                 resume = None
             else:
-                print("You have chosen number " + str(resume) + '\n')
+                action = "resume the previous run" if resume == 1 else "start from the beginning"
+                printl("You have chosen to {}.\n".format(action))
             # end if
         except ValueError:
-            print("\nNot an integer NUMBER entered!\a\n" + '~'*20)
+            print("\nNot an integer number entered!\a\n" + '~'*20)
             resume = None
         # end try
 
@@ -1398,8 +1399,6 @@ def prune_seqs(packet, mode, value):
 
 def save_txt_align_result(server, filename, pack_to_send, rid):
 
-    global outdir_path
-
     retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
     respond_text = lingering_https_get_request(server, retrieve_text_url)
 
@@ -1966,32 +1965,30 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # Iterate over packets left to send
     for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):
 
-        # Just in case:
         if packet["fasta"] == "":
             printl("All sequences in recent file have been already processed.")
             break
         # end if
 
+        # Assumption that we need to send current packet
         send = True
 
-        # If current packet has been already send, we can try to get it and not to send it again
+        # If current packet has been already send, we can try to get it and not to send again
         if not saved_RID is None:
 
             align_xml_text = wait_for_align(saved_RID, contin_rtoe,
                 pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
             saved_RID = None
 
-            # If request is not expired get he result and not send it again
-            if align_xml_text != "expired":
+            if align_xml_text == "expired":
+                # Resend the packet ('send' remains True)
+                pass
+            elif align_xml_text is None:
+                # Halve sequences and resend the packet ('send' remains True)
+                packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
+            else:
+                # OK -- and omit 'if send' statement and write results
                 send = False
-
-                result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["names"]) # get result tsv lines
-
-                seqs_processed += len( packet["names"] )
-
-                # Write the result to tsv
-                write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
             # end if
         # end if
 
@@ -2002,11 +1999,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 packs_at_all, len(packet["names"])))
 
             align_xml_text = None
-            while align_xml_text is None: # untill successfull attempt
+            while align_xml_text is None: # until successfull attempt
 
                 request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
 
-                # Send the request get BLAST XML response
+                # Send the request and get BLAST XML response
                 # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
 
                 align_xml_text = send_request(request,
@@ -2023,16 +2020,16 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                     packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
                 # end if
             # end while
-
-            # Get result tsv lines
-            result_tsv_lines = parse_align_results_xml(align_xml_text,
-                packet["names"])
-
-            seqs_processed += len( packet["names"] )
-
-            # Write the result to tsv
-            write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
         # end if
+
+        # Get result tsv lines
+        result_tsv_lines = parse_align_results_xml(align_xml_text,
+            packet["names"]) # get result tsv lines
+
+        # Write the result to tsv
+        write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
+
+        seqs_processed += len( packet["names"] )
         pack_to_send += 1
         remove_tmp_files(tmp_fpath)
 
@@ -2041,15 +2038,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             break
         # end if
     # end for
-    remove_tmp_files(tmp_fpath)
+    remove_tmp_files(tmp_fpath, indsxml_path)
     if stop:
         break
     # end if
 # end for
 
-if os.path.exists(indsxml_path):
-    os.unlink(indsxml_path)
-# end if
 
 def get_undr_sep_number(number):
     undr_sep_num = str(number)
