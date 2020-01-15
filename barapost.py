@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.f"
+__version__ = "3.7.g"
 # Year, month, day
-__last_update_date__ = "2020-01-10"
+__last_update_date__ = "2020-01-15"
 
 # |===== Check python interpreter version =====|
 
@@ -1510,7 +1510,24 @@ def get_lineage(hit_acc):
 
     try:
         with shelve.open(taxonomy_path, 'r') as tax_file:
-            lineage = tax_file[hit_acc]
+            if hit_acc in tax_file.keys():
+                lineage = tax_file[hit_acc]
+                return lineage
+            else:
+                # 'lcl|ACCESSION...' entries can be given with '.1'
+                #   (or '.2', whatever) terminus by blastn.
+                # There is no '.1' terminus in taxonomy file.
+                # If we prune this terminus, key can hit the annotation.
+                hit_acc_pruned = re_search(r"^(.+)\.[0-9]+$", hit_acc)
+                if not hit_acc_pruned is None:
+                    hit_acc_pruned = hit_acc_pruned.group(1)
+                    if hit_acc_pruned in tax_file.keys():
+                        lineage = tax_file[hit_acc_pruned]
+                        return lineage
+                    # end if
+                # end if
+                raise KeyError
+            # end if
         # end with
     except KeyError:
         print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
@@ -1519,8 +1536,6 @@ def get_lineage(hit_acc):
     except OSError as oserr:
         print(err_fmt(str(oserr)))
         platf_depend_exit(1)
-    else:
-        return lineage
     # end try
 # end def get_lineage
 

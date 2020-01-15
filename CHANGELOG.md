@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-01-15 edition.
+
+- barapost: accessions with '.1' terminus returned by blastn hit taxonomy properly;
+
+### Version changes:
+
+1. barapost: `3.7.f --> 3.7.g`;
+
 ## 2020-01-13 edition.
 
 - prober: 'blastsrv4.REAL'-error handling on resumption fixed;
