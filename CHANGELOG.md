@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-01-26 edition.
+
+- barapost: shelve's "Service temporarily unavailable" bug fixed;
+
+### Version changes:
+
+1. barapost: `3.7.g --> 3.7.e`;
+
 ## 2020-01-15 edition.
 
 - barapost: accessions with '.1' terminus returned by blastn hit taxonomy properly;
