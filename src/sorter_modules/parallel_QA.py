@@ -69,30 +69,6 @@ def write_fasta_record(sorted_path, fasta_record):
 # end def write_fasta_record
 
 
-def spread_files_equally(fq_fa_list, n_thr):
-    """
-    Function distributes files among processes equally.
-
-    :param fq_fa_list: list of paths to files meant to be processed:
-    :type fq_fa_list: list<str>;
-    :param n_thr: number of therads to launch;
-    :type n_thr: int;
-    """
-
-    sublist_size = len(fq_fa_list) // n_thr
-
-    # Processes [0, (n_thr-1)] will obtain equally 'sublist_size' files:
-    start_pos = 0
-    for i in range(n_thr - 1):
-        yield fq_fa_list[start_pos : start_pos+sublist_size]
-        start_pos += sublist_size
-    # end for
-
-    # Give the rest of data to the last unlucky process:
-    yield fq_fa_list[start_pos :]
-# end def spread_files_equally
-
-
 def init_paral_sorting(write_lock_buff, inc_val_buff, inc_val_lock_buff):
 
     global write_lock

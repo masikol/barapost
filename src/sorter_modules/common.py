@@ -125,7 +125,7 @@ def get_res_tsv_fpath(new_dpath):
 
     brpst_resfile_patt = r".*classification\.tsv$"
 
-    is_similar_to_tsv_res = lambda f: True if not re_search(brpst_resfile_patt, f) is None else False
+    is_similar_to_tsv_res = lambda f: True if f == "classification.tsv" else False
 
     if not os.path.exists(new_dpath):
         printl(err_fmt("directory '{}' does not exist!".format(new_dpath)))
@@ -231,7 +231,7 @@ def format_taxonomy_name(hit_name, sens):
             # end if
         # end for
 
-        if not ' ' in modif_hit_name:
+        if not ' ' in modif_hit_name and ';' in modif_hit_name:
             # We have lineage
             taxa_splitnames = modif_hit_name.split(';')
             if not re_search(r";[a-z]", modif_hit_name) is None:
@@ -248,7 +248,7 @@ def format_taxonomy_name(hit_name, sens):
                         raise IndexError
                     # end if
                 except IndexError:
-                    bricks.append("unknown")
+                    return "unknown"
                 # end try
             # end if
         else:
@@ -259,6 +259,7 @@ def format_taxonomy_name(hit_name, sens):
             # If structure of hit name is strange
             if re_search(hit_name_patt, modif_hit_name) is None:
                 bricks.append(modif_hit_name.strip().replace(' ', '_'))   # return full name
+                continue
             # end if
 
             taxa_name = modif_hit_name.partition(',')[0]

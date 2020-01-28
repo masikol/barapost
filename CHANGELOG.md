@@ -1,5 +1,19 @@
 # "Barapost" changelog
 
+## 2020-01-28 edition.
+
+- prober, barapost: average read quality is now calculated in a correct manner (by mean error propability);
+- prober, barapost: taxonomy parsing modified;
+- sorter: default `-q` value switched to 15;
+- sorter: parallel progress bar fixed;
+- sorter: correct handling of custom sequence IDs in database;
+
+### Version changes:
+
+1. prober: `1.14.e --> 1.15.a`;
+2. barapost: `3.7.g --> 3.8.a`;
+3. sorter: `4.1.b --> 4.2.a`;
+
 ## 2020-01-26 edition.
 
 - barapost: shelve's "Service temporarily unavailable" bug fixed;

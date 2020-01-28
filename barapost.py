@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.7.e"
+__version__ = "3.8.a"
 # Year, month, day
-__last_update_date__ = "2020-01-26"
+__last_update_date__ = "2020-01-28"
 
 # |===== Check python interpreter version =====|
 
@@ -395,6 +395,8 @@ from urllib.error import HTTPError
 import urllib.parse
 import socket
 import shelve
+
+from math import log
 
 
 # There some troubles with file extention on Windows, so let's make a .txt file for it:
@@ -829,7 +831,7 @@ def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
     packet += line+'\n' # add recently read line
 
     packs_at_all = reads_at_all // packet_size # Calculate total number of packets sent from current FASTA file
-    if reads_at_all % packet_size > 0: # And this is ceiling (in order not to import 'math')
+    if reads_at_all % packet_size > 0: # And this is ceiling
         packs_at_all += 1
     # end if
     packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
@@ -1334,19 +1336,21 @@ def remove_tmp_files(*paths):
 # end def remove_tmp_files
 
 
-get_phred33 = lambda q_symb: ord(q_symb) - 33
+# Function for getting Q value from Phred33 character:
+substr_phred33 = lambda q_symb: ord(q_symb) - 33
+# List of propabilities corresponding to indices (index is Q, is the propability):
+q2p_map = [10 ** (-q/10) for q in range(128)] # 127 -- max value of a signed byte
+# Function for accessing propabilities by Q:
+qual2prop = lambda q: q2p_map[q]
+# Function for accessing Q by propability:
+prop2qual = lambda p: round(-10 * log(p, 10), 2)
 
 def get_read_avg_qual(qual_str):
-    """
-    Function calculates average Phred33 quality of a quality string passed to it.
 
-    :param qual_str: FASTQ quality string;
-    :type qual_str: str;
-    """
-
-    phred33 = map(get_phred33, list(qual_str))
-    read_qual = round( sum(phred33) / len(qual_str), 2 )
-    return read_qual
+    quals = map(substr_phred33, qual_str) # get Qs
+    err_props = map(qual2prop, quals) # convert Qs to propabilities
+    avg_err_prop = sum(err_props) / len(qual_str) # calculate average propability
+    return prop2qual(avg_err_prop)
 # end def get_read_avg_qual
 
 
@@ -1455,32 +1459,56 @@ def download_lineage(gi, hit_def, acc):
 
             # Find genus name and species name:
             org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
-
             org_name = re_search(org_name_regex, text).group(1)
 
             # Get species name:
             spec_name = re_search(r" ([a-z]+(\. [a-zA-Z0-9]+)?)", org_name).group(1)
 
             # Get full lineage
-            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z0-9;\. ]+)</INSDSeq_taxonomy>"
             lineage = re_search(lin_regex, text).group(1).strip('.')
 
-            # Check if species name is in lineage:
-            gen_spec_regex = r"([A-Z][a-z]+ [a-z]+).?$"
-            gen_spec_in_lin = re_search(gen_spec_regex, lineage)
+            # Format of genus-species in lineage can vary.
+            # We need to parse it correctly anyway.
+            if spec_name != "sp": # no species info will be added to lineage for "Pseudarthrobacter sp."
 
-            # All taxonomy names in lineage will be divided by semicolon:
-            if not gen_spec_in_lin is None:
-                repl_str = gen_spec_in_lin.group(1)
-                lineage = lineage.replace(repl_str, spec_name)
-            else:
-                lineage += ";" + spec_name
-            # emd if
+                # Remove "Bacillus cereus group" from lineage
+                for grp_cmplx in (" group", " complex"):
+                    if grp_cmplx in lineage:
+                        lineage = lineage[: lineage.rfind(';')]
+                    # end if
+                # end for
+
+                # Check if genus and species names are in lineage (separated by space):
+                gen_spec_regex = r"(([A-Z][a-z]+) [a-z]+(\. [a-zA-Z0-9]+)?).?$"
+                gen_spec_in_lin = re_search(gen_spec_regex, lineage)
+
+                # If there is genus and species in lineage
+                if not gen_spec_in_lin is None:
+                    genus_name = gen_spec_in_lin.group(2)
+                    genus_count = lineage.count(" " + genus_name) # "...;Bacillus; Bacillus subtilis" are not allowed
+                    if genus_count == 1:
+                        pass # leave genus and species names intact
+                    elif genus_count == 2: # remove odd genus name
+                        lineage = lineage.replace(" " + genus_name + " ", " ")
+                    else:
+                        print(err_fmt("taxonomy parsing error"))
+                        print("Please, contact the developer.")
+                        print("Tell him that 'genus_count' is {}".format(genus_count))
+                        platf_depend_exit(1)
+                    # end if
+                elif not ' ' + spec_name in lineage:
+                    lineage += ";" + spec_name # if there are no species name -- add it
+                # end if
+            # end if
 
             # Remove all spaces:
-            lineage = lineage.replace(' ', '')
+            lineage = lineage.replace("sp. ", "sp._")
+            lineage = lineage.replace("; ", ";")
+            lineage = lineage.replace(" ", ";") # in orger to separate genus and species with semicolon
+
         except AttributeError:
-            # If there is no lineage -- use hit definition instead of it
+            # If there is no correct lineage -- use hit definition instead of it
 
             # Format hit definition (get rid of stuff after comma)
             hit_def = hit_def[: hit_def.find(',')] if ',' in hit_def else hit_def
@@ -1947,7 +1975,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
         # end if
 
         packs_at_all = (curr_fasta["nreads"] - num_done_reads) // packet_size # Calculate total number of packets sent from current FASTA file
-        if (curr_fasta["nreads"] - num_done_reads) % packet_size != 0: # And this is ceiling (in order not to import 'math')
+        if (curr_fasta["nreads"] - num_done_reads) % packet_size != 0: # And this is ceiling
             packs_at_all += 1
         # end if
         packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
