@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.8.a"
+__version__ = "3.9.a"
 # Year, month, day
-__last_update_date__ = "2020-01-28"
+__last_update_date__ = "2020-01-29"
 
 # |===== Check python interpreter version =====|
 
@@ -604,7 +604,7 @@ def rename_file_verbosely(file, pardir):
     # Directory is a file, so let's rename it too.
     if os.path.isdir(file):
         # Count files in 'pardir' that have analogous names as 'file' has:
-        is_analog = lambda f: file in f
+        is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
         word = "directory"
     else:
         # Count files in 'pardir' that have analogous names as 'file' has:
@@ -616,15 +616,24 @@ def rename_file_verbosely(file, pardir):
 
     try:
         printl('\n' + getwt() + " - Renaming old {}:".format(word))
-        if not os.path.isdir(file):
-            name_itself = re_search(r"(.*)\..*$", file).group(1)
-            ext = re_search(r".*\.(.*)$", file).group(1)
-        else:
+        if os.path.isdir(file):
             name_itself = file
             ext = ""
+        else:
+            name_itself = re_search(r"(.*)\..*$", file).group(1)
+            ext = re_search(r".*\.(.*)$", file).group(1)
         # end if
-        num_analog_files = str(num_analog_files)
-        new_name = name_itself+"_old_"+num_analog_files+ext
+        num_analog_files = num_analog_files
+
+        if re_search(r"_old_[0-9]+", file) is None:
+            # Append "_old_<number>"
+            new_name = name_itself + "_old_" + str(num_analog_files) + ext
+        else:
+            # Merely substitute new number
+            new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
+                str(num_analog_files+1))
+        # end if
+
         printl("  '{}' --> '{}'".format(file, new_name))
         os.rename(file, new_name)
     except Exception as err:
@@ -894,22 +903,120 @@ acc_counter = 0
 # It will inspect size of dowbloaded file during downloading
 from threading import Thread, Event
 
+
+def search_for_related_replicons(acc, acc_dict):
+    """
+    Generator finds replicons (other chromosomes or plasmids) that are related to 
+      Genbank record "discodered" by prober.py.
+
+    :param acc: accession of a record "discovered" by prober.py;
+    :type acc: str;
+    :param acc_dict: dictionary {<ACCESSION>: (<GI_NUMBER>, <HIT_DEFINITION>)};
+    :type acc_dict: dict<str: tuple<str>>;
+
+    Yields tuples of a following structure:
+        (<ACCESSION>, <GI_NUMBER>, <RECORD_DEFINITION>)
+    """
+
+    # Get the smallest web page that contains BioSample:
+    summary_url = "https://www.ncbi.nlm.nih.gov/nuccore/{}?report=docsum&log$=seqview".format(acc)
+    summary_html = urllib.request.urlopen(summary_url).read().decode("utf-8")
+    # Get reference to BioSample web page:
+    biosample_regex = r"href=\"/(biosample\?LinkName=nuccore_biosample&amp;from_uid=[0-9]+)"
+    biosample_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(biosample_regex, summary_html).group(1)
+    del summary_html # let it go
+
+    # Get BioSample web page:
+    biosample_html = urllib.request.urlopen(biosample_ref).read().decode("utf-8")
+    # Get reference to list nucleotide links:
+    nucl_regex = r"href=\"/(nuccore\?LinkName=biosample_nuccore&amp;from_uid=[0-9]+)"
+    nucl_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(nucl_regex, biosample_html).group(1)
+    del biosample_html # let it go
+
+    # Get list nucleotide links:
+    nucl_html = urllib.request.urlopen(nucl_ref).read().decode("utf-8")
+
+    num_links = 0 # number of nucleotide links of on this page
+
+    # Count these links:
+    while 'ordinalpos={}">'.format(num_links+1) in nucl_html:
+        num_links += 1
+    # end while
+
+    # Duplicated records (e.g. from RefSeq) should not be allowed.
+    # This is the list of already encountered record definitions]
+    #   (e.g. "Erwinia amylovora strain E-2 plasmid pEa-E-2, complete sequence"):
+    def_list = [ acc_dict[acc][1] ] # "discovered" one is already here
+
+    for ordinalpos in range(1, num_links+1):
+
+        # Get text containing record definition, accession and GI number:
+        payload_regex = r"(ordinalpos={}\"\>.*?GI: \</dt\>\<dd\>[0-9]+)".format(ordinalpos)
+        text = re_search(payload_regex, nucl_html).group(1)
+
+        # Get definition of a record
+        definition = re_search(r"ordinalpos={}\"\>(.+)\</a\>".format(ordinalpos), text).group(1)
+
+        if not definition in def_list:
+
+            def_list.append(definition)
+
+            # Get accession and GI number:
+            rel_acc = re_search(r"Accession: \</dt\>\<dd>(.*?)\.", text).group(1)
+            rel_gi = re_search(r"GI: \</dt\>\<dd\>([0-9]+)", text).group(1)
+
+            acc_dict[rel_acc] = (rel_gi, definition) # update acc_dict
+
+            yield rel_acc, rel_gi, definition
+        # end if
+    # end for
+
+# end def search_for_related_replicons
+
+
 def get_gi_by_acc(acc_dict):
     """
     Function returns GI number that corresponds to accessing passed to it.
     """
 
+    printl("\n{} - Searching for related replicons...".format(getwt()))
+
     gi_list = list()
 
-    for acc in acc_dict:
+    start_accs = tuple(acc_dict.keys())
+
+    for i, acc in enumerate(start_accs):
+        if not acc_dict[acc][0] in gi_list:
+            try:
+                gi_list.append(acc_dict[acc][0])
+            except KeyError:
+                printl(err_fmt("GI number error. Please, contact the developer"))
+                platf_depend_exit(1)
+            # end try
+        # end if
+
+        # Search for related replicons:
         try:
-            gi_list.append(acc_dict[acc][0])
-        except KeyError:
-            printl(err_fmt("GI number error. Please, contact the developer"))
-            platf_depend_exit(1)
+            related_repls = search_for_related_replicons(acc, acc_dict)
+        except AttributeError:
+            print("\nParsing error: cannot find replicons related to {}.".format(acc))
+            print("Please, contact the developer")
+        else:
+            for rel_acc, rel_gi, definition in related_repls:
+                if not rel_gi in gi_list:
+                    gi_list.append(rel_gi)
+                    printl(" {} - {}".format(rel_acc, definition))
+                    # print(gi_list)
+                # end if
+            # end for
         # end try
-    # end for
-    
+
+    if len(start_accs) != len(acc_dict):
+        printl("{} - {} related replicons have been found.".format(getwt(), len(acc_dict) - len(start_accs)))
+    else:
+        printl("{} - No related replicons found.".format(getwt()))
+    # end if
+
     return gi_list
 # end def get_gi_by_acc
 
@@ -993,7 +1100,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir):
         # end try
     # end while
 
-    printl("{} - Downloading is completed".format(getwt()))
+    println("{} - Downloading is completed".format(getwt()))
 
     return local_fasta
 # end def retrieve_fastas_by_gi
@@ -1042,10 +1149,6 @@ Enter 'r' to remove all files in this directory and build the database from the 
  and no FASTA file have been specified with '-l' option.""")
                         platf_depend_exit(1)
                     # end if
-                    # Empty this directory and break from the loop in order to build a database.
-                    for file in glob("{}{}*".format(db_dir, os.sep)):
-                        os.unlink(file)
-                    # end for
 
                     # Find directories with results left from using old database (they will be renamed):
                     putative_dirs = list( map(lambda f: os.path.join(tax_annot_res_dir, f), os.listdir(tax_annot_res_dir)) )
@@ -1059,6 +1162,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
                             rename_file_verbosely(directory, tax_annot_res_dir)
                         # end for
                     # end if
+
+                    # Empty this directory and break from the loop in order to build a database.
+                    for file in glob("{}{}*".format(db_dir, os.sep)):
+                        os.unlink(file)
+                    # end for
+
                     break
                 else:
                     # Ask again
@@ -1068,31 +1177,34 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # end while
     # end try
 
-    # If accession file does not exist and execution has reached here -- everything is OK --
-    #    we are building local database from local files only.
-    if not acc_fpath is None:
-        check_connection()
-
-        printl("""Following sequences will be downloaded from Genbank
-    for further aligning on your local machine with 'blast+' toolkit:\n""")
-        for i, acc in enumerate(acc_dict.keys()):
-            printl(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
-        # end for
-        printl()
-    # end if
-
     with shelve.open(taxonomy_path, 'c') as tax_file:
         tax_exist_accs = tuple( tax_file.keys() )
     # end with
 
-    for acc in acc_dict.keys():
-        if not acc in tax_exist_accs:
-            download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
-        # end if
-    # end for
+    # If accession file does not exist and execution has reached here -- everything is OK --
+    #    we are building local database from local files only.
+    if not acc_fpath is None:
+        print()
+        check_connection()
 
-    # Get list of GI numbers.
-    gi_list = get_gi_by_acc(acc_dict)
+        printl("""Following sequences (and all replicons related to them)
+  will be downloaded from Genbank for further taxonomic classification
+  on your local machine:\n""")
+        for i, acc in enumerate(acc_dict.keys()):
+            printl(" {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
+        # end for
+
+        # Get list of GI numbers.
+        gi_list = get_gi_by_acc(acc_dict)
+
+        printl("\n{} - Completing taxonomy file...".format(getwt()))
+        for acc in acc_dict.keys():
+            if not acc in tax_exist_accs:
+                download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc)
+            # end if
+        # end for
+        printl("{} - Taxonomy file is consistent.".format(getwt()))
+    # end if
 
     local_fasta = retrieve_fastas_by_gi(gi_list, db_dir) # download FASTA file
 

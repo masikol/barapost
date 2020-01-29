@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.15.a"
+__version__ = "1.15.b"
 # Year, month, day
-__last_update_date__ = "2020-01-28"
+__last_update_date__ = "2020-01-29"
 
 # |===== Check python interpreter version =====|
 
@@ -740,23 +740,57 @@ def fastq2fasta(fq_fa_path, i, new_dpath):
 # end def fastq2fasta
 
 
+def rename_file_verbosely(file, pardir):
+    """
+    Function verbosely renames file (as well as directory) given to it.
 
-def rename_file_verbosely(file, directory):
-
-    if os.path.exists(file):
-
-        is_analog = lambda f: file[:os.path.basename(file).rfind('.')] in f
-        num_analog_files = len( list(filter(is_analog, os.listdir(directory))) )
-
-        printl('\n' + get_work_time() + " - Renaming old file:")
-        name_itself = file[: file.rfind('.')]
-        ext = file[file.rfind('.'):]
-        num_analog_files = str(num_analog_files)
-        new_name = name_itself+"_old_"+num_analog_files+ext
-
-        printl("   '{}' --> '{}'".format(os.path.basename(file), new_name))
-        os.rename(file, new_name)
+    :param file: path to file (directory) meant to be renamed;
+    :type file: str;
+    :param pardir: parent directoy of file';
+    :type pardir: str;
+    """
+    
+    # Directory is a file, so let's rename it too.
+    if os.path.isdir(file):
+        # Count files in 'pardir' that have analogous names as 'file' has:
+        is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
+        word = "directory"
+    else:
+        # Count files in 'pardir' that have analogous names as 'file' has:
+        is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
+        word = "file"
     # end if
+
+    num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
+
+    try:
+        printl('\n' + getwt() + " - Renaming old {}:".format(word))
+        if os.path.isdir(file):
+            name_itself = file
+            ext = ""
+        else:
+            name_itself = re_search(r"(.*)\..*$", file).group(1)
+            ext = re_search(r".*\.(.*)$", file).group(1)
+        # end if
+        num_analog_files = num_analog_files
+
+        if re_search(r"_old_[0-9]+", file) is None:
+            # Append "_old_<number>"
+            new_name = name_itself + "_old_" + str(num_analog_files) + ext
+        else:
+            # Merely substitute new number
+            new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
+                str(num_analog_files+1))
+        # end if
+
+        printl("  '{}' --> '{}'".format(file, new_name))
+        os.rename(file, new_name)
+    except Exception as err:
+        # Anything (and not only strings) can be passed to the function
+        printl("\n {} '{}' cannot be renamed:".format( word, str(file)) )
+        printl( str(err) + '\n')
+        platf_depend_exit(1)
+    # end try
 # end def rename_file_verbosely
 
 

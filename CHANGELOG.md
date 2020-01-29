@@ -1,6 +1,16 @@
 # "Barapost" changelog
 
-## 2020-01-28 edition.
+## 2020-01-29 evening edition.
+
+- barapost.py now downloads all replicons related to records "discovered" by prober.py (other chromosomes, plasmids) and adds them to database;
+- prober, barapost: file renaming procedure fixed;
+
+### Version changes:
+
+1. prober: `1.15.a --> 1.15.b`;
+2. barapost: `3.8.a --> 3.9.a`; 
+
+## 2020-01-29 edition.
 
 - sorter: default `-q` value switched to 10;
 
