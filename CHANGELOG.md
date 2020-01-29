@@ -2,6 +2,14 @@
 
 ## 2020-01-28 edition.
 
+- sorter: default `-q` value switched to 10;
+
+### Version changes:
+
+1. sorter: `4.2.a --> 4.2.b`;
+
+## 2020-01-28 edition.
+
 - prober, barapost: average read quality is now calculated in a correct manner (by mean error propability);
 - prober, barapost: taxonomy parsing modified;
 - sorter: default `-q` value switched to 15;
