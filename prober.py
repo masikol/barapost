@@ -310,7 +310,7 @@ if len(fq_fa_list) == 0:
     else:
         fq_fa_list = list(filter( is_fq_or_fa, glob("{}{}*".format(os.getcwd(), os.sep)) ))
         if len(fq_fa_list) == 0:
-            print(err_fmt("there is no FASTQ or FASTA files to process found."))
+            print(err_fmt("no FASTQ or FASTA files to process found."))
             platf_depend_exit(1)
         # end if
     # end if
@@ -328,10 +328,11 @@ import urllib.request
 from urllib.error import HTTPError
 import urllib.parse
 import socket
-import shelve
 
+import shelve
 import multiprocessing as mp
 import threading
+from shutil import copyfileobj as shutil_copyfileobj
 
 from math import log
 
@@ -385,31 +386,31 @@ for file in fq_fa_list:
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
-if seqs_at_all < probing_batch_size and ("-b" in argv or "--probing_batch_size" in argv):
-    if send_all:
-        probing_batch_size = seqs_at_all
+if seqs_at_all < probing_batch_size:
+    if ("-b" in argv or "--probing_batch_size" in argv)
+        if send_all:
+            probing_batch_size = seqs_at_all
+        else:
+            print('\n'+'-'*20)
+            print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
+            print(" Probing batch size specified by you is {}".format(probing_batch_size))
+
+            while True:
+                reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
+                if reply == "":
+                    probing_batch_size = seqs_at_all
+                    break
+                elif reply == 'q':
+                    platf_depend_exit(0)
+                else:
+                    print(err_fmt("invalid reply"))
+                    continue
+                # end if
+            # end while
+        # end if
     else:
-        print('\n'+'-'*20)
-        print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
-        print(" Probing batch size specified by you is {}".format(probing_batch_size))
-
-        while True:
-            reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
-            if reply == "":
-                probing_batch_size = seqs_at_all
-                break
-            elif reply == 'q':
-                platf_depend_exit(0)
-            else:
-                print(err_fmt("invalid reply"))
-                continue
-            # end if
-        # end while
+        probing_batch_size = seqs_at_all
     # end if
-# end if
-
-if seqs_at_all < probing_batch_size and not ("-b" in argv or "--probing_batch_size" in argv):
-    probing_batch_size = seqs_at_all
 # end if
 
 packet_size = min(packet_size, probing_batch_size)
@@ -418,9 +419,8 @@ if not os.path.isdir(outdir_path):
     try:
         os.makedirs(outdir_path)
     except OSError as oserr:
-        print_error("unable to create result directory")
+        print_error("unable to create result directory '{}'".format(outdir))
         print( str(oserr) )
-        print("Prober just tried to create directory '{}' and crushed.".format(outdir_path))
         platf_depend_exit(1)
     # end try
 # end if
@@ -584,8 +584,6 @@ Enter a number (1 or 2):>> """)
 # end def ask_for_resumption
 
 
-# |===== End of question funtions =====|
-
 # Function for getting Q value from Phred33 character:
 substr_phred33 = lambda q_symb: ord(q_symb) - 33
 # List of propabilities corresponding to indices (index is Q, is the propability):
@@ -641,8 +639,6 @@ def configure_qual_dict(fastq_path):
     return qual_dict
 # end def configure_qual_dict
 
-
-from shutil import copyfileobj as shutil_copyfileobj
 
 def fastq2fasta(fq_fa_path, i, new_dpath):
     """
@@ -1147,7 +1143,7 @@ def configure_request(packet, blast_algorithm, organisms):
     payload["CMD"] = "PUT" # method
     payload["PROGRAM"] = "blastn" # program
     payload["MEGABLAST"] = "on" if "megablast" in blast_algorithm.lower() else "" # if megablast
-    payload["BLAST_PROGRAMS"] = blast_algorithm # blastn algoeithm
+    payload["BLAST_PROGRAMS"] = blast_algorithm # blastn algorithm
     payload["DATABASE"] = "nt" # db
     payload["QUERY"] = packet # FASTA data
     payload["HITLIST_SIZE"] = 1 # we need only the best hit

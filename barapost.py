@@ -1126,7 +1126,7 @@ def build_local_db(acc_dict, tax_annot_res_dir):
         #If this directory exists
 
         while True:
-            printl("Database directory exists in following directory:")
+            printl("Database exists in following directory:")
             printl("  '{}'".format(os.path.abspath(db_dir)))
             if len(os.listdir(db_dir)) == 0:
                 # If it is empty -- nothing stops us. break and build a database
@@ -1531,7 +1531,7 @@ def download_lineage(gi, hit_def, acc):
                 sleep(0.1)
             # end while
 
-            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
+            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z0-9\.; ]+)</INSDSeq_taxonomy>"
 
             while re_search(lin_regex, open(path).read()) is None:
                 sleep(0.1)
@@ -1994,8 +1994,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst):
 #    }
 
 
-def init_proc_many_files(print_lock_buff, inc_lock_buff,
-        inc_val_buff):
+def init_proc_many_files(print_lock_buff):
     """
     Function that initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
@@ -2003,18 +2002,10 @@ def init_proc_many_files(print_lock_buff, inc_lock_buff,
 
     :param print_lock_buff: lock that synchronizes printing to the console;
     :type print_lock_buff: multiprocessing.Lock;
-    :param perc_inc_lock_buff: lock that synchronizes updating 'perc_array';
-    :type perc_inc_lock_buff: multiprocessing.Lock;
     """
 
     global print_lock
     print_lock = print_lock_buff
-
-    global inc_lock
-    inc_lock = inc_lock_buff
-
-    global inc_val
-    inc_val = inc_val_buff
 
 # end def init_proc_many_files
 
@@ -2030,10 +2021,6 @@ def process_multiple_files(fq_fa_list, parallel=False):
         Influences only on printing to the console;
     :type parallel: bool;
     """
-
-    if not parallel:
-        global inc_val
-    # end if
 
     # Iterate over source FASTQ and FASTA files
     for i, fq_fa_path in enumerate(fq_fa_list):
@@ -2076,13 +2063,6 @@ def process_multiple_files(fq_fa_list, parallel=False):
             if parallel:
                 print_lock.release()
             # end if
-            if not parallel:
-                inc_val += 1
-            else:
-                with inc_lock:
-                    inc_val.value += 1
-                # end with
-            # end if
             continue
         # end if
 
@@ -2106,20 +2086,22 @@ def process_multiple_files(fq_fa_list, parallel=False):
             # Write the result to tsv
             write_result(result_tsv_lines, tsv_res_path)
         # end for
-        
-        if not parallel:
-            inc_val += 1
-        else:
-            with inc_lock:
-                inc_val.value += 1
-            # end with
+
+        if parallel:
+            print_lock.acquire()
         # end if
+        printl("\r{} - File '{}' is processed.".format(getwt(), os.path.basename(fq_fa_path)))
+        printn("Working...")
+        if parallel:
+            print_lock.release()
+        # end if
+
     # end for
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
 # end def process_multiple_files
 
 
-def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff, pack_i_buff, pack_i_lock_buff):
+def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff):
     """
     Function that initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
@@ -2129,22 +2111,12 @@ def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff, pack_i_buff
     :type print_lock_buff: multiprocessing.Lock;
     :param write_lock_buff: lock that synchronizes wriiting to result file;
     :type write_lock_buff: multiprocessing.Lock;
-    :param pack_i_buff: integer number representing number of processed packets;
-    :type pack_i_buff: multiprocessing.Value;
-    :param pack_i_lock_buff: lock that synchronizes incrementing 'pack_i' variable;
-    :type pack_i_lock_buff: multiprocessing.Lock;
     """
     global print_lock
     print_lock = print_lock_buff
 
     global write_lock
     write_lock = write_lock_buff
-
-    global pack_i
-    pack_i = pack_i_buff
-
-    global pack_i_lock
-    pack_i_lock = pack_i_lock_buff
 # end def init_proc_single_file_in_paral
 
 
@@ -2180,12 +2152,8 @@ def process_part_of_file(data, tsv_res_path, qual_dict, seqs_left):
         with write_lock:
             write_result(result_tsv_lines, tsv_res_path)
         # end with
-
-        with pack_i_lock:
-            pack_i.value += len(result_tsv_lines)
-        # end with
-
     # end for
+
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
 # end def process_part_of_file
 
@@ -2199,7 +2167,6 @@ def process_single_file_in_paral(fq_fa_path, i):
     :param i: number of this file;
     :type i: int;
     """
-    global inc_val
 
     # Configure quality dictionary
     qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
@@ -2240,8 +2207,6 @@ def process_single_file_in_paral(fq_fa_path, i):
 
     print_lock = mp.Lock() # lock for printing to the console
     write_lock = mp.Lock() # lock for writing to the result file
-    pack_i = mp.Value('i', 0) # variablefor counting packets
-    pack_i_lock = mp.Lock() # lock for incrementing 'pack_i'
 
     file_part_size = curr_fasta["nreads"] // n_thr
     if curr_fasta["nreads"] // n_thr != 0:
@@ -2252,14 +2217,16 @@ def process_single_file_in_paral(fq_fa_path, i):
     seqs_left = curr_fasta["nreads"] - num_done_reads
 
     pool = mp.Pool(n_thr, initializer=init_proc_single_file_in_paral,
-        initargs=(print_lock, write_lock, pack_i, pack_i_lock))
+        initargs=(print_lock, write_lock))
 
     pool.starmap(process_part_of_file, [(file_part["fasta"], tsv_res_path, qual_dict, seqs_left) for file_part in fasta_packets(curr_fasta["fpath"],
         file_part_size, curr_fasta["nreads"], num_done_reads)])
     # Reaping zombies
     pool.close()
     pool.join()
-    inc_val += 1
+
+    printl("\r{} - File '{}' is processed.".format(getwt(), os.path.basename(fq_fa_path)))
+    printn("  Working...")
 # end def process_single_file_in_paral
 
 
@@ -2317,35 +2284,6 @@ if not os.path.isdir(queries_tmp_dir):
     # end try
 # end if
 
-# Value that contains number of processed files:
-global inc_val
-
-
-def status_printer(get_inc_val, stop):
-    """
-    Function meant to be launched as threading.Thread in order to indicate progress each second.
-
-    :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
-    :param stop: event that will signal printer when to stop;
-    :type stop: threading.Event;
-    """
-
-    nfiles = len(fq_fa_list)
-    printn("{} - 0/{} files processed. Working...".format(getwt(), nfiles))
-    saved_val = get_inc_val()
-    while stop.is_set():
-        loc_inc_val = get_inc_val()
-        printn("\r{} - {}/{} files processed. Working...".format(getwt(), loc_inc_val, nfiles))
-        if loc_inc_val != saved_val:
-            logfile.write("{} - {}/{} files processed.\n".format(getwt(), loc_inc_val, nfiles))
-            saved_val = get_inc_val()
-        sleep(1)
-    # end while
-    printn("\r{} - {}/{} files processed.".format(getwt(), get_inc_val(), nfiles) +
-        ' '*len(" Working..."))
-    logfile.write("{} - {}/{} files processed.\n".format(getwt(), get_inc_val(), nfiles))
-# end def status_printer
-
 
 def spread_files_equally(fq_fa_list, n_thr):
     """
@@ -2382,85 +2320,32 @@ def spread_files_equally(fq_fa_list, n_thr):
 #      Processes interact with one another while writing to result file and
 #      while printing something to the console for user's entertainment.
 
-stop = Event()
-stop.set() # raise the flag
+printl("{} - Starting classification.".format(getwt()))
+printn("  Working...")
 
 if n_thr <= len(fq_fa_list):
     if n_thr != 1:
 
         print_lock = mp.Lock() # lock for printing
-        inc_lock = mp.Lock() # lock for updating 'perc_array'
-        inc_val = mp.Value('i', 0)
-        get_inc_val = lambda: inc_val.value # access shared 'inc_val' value
 
-        # Launch printer
-        printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
-        printer.start() # start waiting
-
-        try:
-            pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock, inc_lock, inc_val))
-            pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
-        except Exception as e:
-            printl("{} - {}".format(getwt(), err_fmt( str(e) )))
-            # Stop printer
-            stop.clear() # lower the flag
-            printer.join()
-            pool.close()
-            pool.join()
-            platf_depend_exit(1)
-        # end try
+        pool = mp.Pool(n_thr, initializer=init_proc_many_files, initargs=(print_lock))
+        pool.starmap(process_multiple_files, [ (fq_fa_sublist, True) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
 
         # Reaping zombies
         pool.close()
         pool.join()
 
     else:
-        inc_val = 0
-        get_inc_val = lambda: inc_val # merely return this value (1 thread)
-
-        # Launch printer
-        printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
-        printer.start() # start waiting
-
         # Single-thread mode do not differ much from 'many_files'-parallel mode.
-        try:
-            process_multiple_files(fq_fa_list, parallel=False)
-        except Exception as e:
-            printl("{} - {}".format(getwt(), err_fmt( str(e) )))
-            # Stop printer
-            stop.clear() # lower the flag
-            printer.join()
-            platf_depend_exit(1)
-        # end try
+        process_multiple_files(fq_fa_list, parallel=False)
     # end if
 else:
 
-    inc_val = 0
-    # Merely return this value ('inc_val' is incrementing in the main process)
-    get_inc_val = lambda: inc_val
-
-    # Launch printer
-    printer = Thread(target=status_printer, args=(get_inc_val, stop), daemon=True) # create thread
-    printer.start() # start waiting
-
-    try:
-        for i, fq_fa_path in enumerate(fq_fa_list):
-            process_single_file_in_paral(fq_fa_path, i)
-        # end for
-    except Exception as e:
-        printl("{} - {}".format(getwt(), err_fmt( str(e) )))
-        # Stop printer
-        stop.clear() # lower the flag
-        printer.join()
-        platf_depend_exit(1)
-    # end try
-
+    for i, fq_fa_path in enumerate(fq_fa_list):
+        process_single_file_in_paral(fq_fa_path, i)
+    # end for
 # end if
-
-# Stop printer
-stop.clear() # lower the flag
-printer.join()
-printl()
+printl('\r' + " " * len("  Working..."))
 
 if os.path.exists(indsxml_path):
     os.unlink(indsxml_path)
@@ -2480,6 +2365,6 @@ except OSError as oserr:
 # end try
 
 end_time = time()
-printl( '\n'+getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
+printl(getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
 logfile.close()
 platf_depend_exit(0)
