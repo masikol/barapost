@@ -7,44 +7,30 @@ __last_update_date__ = "2020-01-29"
 
 # |===== Check python interpreter version =====|
 
-from sys import version_info as verinf
+import sys
 
-if verinf.major < 3:
-    print( "\nYour python interpreter version is " + "%d.%d" % (verinf.major, verinf.minor) )
-    print("   Please, use Python 3!\a")
+if sys.version_info.major < 3:
+    print( "\nYour python interpreter version is " + "%d.%d" % (sys.version_info.major,
+        sys.version_info.minor) )
+    print("   Please, use Python 3.\a")
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
-    raw_input("Press ENTER to exit:")
+    if sys.platform.startswith("win"):
+        raw_input("Press ENTER to exit:")
+    # end if
     exit(1)
 # end if
 
-from sys import platform
-
-def platf_depend_exit(exit_code):
-    """
-    Function asks to press ENTER press on Windows
-        and exits after that.
-
-    :type exit_code: int;
-    """
-    if platform.startswith("win"):
-        input("Press ENTER to exit:")
-    # end if
-    exit(exit_code)
-# end def platf_depend_exit
-
-from sys import argv
-
 # First search for information-providing options:
 
-if "-h" in argv[1:] or "--help" in argv[1:]:
+if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
 
     print("\n  prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
     print("""This script is designed for determinating the taxonomic position
   of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n""")
 
-    if "--help" in argv[1:]:
+    if "--help" in sys.argv[1:]:
         print("""The main goal of this script is to send a probing batch (see `-b` option) of sequences to
       NCBI BLAST server and discover, what Genbank records can be downloaded and used for
       building a database on your local machine by "barapost.py".\n""")
@@ -106,7 +92,7 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
         It means that prober can prune your sequences before sending in order to spare NCBI servers.
         This feature is disabled by default;""")
 
-    if "--help" in argv[1:]:
+    if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
@@ -127,49 +113,20 @@ if "-h" in argv[1:] or "--help" in argv[1:]:
     platf_depend_exit(0)
 # end if
 
-if "-v" in argv[1:] or "--version" in argv[1:]:
+if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
     print(__version__)
     platf_depend_exit(0)
 # end if
 
-# |===== Stuff for dealing with time =====|
-
-from time import time, strftime, localtime, sleep, gmtime
-start_time = time()
-
-def get_work_time():
-    return strftime("%H:%M:%S", gmtime( time() - start_time))
-# end def get_work_time
-
-# |===========================================|
-
 import os
 from re import search as re_search
-from re import match as re_match
 from glob import glob
-
-def err_fmt(text):
-    """Function for configuring error messages"""
-    return "\n   \a!! - ERROR: " + text + '\n'
-# end def print_error
-
-
-from sys import stdout as sys_stdout
-def printn(text):
-    """
-    Function prints text to the console without adding '\n' in the end of the line.
-    Why not just to use 'print(text, end="")'?
-    In order to display informative error message if Python 2.X is launched
-        instead if awful error traceback.
-    """
-    sys_stdout.write(text)
-    sys_stdout.flush() # display text immediately
-# end def printn
+from src.printlog import getwt, get_full_time, printl, printn, println, err_fmt
 
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(argv[1:], "hvd:o:p:a:g:b:e:x:",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:o:p:a:g:b:e:x:",
         ["help", "version", "indir=", "outdir=", "packet-size=",
         "algorithm=", "organisms=", "probing-batch-size=", "email=",
         "max-seq-len="])
@@ -194,9 +151,13 @@ max_seq_len = None # maximum length of a sequence sent to NCBI
 
 # Add positional arguments to fq_fa_list
 for arg in args:
-    if not os.path.exists(arg) or not is_fq_or_fa(arg):
+    if not is_fq_or_fa(arg):
         print(err_fmt("invalid positional argument: '{}'".format(arg)))
         print("Only FAST(A/Q) files can be specified without an option in command line.")
+        platf_depend_exit(1)
+    # end if
+    if not os.path.exists(arg):
+        print(err_fmt("File '{}' does not exist!".format(arg)))
         platf_depend_exit(1)
     # end if
     fq_fa_list.append( os.path.abspath(arg) )
@@ -274,7 +235,7 @@ for opt, arg in opts:
         # end try
 
     elif opt in ("-e", "--email"):
-        if arg != "" and re_match(r".+@.+\..+", arg) is None:
+        if arg != "" and re_search(r"^.+@.+\..+$", arg) is None:
             print("Your email does not seem like an email.")
             print("Please check it and, if you are sure that your email is right, \
 \n   but prober still refuses it  -- contact the developer.")
@@ -319,9 +280,10 @@ if len(fq_fa_list) == 0:
 # Sort list of files that will be processed -- process them in alphabetical order.
 fq_fa_list.sort()
 
-from gzip import open as open_as_gzip # input files might be gzipped
-from xml.etree import ElementTree # for retrieving information from XML BLAST report
-from sys import intern
+from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
+from src.filesystem import rename_file_verbosely, remove_tmp_files, create_result_directory
+from src.filesystem import is_gzipped, is_fastq, is_fasta
+from src.platform import platf_depend_exit, get_logfile_path
 
 import http.client
 import urllib.request
@@ -332,38 +294,11 @@ import socket
 import shelve
 import multiprocessing as mp
 import threading
-from shutil import copyfileobj as shutil_copyfileobj
-
-from math import log
-
-# |===== Functionality for proper processing of gzipped files =====|
-
-OPEN_FUNCS = (open, open_as_gzip)
-
-is_gzipped = lambda file: True if file.endswith(".gz") else False
-is_fastq = lambda f: True if not re_search(r".*\.fastq(\.gz)?$", f) is None else False
-
-# Data from plain text and gzipped should be parsed in different way,
-#   because data from .gz is read as 'bytes', not 'str'.
-FORMATTING_FUNCS = (
-    lambda line: line.strip(),   # format text line
-    lambda line: line.decode("utf-8").strip()  # format gzipped line
-)
+from xml.etree import ElementTree # for retrieving information from XML BLAST report
+from time import sleep
 
 # Delimiter for result tsv file:
 DELIM = '\t'
-
-# File format constants:
-FASTQ_LINES_PER_READ = 4
-FASTA_LINES_PER_SEQ = 2
-
-taxonomy_dir = os.path.join(outdir_path, "taxonomy")
-if not os.path.isdir(taxonomy_dir):
-    os.makedirs(taxonomy_dir)
-# end if
-indsxml_path = os.path.join(taxonomy_dir, "indsxml.gbc.xml")
-taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
-
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
@@ -371,7 +306,7 @@ print() # just print new line
 for file in fq_fa_list:
     how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
     if is_fastq(file):
-        seqs_at_all += int( sum(1 for line in how_to_open(file)) / FASTQ_LINES_PER_READ )
+        seqs_at_all += int( sum(1 for line in how_to_open(file)) / 4 ) # 4 lines per record
     else:
         fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
 
@@ -387,7 +322,7 @@ for file in fq_fa_list:
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
 if seqs_at_all < probing_batch_size:
-    if ("-b" in argv or "--probing_batch_size" in argv)
+    if ("-b" in sys.argv[1:] or "--probing_batch_size" in sys.argv[1:]):
         if send_all:
             probing_batch_size = seqs_at_all
         else:
@@ -413,17 +348,33 @@ if seqs_at_all < probing_batch_size:
     # end if
 # end if
 
+if len(tuple(filter(is_fastq, fq_fa_list))) > 0:
+    from src.fastq import fastq_packets
+# end if
+
+if len(tuple(filter(is_fasta, fq_fa_list))) > 0:
+    from src.fasta import fasta_packets
+# end if
+
 packet_size = min(packet_size, probing_batch_size)
 
 if not os.path.isdir(outdir_path):
     try:
         os.makedirs(outdir_path)
     except OSError as oserr:
-        print_error("unable to create result directory '{}'".format(outdir))
+        print(err_fmt("unable to create result directory '{}'".format(outdir)))
         print( str(oserr) )
         platf_depend_exit(1)
     # end try
 # end if
+
+taxonomy_dir = os.path.join(outdir_path, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+indsxml_path = os.path.join(taxonomy_dir, "indsxml.gbc.xml")
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
+
 
 # |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
 
@@ -433,27 +384,23 @@ def check_connection():
 
     :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
     """
-    printn("Checking Internet connection...")
+    printn("Checking internet connection...")
 
-    if not platform.startswith("win"):
-        check_mark = "\u2714"
-    else:
-        check_mark = "OK"
-    # end if
+    check_mark = "ok"
 
     try:
         ncbi_server = "https://blast.ncbi.nlm.nih.gov"
         status_code = urllib.request.urlopen(ncbi_server).getcode()
         # Just in case
         if status_code != 200:
-            print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            print("Check your Internet connection.\a")
+            print('\n' + getwt() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            print("Check your internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
     except OSError as err:
-        print('\n' + get_work_time() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-        print("Check your Internet connection.\a")
+        print('\n' + getwt() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+        print("Check your internet connection.\a")
         print( str(err) )
 
         # 'urllib.request.HTTPError' can provide a user with information about the error
@@ -463,38 +410,16 @@ def check_connection():
         # end if
         platf_depend_exit(-2)
     else:
-        print("\rChecking Internet connection... {}".format(check_mark))
+        print("\rChecking internet connection... {}".format(check_mark))
     # end try
 # end def check_connection
 
 check_connection()
 
-# There some troubles with file extention on Windows, so let's make a .txt file for it:
-log_ext = ".log" if not platform.startswith("win") else ".txt"
-logfile_path = os.path.join(outdir_path, "prober_log_{}{}".format(strftime("%Y-%m-%d_%H-%M-%S", localtime(start_time)), log_ext))
-logfile = open(logfile_path, 'w')
+logfile_path = get_logfile_path("prober", outdir_path)
 
-def printl(text=""):
-    """
-    Function for printing text to console and to log file.
-    """
-    print(text)
-    logfile.write(str(text).strip('\r') + '\n')
-    logfile.flush()
-# end def printl
-
-def println(text=""):
-    """
-    Function for printing text to console and to log file.
-    The only difference from 'printl' -- text that is printed to console does not end with '\\n'
-    """
-    printn(text)
-    logfile.write(str(text).strip('\r') + '\n')
-    logfile.flush()
-# end def printl
-
-printl("\n |=== prober.py (version {}) ===|\n".format(__version__))
-printl( get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(start_time))) + "- Start working\n")
+printl(logfile_path, "\n |=== prober.py (version {}) ===|\n".format(__version__))
+printl(logfile_path, get_full_time() + "- Start working\n")
 
 
 def verify_taxids(taxid_list):
@@ -512,36 +437,29 @@ def verify_taxids(taxid_list):
     organisms = list()
     if len(taxid_list) > 0:
 
-        printl("Verifying TaxIDs:")
-        if not platform.startswith("win"):
-            check_mark = " \u2714"
-            cross = " \u274c"
-        else:
-            check_mark = ""
-            cross = ""
-        # end if
+        printl(logfile_path, "Verifying TaxIDs:")
+        check_mark = " - ok"
         for taxid in taxid_list:
-            println("   {} - ".format(taxid))
+            println(logfile_path, "   {} - ".format(taxid))
             tax_url = "https://ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid)
             try:
                 tax_resp = urllib.request.urlopen(tax_url)
                 tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp.read().decode("utf-8")).group(1)
             except AttributeError:
-                println("\aError: TaxID not found")
-                print(cross)
+                println(logfile_path, "\aError: TaxID not found")
                 print("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
                 platf_depend_exit(1)
             except OSError as oserr:
-                printl(err_fmt("something is wrong with connection:"))
-                printl( str(oserr) )
+                printl(logfile_path, err_fmt("something is wrong with connection:"))
+                printl(logfile_path,  str(oserr) )
                 platf_depend_exit(-2)
             else:
-                println(tax_name)
+                println(logfile_path, tax_name)
                 print(check_mark)
                 organisms.append("{} (taxid:{})".format(tax_name, taxid))
             # end try
         # end for
-        printl('-'*30 + '\n')
+        printl(logfile_path, '-'*30 + '\n')
 
     # end if
     return organisms
@@ -573,7 +491,7 @@ Enter a number (1 or 2):>> """)
                 resume = None
             else:
                 action = "resume the previous run" if resume == 1 else "start from the beginning"
-                printl("You have chosen to {}.\n".format(action))
+                printl(logfile_path, "You have chosen to {}.\n".format(action))
             # end if
         except ValueError:
             print("\nNot an integer number entered!\a\n" + '~'*20)
@@ -582,78 +500,6 @@ Enter a number (1 or 2):>> """)
 
     return True if resume == 1 else False
 # end def ask_for_resumption
-
-
-# Function for getting Q value from Phred33 character:
-substr_phred33 = lambda q_symb: ord(q_symb) - 33
-# List of propabilities corresponding to indices (index is Q, is the propability):
-q2p_map = [10 ** (-q/10) for q in range(128)] # 127 -- max value of a signed byte
-# Function for accessing propabilities by Q:
-qual2prop = lambda q: q2p_map[q]
-# Function for accessing Q by propability:
-prop2qual = lambda p: round(-10 * log(p, 10), 2)
-
-def get_read_avg_qual(qual_str):
-
-    quals = map(substr_phred33, qual_str) # get Qs
-    err_props = map(qual2prop, quals) # convert Qs to propabilities
-    avg_err_prop = sum(err_props) / len(qual_str) # calculate average propability
-    return prop2qual(avg_err_prop)
-# end def get_read_avg_qual
-
-
-def rename_file_verbosely(file, pardir):
-    """
-    Function verbosely renames file (as well as directory) given to it.
-
-    :param file: path to file (directory) meant to be renamed;
-    :type file: str;
-    :param pardir: parent directoy of file';
-    :type pardir: str;
-    """
-    
-    # Directory is a file, so let's rename it too.
-    if os.path.isdir(file):
-        # Count files in 'pardir' that have analogous names as 'file' has:
-        is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
-        word = "directory"
-    else:
-        # Count files in 'pardir' that have analogous names as 'file' has:
-        is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
-        word = "file"
-    # end if
-
-    num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
-
-    try:
-        printl('\n' + getwt() + " - Renaming old {}:".format(word))
-        if os.path.isdir(file):
-            name_itself = file
-            ext = ""
-        else:
-            name_itself = re_search(r"(.*)\..*$", file).group(1)
-            ext = re_search(r".*\.(.*)$", file).group(1)
-        # end if
-        num_analog_files = num_analog_files
-
-        if re_search(r"_old_[0-9]+", file) is None:
-            # Append "_old_<number>"
-            new_name = name_itself + "_old_" + str(num_analog_files) + ext
-        else:
-            # Merely substitute new number
-            new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
-                str(num_analog_files+1))
-        # end if
-
-        printl("  '{}' --> '{}'".format(file, new_name))
-        os.rename(file, new_name)
-    except Exception as err:
-        # Anything (and not only strings) can be passed to the function
-        printl("\n {} '{}' cannot be renamed:".format( word, str(file)) )
-        printl( str(err) + '\n')
-        platf_depend_exit(1)
-    # end try
-# end def rename_file_verbosely
 
 
 def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
@@ -697,20 +543,20 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
     resume = None
     # Check if there are results from previous run.
     if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
-        printl('\n' + get_work_time() + " - A result file from previous run is found in the directory:")
-        printl("   '{}'".format(new_dpath))
+        printl(logfile_path, '\n' + getwt() + " - A result file from previous run is found in the directory:")
+        printl(logfile_path, "   '{}'".format(new_dpath))
         # Allow politely to continue from last successfully sent packet.
         resume = ask_for_resumption()
         if not resume:
-            rename_file_verbosely(tsv_res_fpath, new_dpath)
-            rename_file_verbosely(tmp_fpath, new_dpath)
-            rename_file_verbosely(acc_fpath, new_dpath)
+            rename_file_verbosely(tsv_res_fpath, logfile_path)
+            rename_file_verbosely(tmp_fpath, logfile_path)
+            rename_file_verbosely(acc_fpath, logfile_path)
         # end if
     # end if
     
     # Find the name of last successfull processed sequence
     if resume == True:
-        printl("Let's try to continue...")
+        printl(logfile_path, "Let's try to continue...")
 
         # Collect information from result file
         if os.path.exists(tsv_res_fpath):
@@ -723,16 +569,16 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     last_seq_id = last_line.split(DELIM)[0]
                 # end with
             except Exception as err:
-                printl("\nData in classification file '{}' not found or broken. Reason:".format(tsv_res_fpath))
-                printl( ' ' + str(err) )
-                printl("Start from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, new_dpath)
-                rename_file_verbosely(tmp_fpath, new_dpath)
-                rename_file_verbosely(acc_fpath, new_dpath)
+                printl(logfile_path, "\nData in classification file '{}' not found or broken. Reason:".format(tsv_res_fpath))
+                printl(logfile_path,  ' ' + str(err) )
+                printl(logfile_path, "Start from the beginning.")
+                rename_file_verbosely(tsv_res_fpath, logfile_path)
+                rename_file_verbosely(tmp_fpath, logfile_path)
+                rename_file_verbosely(acc_fpath, logfile_path)
                 return None
             else:
-                printl("Last sent sequence: " + last_seq_id)
-                printl("{} sequences have been already processed".format(num_done_reads))
+                printl(logfile_path, "Last sent sequence: " + last_seq_id)
+                printl(logfile_path, "{} sequences have been already processed".format(num_done_reads))
             # end try
         # end if
         
@@ -747,23 +593,23 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                     local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines) ) # omit file paths
                     for line in local_files_filtered:
                         vals = line.split(DELIM)
-                        acc = intern(vals[0].strip())
+                        acc = sys.intern(vals[0].strip())
                         acc_dict[acc] = [ vals[1].strip(), vals[2].strip(), int(vals[3].strip()) ]
                     # end for
                 # end with
             except Exception as err:
-                printl("\nData in accession file '{}' not found or broken. Reason:".format(acc_fpath))
-                printl( ' ' + str(err) )
-                printl("Starting from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, new_dpath)
-                rename_file_verbosely(tmp_fpath, new_dpath)
-                rename_file_verbosely(acc_fpath, new_dpath)
+                printl(logfile_path, "\nData in accession file '{}' not found or broken. Reason:".format(acc_fpath))
+                printl(logfile_path,  ' ' + str(err) )
+                printl(logfile_path, "Starting from the beginning.")
+                rename_file_verbosely(tsv_res_fpath, logfile_path)
+                rename_file_verbosely(tmp_fpath, logfile_path)
+                rename_file_verbosely(acc_fpath, logfile_path)
                 return None
             else:
-                printl("\nHere are Genbank records encountered during previous run:")
+                printl(logfile_path, "\nHere are Genbank records encountered during previous run:")
                 for acc in acc_dict.keys():
                     s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    printl(" {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
+                    printl(logfile_path, " {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
                 # end for
                 print()
             # end try
@@ -794,7 +640,8 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath
+                "tmp_fpath": tmp_fpath,
+                "decr_pb": 0
             }
         else:
             # Return data from previous run
@@ -803,246 +650,13 @@ def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
                 "acc_fpath": acc_fpath,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath
+                "tmp_fpath": tmp_fpath,
+                "decr_pb": num_done_reads
             }
         # end try
     
     return None
 # end def look_around
-
-# According to
-# https://github.com/nanoporetech/ont_h5_validator/blob/master/h5_validator/schemas/multi_read_fast5.yaml
-ont_read_signature = r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})"
-
-def fmt_read_id(read_id):
-
-    srch_ont_read = re_search(ont_read_signature, read_id)
-    if srch_ont_read is None:
-        return '>' + read_id.partition(' ')[0][1:]
-    else:
-        return '>' + srch_ont_read.group(1)
-# end def fmt_read_id
-
-
-def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
-    """
-    Function passes sequences that have been already processed.
-
-    :param fasta_file: FASTA file instalce;
-    :type fasta_file: str;
-    :param num_done_reads: amount of sequences that have been already processed;
-    :type num_done_reads: int;
-    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
-    """
-
-    if num_done_reads == 0:
-        return None
-    else:
-        i = 0
-        while i <= num_done_reads:
-
-            line = fmt_func(fasta_file.readline())
-            if line == "":
-                return ""
-            # end if
-            if line.startswith('>'):
-                line = fmt_read_id(line)
-                next_id_line = line
-                i += 1
-            # end if
-        # end while
-        return next_id_line
-    # end if
-# end def pass_processed_seqs
-
-def fastq_packets(fastq, packet_size, seqs_at_all, num_done_seqs):
-
-    how_to_open = OPEN_FUNCS[ is_gzipped(fastq) ]
-    fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq) ]
-
-    with how_to_open(fastq) as fastq_file:
-
-        for _ in range(num_done_seqs):
-            fastq_file.readline()
-        # end for
-
-        packs_at_all = seqs_at_all // packet_size # Calculate total number of packets sent from current FASTA file
-        if reads_at_all % packet_size > 0: # And this is ceiling
-            packs_at_all += 1
-        # end if
-        packs_processed = int( num_done_seqs / packet_size ) # number of successfully processed sequences
-        packs_left = packs_at_all - packs_processed # number of packets left to send
-
-        packet = ""
-        qual_dict = dict()
-        i = 0 # variable for counting sequenes within packet
-
-        for _ in range(packs_left):
-
-            packet_size = min(packet_size, probing_batch_size - seqs_processed)
-
-            while i < packet_size:
-
-                read_id = fmt_func(fastq_file.readline())
-
-                if read_id == "":
-                    break
-                # end if
-
-                read_id = fmt_read_id(read_id)
-                seq = fmt_func(fastq_file.readline())
-                fastq_file.readline() # pass comment
-                avg_qual = get_read_avg_qual( fmt_func(fastq_file.readline()) )
-
-                packet += read_id + '\n' + seq
-                qual_dict[read_id[1:]] = avg_qual
-
-            # end while
-
-            if not max_seq_len is None:
-                packet = prune_seqs(packet.strip(), 'l', max_seq_len)
-            # end if
-
-            yield {"fasta": packet.strip(), "qual": qual_dict}
-
-            packet = ""
-            qual_dict.clear()
-        # end for
-    # end with
-
-# end def fastq_packets
-
-
-def fasta_packets(fasta, packet_size, reads_at_all, num_done_reads):
-    """
-    Generator retrieves 'packet_size' records from FASTA file.
-    This function will pass 'num_done_reads' sequences (i.e. they will not be processed)
-        by calling 'pass_processed_files'.
-
-    :param fasta: path to FASTA file;
-    :type fasta: str;
-    :param packet_size: number of sequences to align in one 'blastn' launching;
-    :type packet_size: int;
-    :param reads_at_all: number of sequences in current file;
-    :type reads_at_all: int;
-    :param num_done_reads: number of sequnces in current file that have been already processed;
-    :type num_doce_reads: int;
-    """
-
-    how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
-    fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
-
-    with how_to_open(fasta) as fasta_file:
-        # Next line etrieving will be performed as simple line-from-file reading.
-        get_next_line = lambda: fmt_func(fasta_file.readline())
-
-        # Variable that contains id of next sequence in current FASTA file.
-        # If no or all sequences in current FASTA file have been already processed, this variable is None.
-        # There is no way to count sequences in multi-FASTA file, accept of counting sequence IDs.
-        # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
-        try:
-            next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
-        except UnboundLocalError:
-            # This exception occurs when 'fasta_file' variable is not defined, i.e. when
-            #   'fasta' is actual FASTA data, not path to file.
-            # In this case we need all FASTA data.
-            next_id_line = None
-        # end try
-
-        if next_id_line == "":
-            yield {"fasta": "", "names": list()}
-        # end if
-
-        packet = ""
-
-        line = get_next_line()
-        if line.startswith('>'):
-            line = fmt_read_id(line) # prune sequence ID
-        # end if
-
-        # If some sequences have been passed, this if-statement will be executed.
-        # New packet should start with sequence ID line.
-        if not next_id_line is None:
-            packet += next_id_line+'\n'
-        # end if
-        packet += line+'\n' # add recently read line
-
-        packs_at_all = reads_at_all // packet_size # Calculate total number of packets sent from current FASTA file
-        if reads_at_all % packet_size > 0: # And this is ceiling
-            packs_at_all += 1
-        # end if
-        packs_processed = int( num_done_reads / packet_size ) # number of successfully processed sequences
-        packs_left = packs_at_all - packs_processed # number of packets left to send
-
-        qual_dict = dict()
-
-        # Iterate over packets left to process
-        for _ in range(packs_left):
-
-            i = 0 # variable for counting sequenes within packet
-
-            packet_size = min(packet_size, probing_batch_size - seqs_processed)
-            
-            while i < packet_size:
-
-                line = get_next_line()
-                if line.startswith('>'):
-                    line = fmt_read_id(line)
-                    i += 1
-                # end if
-                
-                if line == "": # if end of file (data) is reached
-                    break
-                # end if
-                packet += line + '\n' # add line to packet
-            # end while
-
-            if line != "":
-                next_id_line = packet.splitlines()[-1] # save sequence ID next packet will start with
-                packet = '\n'.join(packet.splitlines()[:-1]) # exclude 'next_id_line' from packet
-            else:
-                next_id_line = None
-            # end if
-
-            # Get list of sequence IDs:
-            names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-            names = list( map(lambda l: l.replace('>', ''), names) )
-
-            for name in names:
-                qual_dict[name] = '-'
-            # end for
-            del names # let it go
-
-            if not max_seq_len is None:
-                packet = prune_seqs(packet.strip(), 'l', max_seq_len)
-            # end if
-
-            yield {"fasta": packet.strip(), "qual": qual_dict}
-
-            # Reset packet
-            if not next_id_line is None:
-                packet = next_id_line+'\n'
-                qual_dict.clear()
-            else:
-                return
-            # end if
-        # end for
-    # end with
-# end def fasta_packets
-
-
-def remove_tmp_files(*paths):
-    """
-    Function removes files passed to it.
-    Actually, passed arguments are paths ('str') to files meant to be removed.
-    """
-
-    for path in paths:
-        if os.path.exists(path):
-            os.unlink(path)
-        # end if
-    # end for
-# end def remove_tmp_files
 
 
 def configure_request(packet, blast_algorithm, organisms):
@@ -1123,9 +737,9 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
             response = conn.getresponse() # get the response
             response_text = str(response.read(), "utf-8") # get response text
         except OSError as oserr:
-            printl(get_work_time() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            printl( repr(err) )
-            printl("barapost will try to connect again in 30 seconds...\n")
+            printl(logfile_path, getwt() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            printl(logfile_path,  repr(err) )
+            printl(logfile_path, "barapost will try to connect again in 30 seconds...\n")
             sleep(30)
         
         # if no exception occured
@@ -1138,8 +752,8 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
         rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
         rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
     except AttributeError:
-        printl(err_fmt("seems, ncbi has denied your request."))
-        printl("Response is in file 'request_denial_response.html'")
+        printl(logfile_path, err_fmt("seems, ncbi has denied your request."))
+        printl(logfile_path, "Response is in file 'request_denial_response.html'")
         with open("request_denial_response.html", 'w') as den_file:
             den_file.write(response_text)
         # end with
@@ -1183,23 +797,23 @@ def lingering_https_get_request(server, url):
             resp_content = str(response.read(), "utf-8") # get response text
             conn.close()
         except OSError as err:
-            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-            printl("  " + str(err))
+            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
+            printl(logfile_path, "  " + str(err))
             error = True
             sleep(30)
         except http.client.RemoteDisconnected as err:
-            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-            printl("  " + str(err))
+            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
+            printl(logfile_path, "  " + str(err))
             error = True
             sleep(30)
         except socket.gaierror as err:
-            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-            printl("  " + str(err))
+            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
+            printl(logfile_path, "  " + str(err))
             error = True
             sleep(30)
         except http.client.CannotSendRequest as err:
-            printl("\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(get_work_time()))
-            printl("  " + str(err))
+            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
+            printl(logfile_path, "  " + str(err))
             error = True
             sleep(30)
         else:
@@ -1230,15 +844,15 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     Returns XML response ('str').
     """
 
-    printl("\n{} - Requesting for alignment results. Request ID: {},\n '{}' ({}/{})".format(get_work_time(),
+    printl(logfile_path, "\n{} - Requesting for current query status. Request ID: {},\n '{}' ({}/{})".format(getwt(),
     rid, filename, pack_to_send, packs_at_all))
     # RTOE can be zero at the very beginning of resumption
     if rtoe > 0:
-        printl("{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(get_work_time(), rtoe))
-        printl("{} - Waiting for {}+3 (+3 extra) seconds...".format(get_work_time(), rtoe))
+        printl(logfile_path, "{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(getwt(), rtoe))
+        printl(logfile_path, "{} - Waiting for {}+3 (+3 extra) seconds...".format(getwt(), rtoe))
         # Server migth be wrong -- we will give it 3 extra seconds
         sleep(rtoe + 3)
-        printl("{} - {} seconds have passed. Checking if alignment is accomplished...".format(get_work_time(), rtoe+3))
+        printl(logfile_path, "{} - {} seconds have passed. Checking if alignment is accomplished...".format(getwt(), rtoe+3))
     # end if
 
     server = "blast.ncbi.nlm.nih.gov"
@@ -1250,43 +864,43 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
-            printn("\r{} - The request is still processing. Waiting      \033[6D".format(get_work_time()))
+            printn("\r{} - The request is still processing. Waiting      \033[6D".format(getwt()))
             # indicate each 20 seconds with a dot
             for i in range(1, 7):
                 sleep(10)
-                printn("\r{} - The request is still processing. Waiting{}".format(get_work_time(), '.'*i))
+                printn("\r{} - The request is still processing. Waiting{}".format(getwt(), '.'*i))
             # end for
             continue
         # end if
         if "Status=FAILED" in resp_content:
             # if job failed
-            printl('\n' + get_work_time() + " - Job failed\a\n")
+            printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
             return """{} - Job for query {} ({}/{}) with Request ID {} failed.
-    Contact NCBI or try to start it again.\n""".format(get_work_time(), filename, pack_to_send, packs_at_all, rid)
+    Contact NCBI or try to start it again.\n""".format(getwt(), filename, pack_to_send, packs_at_all, rid)
         # end if
         # if job expired
         if "Status=UNKNOWN" in resp_content:
-            printl('\n' + get_work_time() + " - Job expired\a\n")
+            printl(logfile_path, '\n' + getwt() + " - Job expired\a\n")
             return "expired"
         # end if
         # if results are ready
         if "Status=READY" in resp_content:
             there_are_hits = True
-            printl("\n{} - Result for query '{}' ({}/{}) is ready!".format(get_work_time(), filename, pack_to_send, packs_at_all))
+            printl(logfile_path, "\n{} - Result for query '{}' ({}/{}) is ready!".format(getwt(), filename, pack_to_send, packs_at_all))
             # if there are hits
             if "ThereAreHits=yes" in resp_content:
                 for i in range(45, 0, -5):
-                    printl('-' * i)
+                    printl(logfile_path, '-' * i)
                 # end for
                 print() # just print a blank line
             # if there are no hits
             else:
-                printl(get_work_time() + " - There are no hits. It happens.\n")
+                printl(logfile_path, getwt() + " - There are no hits. It happens.\n")
             # end if
             break
         # end if
         # Execution should not reach here
-        printl('\n' + get_work_time() + " - Fatal error. Please contact the developer.\a\n")
+        printl(logfile_path, '\n' + getwt() + " - Fatal error. Please contact the developer.\a\n")
         platf_depend_exit(1)
     # end while
 
@@ -1295,8 +909,8 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
     respond_text= lingering_https_get_request(server, retrieve_xml_url)
 
     if "[blastsrv4.REAL]" in respond_text:
-        printl("BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
-        printl("All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
+        printl(logfile_path, "BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
+        printl(logfile_path, "All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
         return None
     # end if
 
@@ -1307,62 +921,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
 
     return respond_text
 # end def wait_for_align
-
-
-def prune_seqs(packet, mode, value):
-    """
-    Function prunes all sequences in packet, leaving 5'-half of the sequence.
-
-    :param packet: FASTA data;
-    :type packet: str;
-    :param mode: available values: 'l' (for length) and 'f' (for fraction).
-        Meaning: if mode is 'l', all sequences are pruned from the 5'-end to position 'value' (value > 1),
-                 if mode is 'f', all sequences are pruned from the 5'-end to position L*value (0<value<1),
-    :type mode: str;
-    :param value: see description if 'mode' parameter above;
-    :type value:str;
-    """
-
-    lines = packet.splitlines()
-    packet = ""
-
-    if mode == 'l':
-        if value < 1:
-            raise ValueError("Invalid value of parameter 'value': it must be > 1")
-        # end if
-
-        def prune(seq, value):
-            try:
-                return seq[: value]
-            except IndexError:
-                return seq
-            # end try
-        # end def prune
-    elif mode == 'f':
-        if value < 0.0 + 1e-9 or value > 1.0 - 1e-9:
-            raise ValueError("Invalid value of parameter 'value': it must be in interval (0, 1)")
-        # end if
-
-        def prune(seq, value):
-            return seq[: int(len(seq) * value)]
-        # end def prune
-    else:
-        raise ValueError("Invalid 'mode' argument passed to function prune_seqs: '{}'".format(mode))
-    # end if
-
-    id_line_idxs = list(map(lines.index, filter(lambda x: x.startswith('>'), lines)))
-    id_line_idxs.append(len(lines)) # fictive last id line
-
-    for id_curr, id_next in zip(id_line_idxs[:-1], id_line_idxs[1:]):
-        is_seq = lambda seq_i: seq_i > id_curr and seq_i < id_next
-        seq_lines = map(lambda j: lines[j], filter(is_seq, range(len(lines))))
-        seq = "".join(seq_lines)
-        seq = prune(seq, value)
-        packet += lines[id_curr] + '\n' + seq + '\n'
-    # end for
-
-    return packet
-# end def prune_seqs
 
 
 def save_txt_align_result(server, filename, pack_to_send, rid):
@@ -1530,7 +1088,7 @@ def get_lineage(gi, hit_def, hit_acc):
 # end def get_lineage
 
 
-def parse_align_results_xml(xml_text, seq_names):
+def parse_align_results_xml(xml_text, qual_dict):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -1562,33 +1120,33 @@ def parse_align_results_xml(xml_text, seq_names):
     # /=== Validation ===/
 
     if "Bad Gateway" in xml_text:
-        printl('\n' + '=' * 45)
-        printl(get_work_time() + " - ERROR! Bad Gateway! Data from last packet has lost.")
-        printl("It would be better if you restart the script.")
-        printl("Here are names of lost queries:")
+        printl(logfile_path, '\n' + '=' * 45)
+        printl(logfile_path, getwt() + " - ERROR! Bad Gateway! Data from last packet has lost.")
+        printl(logfile_path, "It would be better if you restart the script.")
+        printl(logfile_path, "Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            printl("{}. '{}'".format(i+1, name))
+            printl(logfile_path, "{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
         # end for
         return result_tsv_lines
     # end if
 
     if "Status=FAILED" in xml_text:
-        printl('\n' + get_work_time() + "BLAST ERROR!: request failed")
-        printl("Here are names of lost queries:")
+        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!: request failed")
+        printl(logfile_path, "Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            printl("{}. '{}'".format(i+1, name))
+            printl(logfile_path, "{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         # end for
         return result_tsv_lines
     # end if
 
     if "to start it again" in xml_text:
-        printl('\n' + get_work_time() + "BLAST ERROR!")
+        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!")
 
-        printl("Here are names of lost queries:")
+        printl(logfile_path, "Here are names of lost queries:")
         for i, name in enumerate(seq_names):
-            printl("{}. '{}'".format(i+1, name))
+            printl(logfile_path, "{}. '{}'".format(i+1, name))
             result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
         # end for
         return result_tsv_lines
@@ -1599,16 +1157,15 @@ def parse_align_results_xml(xml_text, seq_names):
     root = ElementTree.fromstring(xml_text) # get tree instance
 
     global new_acc_dict
-    global qual_dict
 
     # Iterate through "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
         # "Iteration" node contains query name information
-        query_name = intern(iter_elem.find("Iteration_query-def").text)
+        query_name = sys.intern(iter_elem.find("Iteration_query-def").text)
         query_len = iter_elem.find("Iteration_query-len").text
 
-        if not qual_dict is None:
-            ph33_qual = qual_dict[query_name]
+        ph33_qual = qual_dict[query_name]
+        if ph33_qual != '-':
             miscall_prop = round(10**(ph33_qual/-10), 3)
             accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
             qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
@@ -1625,7 +1182,7 @@ def parse_align_results_xml(xml_text, seq_names):
 
         if chck_h is None:
             # If there is no hit for current sequence
-            printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+            printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
             result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                 "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
         else:
@@ -1648,7 +1205,7 @@ def parse_align_results_xml(xml_text, seq_names):
                 # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
                 hit_def = hit.find("Hit_def").text
 
-                curr_acc = intern(hit.find("Hit_accession").text)
+                curr_acc = sys.intern(hit.find("Hit_accession").text)
                 hit_accs.append( curr_acc ) # get hit accession
                 gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
                 hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
@@ -1691,7 +1248,7 @@ def parse_align_results_xml(xml_text, seq_names):
             if len(lineage) != 0:
                 # Divide taxonomic names with semicolon
                 lineage = ';'.join(lineage)
-                printl("""\n{} - {}
+                printl(logfile_path, """\n{} - {}
     Query length - {} nt;
     Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
@@ -1700,19 +1257,19 @@ def parse_align_results_xml(xml_text, seq_names):
                     align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
             else:
                 # If hits are from different domains (i.e. Bacteria, Archaea, Eukaryota) -- no let it be unknown
-                printl("\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+                printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
                 result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
                     "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
             # end if
         # end if
-        println(qual_info_to_print)
+        println(logfile_path, qual_info_to_print)
     # end for
 
     return result_tsv_lines
 # end def parse_align_results_xml
 
 
-def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir_path):
+def write_result(res_tsv_lines, tsv_res_path, acc_file_path):
     """
     Function writes result of blasting to result tsv file.
 
@@ -1743,7 +1300,6 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
 
     global acc_dict
     global new_acc_dict
-    global blast_algorithm
     acc_file_path = os.path.join(outdir_path, "hits_to_download.tsv")
 
     with open(acc_file_path, 'w') as acc_file:
@@ -1777,97 +1333,62 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path, fasta_hname, outdir
 # end def write_result
 
 
-def create_result_directory(fq_fa_path, outdir_path):
-    """
-    Function creates a result directory named according 
-        to how source FASTQor FASTA file is named.
-
-    :param fq_fa_path: path to source FASTQ or FASTA file;
-    :type fq_fa_path: str;
-
-    Returns 'str' path to the recently created result directory.
-    """
-
-    # dpath means "directory path"
-    new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath =re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
-    if not os.path.exists(new_dpath):
-        try:
-            os.makedirs(new_dpath)
-        
-        except OSError as oserr:
-            printl(err_fmt("error while creating result directory"))
-            printl( str(oserr) )
-        # end try
-    # end if
-
-    return new_dpath
-# end def create_result_directory
-
-
 # =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
 #                       |===== Proceed =====|
 
 
 # /=== Comments to the kernel loop ===/
 
-# 1. 'curr_fasta' is a dict of the following structure:
+# 1. 'previous_data' is a dict of the following structure:
 #    {
-#        "fpath": path_to_FASTA_file (str),
-#        "nreads": number_of_reads_in_this_FASTA_file (int)
-#    }
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 2. 'previous_data' is a dict of the following structure:
-#    {
-#        "sv_npck": saved_number_of_sent_packet (int),
 #        "RID": saved_RID (str),
+#        "acc_fpath": path_to_accessoion_file (str)
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-#        "tmp_fpath": path_to_pemporary_file (str)
-#        "acc_fparh": path_to_accessoion_file (str)
+#        "tmp_fpath": path_to_pemporary_file (str),
+#        "decr_pb": value to subtract from probing_batch_size
+#                  in orde to resume correctly (int)
 #    }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 3. 'packet' is a dict of the following structure:
+# 2. 'packet' is a dict of the following structure:
 #    {
 #        "fasta": FASTA_data_containing_query_sequences (str),
-#        "names": list_of_sequence_ids_from_FASTA_file (list<str>)
+#        "qual": dictionary {seq_id: quality}
 #    }
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 4. 'response' is a dict of the following structure:
-#    {
-#        "RID": Request ID (str),
-#        "RTOE", time_to_wait_provided_by_the_NCBI_server (int)
-#    }
+#    quality is '-' for fasta files
 
 #                   |===== Kernel loop =====|
 
 organisms = verify_taxids(taxid_list)
 
-printl(" - Output directory: '{}';".format(outdir_path))
+printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
+printl(logfile_path, " - Logging to '{}'".format(logfile_path))
 if user_email != "":
-    printl(" - Your email: {}".format(user_email))
+    printl(logfile_path, " - Your email: {}".format(user_email))
 # end if
-printl(" - Probing batch size: {} sequences;".format(probing_batch_size))
-printl(" - Packet size: {} sequences;".format(packet_size))
-printl(" - BLAST algorithm: {};".format(blast_algorithm))
+printl(logfile_path, " - Probing batch size: {} sequences;".format(probing_batch_size))
+printl(logfile_path, " - Packet size: {} sequences;".format(packet_size))
+printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
 if not max_seq_len is None:
-    printl(" - Maximum length of a sequence sent: {} bp;".format(max_seq_len))
+    printl(logfile_path, " - Maximum length of a sequence sent: {} bp;".format(max_seq_len))
 # end if
-printl(" - Database: nt;")
+printl(logfile_path, " - Database: nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
-        printl("   {};".format(db_slice))
+        printl(logfile_path, "   {};".format(db_slice))
     # end for
 # end if
 
 s_letter = '' if len(fq_fa_list) == 1 else 's'
-printl("\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
-logfile.write("Here they are:\n")
-for i, path in enumerate(fq_fa_list):
-    logfile.write("    {}. '{}'\n".format(i+1, path))
-# end for
+printl(logfile_path, "\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
+with open(logfile_path, 'a') as logfile:
+    logfile.write("Here they are:\n")
+    for i, path in enumerate(fq_fa_list):
+        logfile.write("    {}. '{}'\n".format(i+1, path))
+    # end for
+# end with
 
-printl('-'*30)
+printl(logfile_path, '-'*30)
 
 # Variable for counting accessions of records meant to be downloaded from Genbank.
 # Is used only for printing the list of accessions to console.
@@ -1904,16 +1425,16 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
     # curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
-    # printl("\n |=== file: '{}' ({} sequences) ===|".format(os.path.basename(curr_fasta["fpath"]),
+    # printl(logfile_path, "\n |=== file: '{}' ({} sequences) ===|".format(os.path.basename(curr_fasta["fpath"]),
     #     curr_fasta["nreads"]))
 
     # "hname" means human readable name (i.e. without file path and extention)
-    fasta_hname = os.path.basename(curr_fasta["fpath"]) # get rid of absolure path
-    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of file extention
+    infile_hname = os.path.basename(fq_fa_path)
+    infile_hname = re_search(r"(.+)\.(m)?f(ast)?(a|q)(\.gz)?$", infile_hname).group(1)
 
     # Look around and ckeck if there are results of previous runs of this script
     # If 'look_around' is None -- there is no data from previous run
-    previous_data = look_around(outdir_path, new_dpath, curr_fasta["fpath"],
+    previous_data = look_around(outdir_path, new_dpath, fq_fa_path,
         blast_algorithm)
 
     if previous_data is None: # If there is no data from previous run
@@ -1921,7 +1442,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         tsv_res_path = "{}.tsv".format(os.path.join(new_dpath,
             "classification")) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
-            fasta_hname), blast_algorithm) # form temporary file path
+            infile_hname), blast_algorithm) # form temporary file path
         acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv") # form path to accession file
         saved_RID = None
     else: # if there is data from previous run
@@ -1931,34 +1452,27 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
         contin_rtoe = 0 # we will not sleep at the very beginning of resumption
+        probing_batch_size -= previous_data["decr_pb"]
     # end if
 
     glob_seqs_processed += num_done_reads
 
     # Calculate total number of packets meant to be sent from current FASTA file
-    tmp_num = min(probing_batch_size, curr_fasta["nreads"])
-    packs_at_all = tmp_num // packet_size
+    # tmp_num = min(probing_batch_size, curr_fasta["nreads"])
+    packs_at_all = probing_batch_size // packet_size
 
-    if tmp_num % packet_size > 0: # And this is ceiling
+    if probing_batch_size % packet_size > 0: # And this is ceiling
         packs_at_all += 1
     # end if
 
     pack_to_send = 1 # number of packet meant to be sent now
 
-    # if is_gzipped(curr_fasta["fpath"]):
-    #     fmt_func = lambda l: l.decode("utf-8")
-    #     how_to_open = open_as_gzip
-    
-    # else:
-    #     fmt_func = lambda l: l
-    #     how_to_open = open
-    # # end if
+    packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
 
     # Iterate over packets left to send
-    for packet in fasta_packets(curr_fasta["fpath"], packet_size, curr_fasta["nreads"], num_done_reads):
+    for packet in packet_generator(fq_fa_path, packet_size, num_done_reads, max_seq_len):
 
         if packet["fasta"] == "":
-            printl("All sequences in recent file have been already processed.")
             break
         # end if
 
@@ -1969,7 +1483,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         if not saved_RID is None:
 
             align_xml_text = wait_for_align(saved_RID, contin_rtoe,
-                pack_to_send, packs_at_all, fasta_hname+".fasta") # get BLAST XML response
+                pack_to_send, packs_at_all, os.path.basename(fq_fa_path)) # get BLAST XML response
             saved_RID = None
 
             if align_xml_text == "expired":
@@ -1986,9 +1500,9 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         if send:
 
-            printl("\nGo to BLAST (" + blast_algorithm + ")!")
-            printl("Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
-                packs_at_all, len(packet["names"])))
+            printl(logfile_path, "\nGo to BLAST (" + blast_algorithm + ")!")
+            printl(logfile_path, "Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
+                packs_at_all, len(packet["qual"])))
 
             align_xml_text = None
             while align_xml_text is None: # until successfull attempt
@@ -1999,10 +1513,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
 
                 align_xml_text = send_request(request,
-                    pack_to_send, packs_at_all, fasta_hname+".fasta", tmp_fpath)
+                    pack_to_send, packs_at_all, os.path.basename(fq_fa_path), tmp_fpath)
 
                 if align_xml_text == "expired":
-                    printl("Job expired. Trying to send it once again.\n")
+                    printl(logfile_path, "Job expired. Trying to send it once again.\n")
                     continue
                 # end if
 
@@ -2016,12 +1530,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Get result tsv lines
         result_tsv_lines = parse_align_results_xml(align_xml_text,
-            packet["names"]) # get result tsv lines
+            packet["qual"]) # get result tsv lines
 
         # Write the result to tsv
-        write_result(result_tsv_lines, tsv_res_path, acc_fpath, fasta_hname, outdir_path)
+        write_result(result_tsv_lines, tsv_res_path, acc_fpath)
 
-        seqs_processed += len( packet["names"] )
+        seqs_processed += len( packet["qual"] )
         pack_to_send += 1
         remove_tmp_files(tmp_fpath)
 
@@ -2048,19 +1562,19 @@ def get_undr_sep_number(number):
 glob_seqs_processed += seqs_processed
 str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
 
-printl('-'*20+'\n')
-printl(" {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
+printl(logfile_path, '-'*20+'\n')
+printl(logfile_path, " {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
     str_about_prev_runs))
 
-printl("Here are Genbank records that can be used for further sorting by 'barapost.py'.")
-printl("They are sorted by their occurence in probing batch:")
+printl(logfile_path, "Here are Genbank records that can be used for further sorting by 'barapost.py'.")
+printl(logfile_path, "They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
 #   [2] -- get 3-rd element (occurence)
 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
     s_letter = "s" if other_info[2] > 1 else ""
-    printl(" {} hit{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
+    printl(logfile_path, " {} hit{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
         s_letter, acc, other_info[1]))
 # end for
 
@@ -2068,15 +1582,14 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
 unkn_num = glob_seqs_processed - sum( map(lambda x: x[2], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
-    printl(" {} sequenc{} - No significant similarity found".format(unkn_num, s_letter))
+    printl(logfile_path, " {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 # end if
 
-printl("""\nThey are saved in following file:
+printl(logfile_path, """\nThey are saved in following file:
     '{}'""".format(acc_fpath))
-printl("""\nYou can edit this file before running 'barapost.py' in order to
+printl(logfile_path, """\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost.py'.""")
-end_time = time()
-printl('\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Probing task is completed\n")
-logfile.close()
+
+printl(logfile_path, '\n' + get_full_time() + "- Probing task is completed\n")
 platf_depend_exit(0)

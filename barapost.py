@@ -501,143 +501,48 @@ own_seq_regex = r"OWN_SEQ_[0-9]+"
 
 from shutil import copyfileobj as shutil_copyfileobj
 
-def fastq2fasta(fq_fa_path, new_dpath):
-    """
-    Function conwerts FASTQ file to FASTA format, if there is no FASTA file with
-        the same name as FASTQ file. Additionally it counts sequences in this file.
 
-    :param fq_fa_path: path to FASTQ or FASTA file being processed;
-    :type fq_fa_path: str;
-    :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
-    :type new_dpath: str;
-
-    Returns dict of the following structure:
-    {
-        "fpath": path_to_FASTA_file (str),
-        "nreads": number_of_reads_in_this_FASTA_file (int)
-    }
-    """
-    
-    fasta_path = re_search(r"(.*)\.(m)?f(ast)?(a|q)", os.path.basename(fq_fa_path)).group(1) + ".fasta"
-    fasta_path = os.path.join(new_dpath, fasta_path) # place FASTA file into result directory
-
-    how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
-    fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
-
-    fastq_patt = r".*\.f(ast)?q(\.gz)?$"
-
-    num_lines = 0 # variable for counting lines in a file
-    if not re_search(fastq_patt, fq_fa_path) is None and not os.path.exists(fasta_path+".gz"):
-
-        with how_to_open(fq_fa_path) as fastq_file, open(fasta_path, 'w') as fasta_file:
-
-            counter = 1 # variable for retrieving only 1-st and 2-nd line of FASTQ record
-            for line in fastq_file:
-                line = fmt_func(line)
-                # write only 1-st and 2-nd line out of 4
-                if counter <= 2:
-                    if line[0] == '@':
-                        line = '>' + line[1:]  # replace '@' with '>'
-                    # end if
-                    fasta_file.write(line + '\n')
-                
-                # reset the counter if the 4-th (quality) line has been encountered
-                elif counter == 4:
-                    counter = 0
-                # end if
-                counter += 1
-                num_lines += 1
-            # end for
-        # end with
-        num_reads = int(num_lines / FASTQ_LINES_PER_READ) # get number of sequences
-
-        # GNU gzip utility is faster, but there can be presence of absence of it
-        gzip_util = "gzip"
-        util_found = False
-        for directory in os.environ["PATH"].split(os.pathsep):
-            if os.path.isdir(directory) and gzip_util in os.listdir(directory):
-                util_found = True
-                break
-            # end if
-        # end for
-
-        if util_found:
-            os.system("{} {}".format(gzip_util, fasta_path))
-        else:
-            # form .fasta.gz file 'by hand'
-            with open(fasta_path, 'rb') as fasta_file, open_as_gzip(fasta_path+".gz", "wb") as fagz_file:
-                shutil_copyfileobj(fasta_file, fagz_file)
-            # end with
-            os.unlink(fasta_path) # remove plain FASTA file
-        # end if
-    
-    # IF FASTA file is already created
-    # We need only number of sequences in it.
-    elif not re_search(fastq_patt, fq_fa_path) is None and os.path.exists(fasta_path+".gz"):
-        num_lines = sum(1 for line in how_to_open(fq_fa_path)) # get number of lines
-        num_reads = int( num_lines / FASTQ_LINES_PER_READ ) # get number of sequences
-    
-    # If we've got FASTA source file
-    # We need only number of sequences in it.
-    else:
-        num_reads = len(tuple(filter(lambda l: True if l.startswith('>') else False,
-            map(fmt_func, how_to_open(fq_fa_path).readlines()))))
-        # If we've got FASTA source file we do not need to copy it
-        fasta_path = fq_fa_path
-        return {"fpath": fasta_path, "nreads": num_reads}
-    # end if
-
-    return {"fpath": fasta_path+".gz", "nreads": num_reads}
-# end def fastq2fasta
-
-
-def rename_file_verbosely(file, pardir):
+def rename_file_verbosely(file):
     """
     Function verbosely renames file (as well as directory) given to it.
 
     :param file: path to file (directory) meant to be renamed;
     :type file: str;
-    :param pardir: parent directoy of file';
-    :type pardir: str;
     """
+
+    pardir = os.path.abspath(os.path.dirname(file))
     
     # Directory is a file, so let's rename it too.
     if os.path.isdir(file):
         # Count files in 'pardir' that have analogous names as 'file' has:
         is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
         word = "directory"
+        name_itself = file
+        ext = ""
     else:
         # Count files in 'pardir' that have analogous names as 'file' has:
         is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
         word = "file"
+        name_itself = re_search(r"(.*)\..*$", file).group(1)
+        ext = re_search(r".*\.(.*)$", file).group(1)
     # end if
 
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
 
+    if re_search(r"_old_[0-9]+", file) is None:
+        # Append "_old_<number>"
+        new_name = name_itself + "_old_" + str(num_analog_files) + ext
+    else:
+        # Merely substitute new number
+        new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
+            str(num_analog_files+1))
+    # end if
+
     try:
         printl('\n' + getwt() + " - Renaming old {}:".format(word))
-        if os.path.isdir(file):
-            name_itself = file
-            ext = ""
-        else:
-            name_itself = re_search(r"(.*)\..*$", file).group(1)
-            ext = re_search(r".*\.(.*)$", file).group(1)
-        # end if
-        num_analog_files = num_analog_files
-
-        if re_search(r"_old_[0-9]+", file) is None:
-            # Append "_old_<number>"
-            new_name = name_itself + "_old_" + str(num_analog_files) + ext
-        else:
-            # Merely substitute new number
-            new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
-                str(num_analog_files+1))
-        # end if
-
         printl("  '{}' --> '{}'".format(file, new_name))
         os.rename(file, new_name)
     except Exception as err:
-        # Anything (and not only strings) can be passed to the function
         printl("\n {} '{}' cannot be renamed:".format( word, str(file)) )
         printl( str(err) + '\n')
         platf_depend_exit(1)
@@ -687,7 +592,7 @@ def look_around(new_dpath, fasta_path, blast_algorithm):
                 printl("\nData in classification file '{}' is broken. Exact reason:".format(tsv_res_fpath))
                 printl( str(err) )
                 printl("Start from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, new_dpath)
+                rename_file_verbosely(tsv_res_fpath)
                 return None
             # end try
         # end with
@@ -1150,16 +1055,15 @@ Enter 'r' to remove all files in this directory and build the database from the 
                         platf_depend_exit(1)
                     # end if
 
-                    # Find directories with results left from using old database (they will be renamed):
-                    putative_dirs = list( map(lambda f: os.path.join(tax_annot_res_dir, f), os.listdir(tax_annot_res_dir)) )
-                    old_dirs = list( filter(lambda f: True if os.path.isdir(f) and not f.endswith("local_database") else False, putative_dirs) )
-                    old_dirs = list( filter(lambda f: not f.endswith("taxonomy") and not f.endswith("fast5_to_tsvtaxann_idx"), old_dirs) )
-                    old_dirs = list( filter(lambda f: not f.endswith("queries-tmp"), old_dirs) )
-                    if len(old_dirs) > 0:
-                        printl("\n Directories with results of using old database are found.")
-                        printl("Renaming them...")
-                        for directory in old_dirs:
-                            rename_file_verbosely(directory, tax_annot_res_dir)
+                    old_classif_files = tuple(filter(
+                        lambda d: True if os.path.exists(os.path.join(d, "classification.tsv"))),
+                        glob(os.path.join(tax_annot_res_dir, "*")
+                        ))
+
+                    if len(old_classif_files) > 0:
+                        printl("\n Renaming old classification files:")
+                        for classif_file in old_classif_files:
+                            rename_file_verbosely(classif_file)
                         # end for
                     # end if
 
