@@ -25,7 +25,7 @@ def get_read_avg_qual(qual_str):
 # end def get_read_avg_qual
 
 
-def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len):
+def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq) ]

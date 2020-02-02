@@ -21,6 +21,8 @@ if sys.version_info.major < 3:
     exit(1)
 # end if
 
+from src.platform import platf_depend_exit
+
 # First search for information-providing options:
 
 if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
@@ -283,7 +285,7 @@ fq_fa_list.sort()
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS
 from src.filesystem import remove_tmp_files, create_result_directory
 from src.filesystem import is_gzipped, is_fastq, is_fasta
-from src.platform import platf_depend_exit, get_logfile_path
+from src.platform import get_logfile_path
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
@@ -291,7 +293,7 @@ print() # just print new line
 for file in fq_fa_list:
     how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
     if is_fastq(file):
-        seqs_at_all += int( sum(1 for line in how_to_open(file)) / 4 ) # 4 lines per record
+        seqs_at_all += sum(1 for line in how_to_open(file)) // 4  # 4 lines per record
     else:
         fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
 
@@ -433,9 +435,7 @@ with open(logfile_path, 'a') as logfile:
 
 printl(logfile_path, '-'*30)
 
-# Variable for counting accessions of records meant to be downloaded from Genbank.
-# Is used only for printing the list of accessions to console.
-acc_counter = 0
+
 # Dictionary of accessions and record names.
 # Accessions are keys, record names are values.
 # This dictionary is filled while processing and at the beginning of resumption.
@@ -445,11 +445,6 @@ acc_dict = dict()
 seqs_processed = 0
 # Counter of sequences processed concerning putative previous run(s)
 glob_seqs_processed = 0
-
-# Variable that contains id of next sequence in current FASTA file.
-# If no or all sequences in current FASTA file have been already processed, this variable is None
-# Function 'get_packet' changes this variable
-next_id_line = None
 
 # Varible for stopping execution when probing batch is processed completely.
 stop = False

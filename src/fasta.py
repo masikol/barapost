@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from prune_seqs import prune_seqs
+from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
 
-def pass_processed_seqs(fasta_file, num_done_reads, fmt_func, max_seq_len):
+def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
     """
     Function passes sequences that have been already processed.
 
@@ -35,7 +35,7 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func, max_seq_len):
 # end def pass_processed_seqs
 
 
-def fasta_packets(fasta, packet_size, num_done_reads):
+def fasta_packets(fasta, packet_size, num_done_reads, max_seq_len=None):
     """
     Generator retrieves 'packet_size' records from FASTA file.
     This function will pass 'num_done_reads' sequences (i.e. they will not be processed)

@@ -115,3 +115,25 @@ def create_result_directory(fq_fa_path, outdir_path):
     # end if
     return new_dpath
 # end def create_result_directory
+
+
+def get_curr_res_dpath(fq_fa_path, tax_annot_res_dir):
+    """
+    Function configures and returns the path to result directory for particular FASTA or FASTQ file.
+    Result directory is nested in 'tax_annot_res_dir' and is named according to name of FASTA/FASTQ file.
+    E.g. if file 'some_reads.fastq' is processing, it's result directory will be named 'some_reads'.
+
+    :param fq_fa_path: path to FASTA/FASTQ file that is procesing;
+    :type fq_fa_path: str;
+    :param tax_annot_res_dir: path to directory with results of 'prober.py';
+    :type tax_annot_res_dir: str;
+
+    Returns path to result directory that was recenly created of 'str' type.
+    """
+
+    # dpath means "directory path"
+    new_dpath = os.path.join(tax_annot_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
+    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
+
+    return new_dpath
+# end def get_curr_res_dir
