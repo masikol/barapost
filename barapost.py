@@ -1592,54 +1592,18 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
         1. Query name.
         2. Hit name formatted by 'format_taxonomy_name()' function.
         3. Hit accession.
-        4. Length of alignment.
-        5. Percent of identity.
-        6. Percent of gaps.
-        7. E-value.
-    Erroneous tsv lines that function may produce:
-        1. "<query_name>\\tQuery has been lost: ERROR, Bad Gateway"
-            if data packet has been lost.
-            # end if
-        2. "<query_name>\\tQuery has been lost: BLAST ERROR"
-            if BLAST error occured.
-            # end if
-        3. "<query_name>\\tNo significant similarity found"
-            if no significant similarity has been found
-            # end if
-        Type of return object: list<str>.
+        4. Length of query sequence.
+        5. Length of alignment.
+        6. Percent of identity.
+        7. Percent of gaps.
+        8. E-value.
+        9. Average Phred33 quality of a read (if source file is FASTQ).
+        10. Read accuracy (%) (if source file is FASTQ).
+
+        Returns list<str>.
     """
 
     result_tsv_lines = list()
-
-    # /=== Validation ===/
-
-    if "Bad Gateway" in xml_text:
-        printl('\n' + '=' * 45)
-        printl(getwt() + " - ERROR! Bad Gateway! Data from last packet has lost.")
-        printl("It would be better if you restart the script.")
-        printl("Here are names of lost queries:")
-        for i, name in enumerate(seq_names):
-            printl("{}. '{}'".format(i+1, name))
-            result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
-        # end for
-        
-        input("Press ENTER to continue...")
-
-        return result_tsv_lines
-    # end if
-
-    if "to start it again" in xml_text:
-        printl('\n' + getwt() + "BLAST ERROR!")
-
-        printl("Here are names of lost queries:")
-        for i, name in enumerate(seq_names):
-            printl("{}. '{}'".format(i+1, name))
-            result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
-        # end for
-
-        input("Press ENTER to continue...")
-        return result_tsv_lines
-    # end if
 
     # /=== Parse BLAST XML response ===/
 
@@ -1737,33 +1701,6 @@ def parse_align_results_xml(xml_text, seq_names, qual_dict):
 
     return result_tsv_lines
 # end def parse_align_results_xml
-
-
-def write_result(res_tsv_lines, tsv_res_path):
-    """
-    Function writes result of blasting to result tsv file.
-
-    :param res_tsv_lines: tsv lines returned by 'parse_align_results_xml()' funciton;
-    :type res_tsv_lines: list<str>;
-    :param tsv_res_path: path to reslut tsv file;
-    :type tsv_res_path: str;
-    """
-
-    # If there is no result tsv fil -- create it and write a head of the table.
-    if not os.path.exists(tsv_res_path):
-        with open(tsv_res_path, 'w') as tsv_res_file:
-            tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "AVG_PHRED33", "ACCURACY(%)"] ) + '\n')
-        # end with
-    # end if
-    # Write reslut tsv lines to this file
-    with open(tsv_res_path, 'a') as tsv_res_file:
-        for line in res_tsv_lines:
-            tsv_res_file.write(line + '\n')
-        # end for
-    # end with
-# end def write_result
-
 
 def get_curr_res_dpath(fq_fa_path, tax_annot_res_dir):
     """
@@ -1988,7 +1925,7 @@ def process_multiple_files(fq_fa_list, parallel=False):
                 packet["names"], qual_dict)
 
             # Write the result to tsv
-            write_result(result_tsv_lines, tsv_res_path)
+            write_classification(result_tsv_lines, tsv_res_path)
         # end for
 
         if parallel:
@@ -2054,7 +1991,7 @@ def process_part_of_file(data, tsv_res_path, qual_dict, seqs_left):
 
         # Write the result to tsv
         with write_lock:
-            write_result(result_tsv_lines, tsv_res_path)
+            write_classification(result_tsv_lines, tsv_res_path)
         # end with
     # end for
 

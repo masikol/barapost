@@ -121,7 +121,7 @@ if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
 import os
 from re import search as re_search
 from glob import glob
-from src.printlog import getwt, get_full_time, printl, printn, println, err_fmt
+from src.printlog import getwt, get_full_time, printl, err_fmt
 
 import getopt
 
@@ -280,25 +280,10 @@ if len(fq_fa_list) == 0:
 # Sort list of files that will be processed -- process them in alphabetical order.
 fq_fa_list.sort()
 
-from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
-from src.filesystem import rename_file_verbosely, remove_tmp_files, create_result_directory
+from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS
+from src.filesystem import remove_tmp_files, create_result_directory
 from src.filesystem import is_gzipped, is_fastq, is_fasta
 from src.platform import platf_depend_exit, get_logfile_path
-
-import http.client
-import urllib.request
-from urllib.error import HTTPError
-import urllib.parse
-import socket
-
-import shelve
-import multiprocessing as mp
-import threading
-from xml.etree import ElementTree # for retrieving information from XML BLAST report
-from time import sleep
-
-# Delimiter for result tsv file:
-DELIM = '\t'
 
 # |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
 seqs_at_all = 0
@@ -348,11 +333,11 @@ if seqs_at_all < probing_batch_size:
     # end if
 # end if
 
-if len(tuple(filter(is_fastq, fq_fa_list))) > 0:
+if len(tuple(filter(is_fastq, fq_fa_list))) != 0:
     from src.fastq import fastq_packets
 # end if
 
-if len(tuple(filter(is_fasta, fq_fa_list))) > 0:
+if len(tuple(filter(is_fasta, fq_fa_list))) != 0:
     from src.fasta import fasta_packets
 # end if
 
@@ -368,981 +353,40 @@ if not os.path.isdir(outdir_path):
     # end try
 # end if
 
+acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
+
 taxonomy_dir = os.path.join(outdir_path, "taxonomy")
 if not os.path.isdir(taxonomy_dir):
     os.makedirs(taxonomy_dir)
 # end if
-indsxml_path = os.path.join(taxonomy_dir, "indsxml.gbc.xml")
 taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
+from src.check_connection import check_connection
 
-# |===== Function for checking if 'https://blast.ncbi.nlm.nih.gov' is available =====|
-
-def check_connection():
-    """
-    Function checks if 'https://blast.ncbi.nlm.nih.gov' is available.
-
-    :return: None if 'https://blast.ncbi.nlm.nih.gov' is available;
-    """
-    printn("Checking internet connection...")
-
-    check_mark = "ok"
-
-    try:
-        ncbi_server = "https://blast.ncbi.nlm.nih.gov"
-        status_code = urllib.request.urlopen(ncbi_server).getcode()
-        # Just in case
-        if status_code != 200:
-            print('\n' + getwt() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            print("Check your internet connection.\a")
-            print("Status code: {}".format(status_code))
-            platf_depend_exit(-2)
-        # end if
-    except OSError as err:
-        print('\n' + getwt() + " - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-        print("Check your internet connection.\a")
-        print( str(err) )
-
-        # 'urllib.request.HTTPError' can provide a user with information about the error
-        if isinstance(err, HTTPError):
-            print("Status code: {}".format(err.code))
-            print(err.reason)
-        # end if
-        platf_depend_exit(-2)
-    else:
-        print("\rChecking internet connection... {}".format(check_mark))
-    # end try
-# end def check_connection
-
-check_connection()
+check_connection("https://blast.ncbi.nlm.nih.gov")
 
 logfile_path = get_logfile_path("prober", outdir_path)
 
 printl(logfile_path, "\n |=== prober.py (version {}) ===|\n".format(__version__))
 printl(logfile_path, get_full_time() + "- Start working\n")
 
+from src.prober_modules.networking import verify_taxids
 
-def verify_taxids(taxid_list):
-    """
-    Funciton verifies TaxIDs passed to 'prober' with -g option.
-    Function requests NCBI Taxonomy Browser and parses organism's name from HTML response.
-    What is more, this function configures 'oraganisms' list - it will be included to BLAST requests.
+organisms = verify_taxids(taxid_list, logfile_path)
 
-    :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
-        during CL argument parsing;
-    :type taxid_list: list<str>;
+from src.prober_modules.networking import lingering_https_get_request
+from src.prober_modules.networking import configure_request, send_request, wait_for_align
+from src.write_classification import write_classification
+from src.prober_modules.prober_spec import ask_for_resumption, look_around
+from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
+from src.prober_modules.lineage import get_lineage
 
-    Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
-    """
-    organisms = list()
-    if len(taxid_list) > 0:
 
-        printl(logfile_path, "Verifying TaxIDs:")
-        check_mark = " - ok"
-        for taxid in taxid_list:
-            println(logfile_path, "   {} - ".format(taxid))
-            tax_url = "https://ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid)
-            try:
-                tax_resp = urllib.request.urlopen(tax_url)
-                tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp.read().decode("utf-8")).group(1)
-            except AttributeError:
-                println(logfile_path, "\aError: TaxID not found")
-                print("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
-                platf_depend_exit(1)
-            except OSError as oserr:
-                printl(logfile_path, err_fmt("something is wrong with connection:"))
-                printl(logfile_path,  str(oserr) )
-                platf_depend_exit(-2)
-            else:
-                println(logfile_path, tax_name)
-                print(check_mark)
-                organisms.append("{} (taxid:{})".format(tax_name, taxid))
-            # end try
-        # end for
-        printl(logfile_path, '-'*30 + '\n')
-
-    # end if
-    return organisms
-# end def verify taxids
-
-
-def ask_for_resumption():
-    """
-    Function asks a user if he/she wants to resume the previous run.
-
-    Returns True if the decision is to resume, else False;
-    """
-
-    resume = None
-
-    while resume is None:
-        resume = input("""
-Would you like to resume the previous run?
-   1 -- Resume!
-   2 -- Start from the beginning.
-
-Enter a number (1 or 2):>> """)
-        # Check if entered value is integer number. If no, give another attempt.
-        try:
-            resume = int(resume)
-            # Check if input number is 1 or 2
-            if resume != 1 and resume != 2:
-                print("\n   Not a VALID number entered!\a\n" + '~'*20)
-                resume = None
-            else:
-                action = "resume the previous run" if resume == 1 else "start from the beginning"
-                printl(logfile_path, "You have chosen to {}.\n".format(action))
-            # end if
-        except ValueError:
-            print("\nNot an integer number entered!\a\n" + '~'*20)
-            resume = None
-        # end try
-
-    return True if resume == 1 else False
-# end def ask_for_resumption
-
-
-def look_around(outdir_path, new_dpath, fasta_path, blast_algorithm):
-    """
-    Function looks around in order to ckeck if there are results from previous runs of this script.
-
-    Returns None if there is no result from previous run.
-    If there are results from previous run, returns a dict of the following structure:
-    {
-        "pack_size": packet_size (int),
-        "sv_npck": saved_number_of_sent_packet (int),
-        "RID": saved_RID (str),
-        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-        "tmp_fpath": path_to_pemporary_file (str)
-    }
-
-    :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
-    :type new_dpath: str;
-    :param fasta_path: path to current (corresponding to fq_fa_path file) FASTA file;
-    :type fasta_path: str;
-    :param blast_algorithm: BLASTn algorithm to use.
-        This parameter is necessary because it is included in name of result files;
-    :type blast_algorithm: str;
-    """
-
-    # "hname" means human readable name (i.e. without file path and extention)
-    fasta_hname = os.path.basename(fasta_path) # get rid of absolute path
-    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
-    how_to_open = OPEN_FUNCS[ is_gzipped(fasta_path) ]
-
-    # Form path to temporary file
-    tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
-    # Form path to result file
-    tsv_res_fpath = "{}.tsv".format(os.path.join(new_dpath, "classification"))
-    # Form path to accession file
-    acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
-
-    num_done_reads = None # variable to keep number of succeffdully processed sequences
-
-    resume = None
-    # Check if there are results from previous run.
-    if os.path.exists(tsv_res_fpath) or os.path.exists(tmp_fpath):
-        printl(logfile_path, '\n' + getwt() + " - A result file from previous run is found in the directory:")
-        printl(logfile_path, "   '{}'".format(new_dpath))
-        # Allow politely to continue from last successfully sent packet.
-        resume = ask_for_resumption()
-        if not resume:
-            rename_file_verbosely(tsv_res_fpath, logfile_path)
-            rename_file_verbosely(tmp_fpath, logfile_path)
-            rename_file_verbosely(acc_fpath, logfile_path)
-        # end if
-    # end if
-    
-    # Find the name of last successfull processed sequence
-    if resume == True:
-        printl(logfile_path, "Let's try to continue...")
-
-        # Collect information from result file
-        if os.path.exists(tsv_res_fpath):
-            # There can be invalid information in this file
-            try:
-                with open(tsv_res_fpath, 'r') as res_file:
-                    lines = res_file.readlines()
-                    num_done_reads = len(lines) - 1 # the first line is a head
-                    last_line = lines[-1]
-                    last_seq_id = last_line.split(DELIM)[0]
-                # end with
-            except Exception as err:
-                printl(logfile_path, "\nData in classification file '{}' not found or broken. Reason:".format(tsv_res_fpath))
-                printl(logfile_path,  ' ' + str(err) )
-                printl(logfile_path, "Start from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, logfile_path)
-                rename_file_verbosely(tmp_fpath, logfile_path)
-                rename_file_verbosely(acc_fpath, logfile_path)
-                return None
-            else:
-                printl(logfile_path, "Last sent sequence: " + last_seq_id)
-                printl(logfile_path, "{} sequences have been already processed".format(num_done_reads))
-            # end try
-        # end if
-        
-        # Collect information from accession file
-        global acc_dict
-        if os.path.exists(acc_fpath):
-
-            # There can be invalid information in this file
-            try:
-                with open(acc_fpath, 'r') as acc_file:
-                    lines = acc_file.readlines()[9:] # omit description and head of the table
-                    local_files_filtered = list( filter(lambda x: False if os.path.exists(x) else True, lines) ) # omit file paths
-                    for line in local_files_filtered:
-                        vals = line.split(DELIM)
-                        acc = sys.intern(vals[0].strip())
-                        acc_dict[acc] = [ vals[1].strip(), vals[2].strip(), int(vals[3].strip()) ]
-                    # end for
-                # end with
-            except Exception as err:
-                printl(logfile_path, "\nData in accession file '{}' not found or broken. Reason:".format(acc_fpath))
-                printl(logfile_path,  ' ' + str(err) )
-                printl(logfile_path, "Starting from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, logfile_path)
-                rename_file_verbosely(tmp_fpath, logfile_path)
-                rename_file_verbosely(acc_fpath, logfile_path)
-                return None
-            else:
-                printl(logfile_path, "\nHere are Genbank records encountered during previous run:")
-                for acc in acc_dict.keys():
-                    s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    printl(logfile_path, " {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
-                # end for
-                print()
-            # end try
-        # end if
-
-        # If we start from the beginning, we have no sequences processed
-        if num_done_reads is None:
-            num_done_reads = 0
-        # end if
-
-        # Get packet size, number of the last sent packet and RID
-        # There can be invalid information in tmp file of tmp file may not exist
-        try:
-
-            with open(tmp_fpath, 'r') as tmp_file:
-                temp_lines = tmp_file.readlines()
-            # end with
-
-            RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
-            # If aligning is performed on local machine, there is no reason for requesting results.
-            # Therefore this packet will be aligned once again.
-        
-        except Exception as exc:
-
-            # There is no need to disturb a user, merely resume.
-            return {
-                "RID": None,
-                "acc_fpath": acc_fpath,
-                "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath,
-                "decr_pb": 0
-            }
-        else:
-            # Return data from previous run
-            return {
-                "RID": RID_save,
-                "acc_fpath": acc_fpath,
-                "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
-                "tmp_fpath": tmp_fpath,
-                "decr_pb": num_done_reads
-            }
-        # end try
-    
-    return None
-# end def look_around
-
-
-def configure_request(packet, blast_algorithm, organisms):
-    """
-    Function configures the request to BLAST server.
-
-    :param packet: FASTA_data_containing_query_sequences;
-    :type packet: str;
-    :param blast_algorithm: BLASTn algorithm to use;
-    :type blast_algorithm: str;
-    :param organisms: list of strings performing 'nt' database slices;
-    :type organisms: list<str>;
-
-    Returns a dict of the following structure:
-    {
-        "payload": the_payload_of_the_request (dict),
-        "headers": headers of thee request (dict)
-    }
-    """
-
-    payload = dict()
-    payload["CMD"] = "PUT" # method
-    payload["PROGRAM"] = "blastn" # program
-    payload["MEGABLAST"] = "on" if "megablast" in blast_algorithm.lower() else "" # if megablast
-    payload["BLAST_PROGRAMS"] = blast_algorithm # blastn algorithm
-    payload["DATABASE"] = "nt" # db
-    payload["QUERY"] = packet # FASTA data
-    payload["HITLIST_SIZE"] = 1 # we need only the best hit
-    if user_email != "":
-        payload["email"] = user_email # user's email
-        payload["tool"] = "barapost:_prober"
-    # end if
-    
-
-    # 'nt' database slices:
-    for i, org in enumerate(organisms):
-        payload["EQ_MENU{}".format(i if i > 0 else "")] = org
-    # end for
-    
-    payload["NUM_ORG"] = str( len(organisms) )
-
-    payload = urllib.parse.urlencode(payload)
-
-    headers = { "Content-Type" : "application/x-www-form-urlencoded" }
-
-    return {"payload":payload, "headers": headers}
-# end def configure_request
-
-
-def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath):
-    """
-    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
-        and then waits for satisfaction of the request and retrieves response text.
-
-    :param request: request_data (it is a dict that 'configure_request()' function returns);
-    :param request: dict<dict>;
-    :param pack_to_send: current number (like id) of packet meant to be sent now.
-    :type pack_to_send: int;
-    :param packs_at all: total number of packets corresponding to current FASTA file.
-        This information is printed to console;
-    :type packs_at_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
-
-    Returns XML text of type 'str' with BLAST response.
-    """
-    payload = request["payload"]
-    headers = request["headers"]
-
-    server = "blast.ncbi.nlm.nih.gov"
-    url = "/blast/Blast.cgi"
-    error = True
-
-    while error:
-        try:
-            conn = http.client.HTTPSConnection(server) # create a connection
-            conn.request("POST", url, payload, headers) # send the request
-            response = conn.getresponse() # get the response
-            response_text = str(response.read(), "utf-8") # get response text
-        except OSError as oserr:
-            printl(logfile_path, getwt() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
-            printl(logfile_path,  repr(err) )
-            printl(logfile_path, "barapost will try to connect again in 30 seconds...\n")
-            sleep(30)
-        
-        # if no exception occured
-        else:
-            error = False
-        # end try
-    # end while
-
-    try:
-        rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
-        rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
-    except AttributeError:
-        printl(logfile_path, err_fmt("seems, ncbi has denied your request."))
-        printl(logfile_path, "Response is in file 'request_denial_response.html'")
-        with open("request_denial_response.html", 'w') as den_file:
-            den_file.write(response_text)
-        # end with
-        platf_depend_exit(1)
-    finally:
-        conn.close()
-    # end try
-
-    # Save temporary data
-    with open(tmp_fpath, 'w') as tmpfile:
-        tmpfile.write("sent_packet_num: {}\n".format(pack_to_send))
-        tmpfile.write("Request_ID: {}".format(rid))
-    # end with
-
-    # /=== Wait for alignment results ===\
-
-    return( wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename) )
-# end def send_request
-
-
-def lingering_https_get_request(server, url):
-    """
-    Function performs a "lingering" HTTPS request.
-    It means that the function tries to get the response
-        again and again if the request fails.
-
-    :param server: server address;
-    :type server: str;
-    :param url: the rest of url;
-    :type url: str;
-
-    Returns obtained response decoded to UTF-8 ('str').
-    """
-
-    error = True
-    while error:
-        try:
-            conn = http.client.HTTPSConnection(server) # create connection
-            conn.request("GET", url) # ask for if there areresults
-            response = conn.getresponse() # get the resonse
-            resp_content = str(response.read(), "utf-8") # get response text
-            conn.close()
-        except OSError as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except http.client.RemoteDisconnected as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except socket.gaierror as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except http.client.CannotSendRequest as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        else:
-            error = False # if no exception ocured
-        # end try
-    # end while
-    return resp_content
-
-# end def lingering_https_get_request
-
-
-def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename):
-    """
-    Function waits untill BLAST server accomplishes the request.
-    
-    :param rid: Request ID to wait for;
-    :type rid: str;
-    :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
-    :type rtoe: int;
-    :param pack_to_send: current packet (id) number to send;
-    :type pack_to_send: int;
-    :param packs_at_all: total number of packets corresponding to current FASTA file.
-        This information is printed to console;
-    :type packs_at_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
-
-    Returns XML response ('str').
-    """
-
-    printl(logfile_path, "\n{} - Requesting for current query status. Request ID: {},\n '{}' ({}/{})".format(getwt(),
-    rid, filename, pack_to_send, packs_at_all))
-    # RTOE can be zero at the very beginning of resumption
-    if rtoe > 0:
-        printl(logfile_path, "{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(getwt(), rtoe))
-        printl(logfile_path, "{} - Waiting for {}+3 (+3 extra) seconds...".format(getwt(), rtoe))
-        # Server migth be wrong -- we will give it 3 extra seconds
-        sleep(rtoe + 3)
-        printl(logfile_path, "{} - {} seconds have passed. Checking if alignment is accomplished...".format(getwt(), rtoe+3))
-    # end if
-
-    server = "blast.ncbi.nlm.nih.gov"
-    wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
-    there_are_hits = False
-
-    while True:
-        resp_content = lingering_https_get_request(server, wait_url)
-
-        # if server asks to wait
-        if "Status=WAITING" in resp_content:
-            printn("\r{} - The request is still processing. Waiting      \033[6D".format(getwt()))
-            # indicate each 20 seconds with a dot
-            for i in range(1, 7):
-                sleep(10)
-                printn("\r{} - The request is still processing. Waiting{}".format(getwt(), '.'*i))
-            # end for
-            continue
-        # end if
-        if "Status=FAILED" in resp_content:
-            # if job failed
-            printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
-            return """{} - Job for query {} ({}/{}) with Request ID {} failed.
-    Contact NCBI or try to start it again.\n""".format(getwt(), filename, pack_to_send, packs_at_all, rid)
-        # end if
-        # if job expired
-        if "Status=UNKNOWN" in resp_content:
-            printl(logfile_path, '\n' + getwt() + " - Job expired\a\n")
-            return "expired"
-        # end if
-        # if results are ready
-        if "Status=READY" in resp_content:
-            there_are_hits = True
-            printl(logfile_path, "\n{} - Result for query '{}' ({}/{}) is ready!".format(getwt(), filename, pack_to_send, packs_at_all))
-            # if there are hits
-            if "ThereAreHits=yes" in resp_content:
-                for i in range(45, 0, -5):
-                    printl(logfile_path, '-' * i)
-                # end for
-                print() # just print a blank line
-            # if there are no hits
-            else:
-                printl(logfile_path, getwt() + " - There are no hits. It happens.\n")
-            # end if
-            break
-        # end if
-        # Execution should not reach here
-        printl(logfile_path, '\n' + getwt() + " - Fatal error. Please contact the developer.\a\n")
-        platf_depend_exit(1)
-    # end while
-
-    # Retrieve XML result
-    retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
-    respond_text= lingering_https_get_request(server, retrieve_xml_url)
-
-    if "[blastsrv4.REAL]" in respond_text:
-        printl(logfile_path, "BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", respond_text).group(1)))
-        printl(logfile_path, "All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
-        return None
-    # end if
-
-    # Retrieve human-readable text and put it into result directory
-    if there_are_hits:
-        save_txt_align_result(server, filename, pack_to_send, rid)
-    # end if
-
-    return respond_text
-# end def wait_for_align
-
-
-def save_txt_align_result(server, filename, pack_to_send, rid):
-
-    retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-    respond_text = lingering_https_get_request(server, retrieve_text_url)
-
-    txt_hpath = os.path.join(outdir_path, "prober_blast_response_{}.txt".format(pack_to_send))
-    # Write text result for a human to read
-    with open(txt_hpath, 'w') as txt_file:
-        txt_file.write(respond_text + '\n')
-    # end with
-
-# end def save_txt_align_result
-
-
-def waiter(path):
-
-    while not os.path.exists(path):
-        sleep(0.1)
-    # end while
-
-    lin_regex = r"<INSDSeq_taxonomy>([A-Za-z; ]+)</INSDSeq_taxonomy>"
-
-    while re_search(lin_regex, open(path).read()) is None:
-        sleep(0.1)
-    # end while
-# end def waiter
-
-
-def downloader(retrieve_url, indsxml_path):
-    error = True
-    while error:
-        try:
-            urllib.request.urlretrieve(retrieve_url, indsxml_path)
-        except OSError:
-            print("\nError while requesting for lineage.\n Let's try again in 30 seconds.")
-            if os.path.exists(indsxml_path):
-                os.unlink(indsxml_path)
-            # end if
-            sleep(30)
-        else:
-            error = False
-        # end try
-    # end while
-# end def downloader
-
-
-def get_lineage(gi, hit_def, hit_acc):
-    """
-    Function retrieves lineage of a hit from NCBI.
-    It downloads INSDSeq XML file, since it is the smallest one among those containing lineage.
-    Moreover, it saves this lineage in 'taxonomy' DBM file:
-        {<accession>: <lineage_str>}
-
-    :param gi: GI number of a hit;
-    :type gi: str;
-    :param hit_def: definition line of a hit;
-    :type hit_def: str;
-    :param hit_acc: hit accession;
-    :type hit_acc: str;
-    """
-
-    # Get all accessions in taxonomy file:
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_acc_exist = tuple(tax_file.keys())
-    # end with
-
-    # If we've got a new accession -- download lineage
-    if not hit_acc in tax_acc_exist:
-
-        retrieve_url = "https://www.ncbi.nlm.nih.gov/sviewer/viewer.cgi?tool=portal&save=file&log$=seqview&db=nuccore&report=gbc_xml&id={}&".format(gi)
-
-        waiter_thread = threading.Thread(target=waiter, args=(indsxml_path,))
-        downloader_proc = mp.Process(target=downloader, args=(retrieve_url, indsxml_path))
-
-        waiter_thread.start()
-        downloader_proc.start()
-        waiter_thread.join()
-        downloader_proc.terminate()
-        downloader_proc.join()
-
-        # Get downloaded text:
-        text = open(indsxml_path, 'r').read()
-
-        try:
-            # Find genus name and species name:
-            org_name_regex = r"<INSDSeq_organism>([A-Z][a-z]+ [a-z]+(\. [a-zA-Z0-9]+)?)"
-            org_name = re_search(org_name_regex, text).group(1)
-
-            # Get species name:
-            spec_name = re_search(r" ([a-z]+(\. [a-zA-Z0-9]+)?)", org_name).group(1)
-
-            # Get full lineage
-            lin_regex = r"<INSDSeq_taxonomy>([A-Za-z0-9;\. ]+)</INSDSeq_taxonomy>"
-            lineage = re_search(lin_regex, text).group(1).strip('.')
-
-            # Format of genus-species in lineage can vary.
-            # We need to parse it correctly anyway.
-            if spec_name != "sp": # no species info will be added to lineage for "Pseudarthrobacter sp."
-
-                # Remove "Bacillus cereus group" from lineage
-                for grp_cmplx in (" group", " complex"):
-                    if grp_cmplx in lineage:
-                        lineage = lineage[: lineage.rfind(';')]
-                    # end if
-                # end for
-
-                # Check if genus and species names are in lineage (separated by space):
-                gen_spec_regex = r"(([A-Z][a-z]+) [a-z]+(\. [a-zA-Z0-9]+)?).?$"
-                gen_spec_in_lin = re_search(gen_spec_regex, lineage)
-
-                # If there is genus and species in lineage
-                if not gen_spec_in_lin is None:
-                    genus_name = gen_spec_in_lin.group(2)
-                    genus_count = lineage.count(" " + genus_name) # "...;Bacillus; Bacillus subtilis" are not allowed
-                    if genus_count == 1:
-                        pass # leave genus and species names intact
-                    elif genus_count == 2: # remove odd genus name
-                        lineage = lineage.replace(" " + genus_name + " ", " ")
-                    else:
-                        print(err_fmt("taxonomy parsing error"))
-                        print("Please, contact the developer.")
-                        print("Tell him that 'genus_count' is {}".format(genus_count))
-                        platf_depend_exit(1)
-                    # end if
-                elif not ' ' + spec_name in lineage:
-                    lineage += ";" + spec_name # if there are no species name -- add it
-                # end if
-            # end if
-
-            # Remove all spaces:
-            lineage = lineage.replace("sp. ", "sp._")
-            lineage = lineage.replace("; ", ";")
-            lineage = lineage.replace(" ", ";") # in orger to separate genus and species with semicolon
-
-        except AttributeError:
-            # If there is no lineage -- use hit definition instead of it
-
-            # Format hit definition (get rid of stuff after comma)
-            hit_def = hit_def[: hit_def.find(',')] if ',' in hit_def else hit_def
-            hit_def = hit_def.replace(" complete genome", "") # sometimes there are no comma before it
-            hit_def = hit_def.replace(' ', '_')
-
-            with shelve.open(taxonomy_path, 'c') as tax_file:
-                tax_file[hit_acc] = hit_def
-            lineage = hit_def
-        # end try
-
-        # Write lineage to taxonomy file
-        with shelve.open(taxonomy_path, 'c') as tax_file:
-            tax_file[str(hit_acc)] = lineage
-    else:
-        # If hit is not new -- simply retrieve it from taxonomy file
-        with shelve.open(taxonomy_path, 'c') as tax_file:
-            lineage = tax_file[str(hit_acc)]
-    # end if
-
-    # Remove tmp xml file
-    if os.path.exists(indsxml_path):
-        os.unlink(indsxml_path)
-    # end if
-
-    return lineage
-# end def get_lineage
-
-
-def parse_align_results_xml(xml_text, qual_dict):
-    """
-    Function parses BLAST xml response and returns tsv lines containing gathered information:
-        1. Query name.
-        2. Hit name formatted by 'format_taxonomy_name()' function.
-        3. Hit accession.
-        4. Length of query sequence.
-        5. Length of alignment.
-        6. Percent of identity.
-        7. Percent of gaps.
-        8. E-value.
-        9. Average Phred33 quality of a read (if source file is FASTQ).
-        10. Read accuracy (%) (if source file is FASTQ).
-
-    Erroneous tsv lines that function may produce:
-        1. "<query_name>\\tQuery has been lost: ERROR, Bad Gateway"
-            if data packet has been lost.
-            # end if
-        2. "<query_name>\\tQuery has been lost: BLAST ERROR"
-            if BLAST error occured.
-            # end if
-        3. "<query_name>\\tNo significant similarity found"
-            if no significant similarity has been found
-            # end if
-        Type of return object: list<str>.
-    """
-
-    result_tsv_lines = list()
-
-    # /=== Validation ===/
-
-    if "Bad Gateway" in xml_text:
-        printl(logfile_path, '\n' + '=' * 45)
-        printl(logfile_path, getwt() + " - ERROR! Bad Gateway! Data from last packet has lost.")
-        printl(logfile_path, "It would be better if you restart the script.")
-        printl(logfile_path, "Here are names of lost queries:")
-        for i, name in enumerate(seq_names):
-            printl(logfile_path, "{}. '{}'".format(i+1, name))
-            result_tsv_lines.append(name + DELIM + "Query has been lost: ERROR, Bad Gateway")
-        # end for
-        return result_tsv_lines
-    # end if
-
-    if "Status=FAILED" in xml_text:
-        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!: request failed")
-        printl(logfile_path, "Here are names of lost queries:")
-        for i, name in enumerate(seq_names):
-            printl(logfile_path, "{}. '{}'".format(i+1, name))
-            result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
-        # end for
-        return result_tsv_lines
-    # end if
-
-    if "to start it again" in xml_text:
-        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!")
-
-        printl(logfile_path, "Here are names of lost queries:")
-        for i, name in enumerate(seq_names):
-            printl(logfile_path, "{}. '{}'".format(i+1, name))
-            result_tsv_lines.append(name + DELIM +"Query has been lost: BLAST ERROR")
-        # end for
-        return result_tsv_lines
-    # end if
-
-    # /=== Parse BLAST XML response ===/
-
-    root = ElementTree.fromstring(xml_text) # get tree instance
-
-    global new_acc_dict
-
-    # Iterate through "Iteration" and "Iteration_hits" nodes
-    for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
-        # "Iteration" node contains query name information
-        query_name = sys.intern(iter_elem.find("Iteration_query-def").text)
-        query_len = iter_elem.find("Iteration_query-len").text
-
-        ph33_qual = qual_dict[query_name]
-        if ph33_qual != '-':
-            miscall_prop = round(10**(ph33_qual/-10), 3)
-            accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
-            qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(ph33_qual,
-                accuracy)
-        else:
-            # If FASTA file is processing, print dashed in quality columns
-            ph33_qual = "-"
-            accuracy = "-" # expected percent of correctly called bases
-            qual_info_to_print = ""
-        # end if
-
-        # Check if there are any hits
-        chck_h = iter_hit.find("Hit")
-
-        if chck_h is None:
-            # If there is no hit for current sequence
-            printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
-            result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
-                "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
-        else:
-            # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
-            # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
-            top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
-
-            lineages = list()
-            hit_accs = list()
-
-            for hit in iter_hit:
-
-                # Find the first HSP (we need only the first one)
-                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
-
-                if hsp.find("Hsp_bit-score").text != top_bitscore:
-                    break
-                # end if
-
-                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                hit_def = hit.find("Hit_def").text
-
-                curr_acc = sys.intern(hit.find("Hit_accession").text)
-                hit_accs.append( curr_acc ) # get hit accession
-                gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
-                hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
-
-                # Get lineage
-                try:
-                    lineages.append(get_lineage(hit_gi, hit_def, hit_accs[len(hit_accs)-1]).split(';'))
-                except OSError as oserr:
-                    print(err_fmt(str(oserr)))
-                    platf_depend_exit(1)
-                # end try
-
-                # Update accession dictionary
-                try:
-                    new_acc_dict[curr_acc][2] += 1
-                except KeyError:
-                    new_acc_dict[curr_acc] = [hit_gi, hit_def, 1]
-                # end try
-
-                align_len = hsp.find("Hsp_align-len").text.strip()
-                pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
-                gaps = hsp.find("Hsp_gaps").text # get number of gaps
-
-                evalue = hsp.find("Hsp_evalue").text # get e-value
-                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-            # end for
-
-            # Finc LCA:
-            lineage = list()
-
-            for i in range(len(lineages[0])):
-                if len(set(map(lambda t: t[i], lineages))) == 1:
-                    lineage.append(lineages[0][i]) 
-                else:
-                    break
-                # end if
-            # end for
-
-            if len(lineage) != 0:
-                # Divide taxonomic names with semicolon
-                lineage = ';'.join(lineage)
-                printl(logfile_path, """\n{} - {}
-    Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
-                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
-                # Append new tsv line containing recently collected information
-                result_tsv_lines.append( DELIM.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
-                    align_len, pident, gaps, evalue, str(ph33_qual), str(accuracy)) ))
-            else:
-                # If hits are from different domains (i.e. Bacteria, Archaea, Eukaryota) -- no let it be unknown
-                printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
-                result_tsv_lines.append(DELIM.join( (query_name, "No significant similarity found", "-", query_len,
-                    "-", "-", "-", "-", str(ph33_qual), str(accuracy)) ))
-            # end if
-        # end if
-        println(logfile_path, qual_info_to_print)
-    # end for
-
-    return result_tsv_lines
-# end def parse_align_results_xml
-
-
-def write_result(res_tsv_lines, tsv_res_path, acc_file_path):
-    """
-    Function writes result of blasting to result tsv file.
-
-    :param res_tsv_lines: tsv lines returned by 'parse_align_results_xml()' funciton;
-    :type res_tsv_lines: list<str>;
-    :param tsv_res_path: path to reslut tsv file;
-    :type tsv_res_path: str;
-    :param new_dpath: path to current result directory;
-    :type new_dpath: str;
-    """
-
-    # If there is no result tsv file -- create it and write a head of the table.
-    if not os.path.exists(tsv_res_path):
-        with open(tsv_res_path, 'w') as tsv_res_file:
-            tsv_res_file.write(DELIM.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "AVG_PHRED33", "ACCURACY(%)"] ) + '\n')
-        # end with
-    # end if
-    
-    # Write reslut tsv lines to this file
-    with open(tsv_res_path, 'a') as tsv_res_file:
-        for line in res_tsv_lines:
-            tsv_res_file.write(line + '\n')
-        # end for
-    # end with
-
-    # === Write accession information ===
-
-    global acc_dict
-    global new_acc_dict
-    acc_file_path = os.path.join(outdir_path, "hits_to_download.tsv")
-
-    with open(acc_file_path, 'w') as acc_file:
-        acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
-        acc_file.write("# Values in this file are delimited by tabs.\n")
-        acc_file.write("# You are welcome to edit this file by adding,\n")
-        acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")
-        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost.py'.\n")
-        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
-        acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
-        acc_file.write(DELIM.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
-    # end with
-
-    for acc, other_info in new_acc_dict.items():
-        try:
-            acc_dict[acc][2] += other_info[2]
-        
-        except KeyError:
-            acc_dict[acc] = other_info
-        # end try
-    # end for
-    
-    # Write accessions and record names
-    with open(acc_file_path, 'a') as acc_file:
-        for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
-            acc_file.write(DELIM.join( (acc, other_info[0], other_info[1], str(other_info[2]))) + '\n')
-        # end for
-    # end with
-    
-    new_acc_dict.clear()
-# end def write_result
-
-
-# =/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=/=
 #                       |===== Proceed =====|
-
-
-# /=== Comments to the kernel loop ===/
 
 # 1. 'previous_data' is a dict of the following structure:
 #    {
 #        "RID": saved_RID (str),
-#        "acc_fpath": path_to_accessoion_file (str)
 #        "tsv_respath": path_to_tsv_file_from_previous_run (str),
 #        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
 #        "tmp_fpath": path_to_pemporary_file (str),
@@ -1359,7 +403,6 @@ def write_result(res_tsv_lines, tsv_res_path, acc_file_path):
 
 #                   |===== Kernel loop =====|
 
-organisms = verify_taxids(taxid_list)
 
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}'".format(logfile_path))
@@ -1368,10 +411,10 @@ if user_email != "":
 # end if
 printl(logfile_path, " - Probing batch size: {} sequences;".format(probing_batch_size))
 printl(logfile_path, " - Packet size: {} sequences;".format(packet_size))
-printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
 if not max_seq_len is None:
     printl(logfile_path, " - Maximum length of a sequence sent: {} bp;".format(max_seq_len))
 # end if
+printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
 printl(logfile_path, " - Database: nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
@@ -1397,13 +440,10 @@ acc_counter = 0
 # Accessions are keys, record names are values.
 # This dictionary is filled while processing and at the beginning of resumption.
 acc_dict = dict()
-# Dictionary of accessions and record names encountered while sending of the current packet.
-# Accessions are keys, record names are values.
-new_acc_dict = dict()
 
 # Counter of sequences processed during current run
 seqs_processed = 0
-# Counetr of sequences processed concerning putative previous run(s)
+# Counter of sequences processed concerning putative previous run(s)
 glob_seqs_processed = 0
 
 # Variable that contains id of next sequence in current FASTA file.
@@ -1417,16 +457,8 @@ stop = False
 # Iterate through found source FASTQ and FASTA files
 for i, fq_fa_path in enumerate(fq_fa_list):
 
-    # Configure quality dictionary
-    # qual_dict = configure_qual_dict(fq_fa_path) if is_fastq(fq_fa_path) else None
-
     # Create the result directory with the name of FASTQ of FASTA file being processed:
     new_dpath = create_result_directory(fq_fa_path, outdir_path)
-
-    # Convert FASTQ file to FASTA (if it is FASTQ) and get it's path and number of sequences in it:
-    # curr_fasta = fastq2fasta(fq_fa_path, i, new_dpath)
-    # printl(logfile_path, "\n |=== file: '{}' ({} sequences) ===|".format(os.path.basename(curr_fasta["fpath"]),
-    #     curr_fasta["nreads"]))
 
     # "hname" means human readable name (i.e. without file path and extention)
     infile_hname = os.path.basename(fq_fa_path)
@@ -1435,7 +467,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # Look around and ckeck if there are results of previous runs of this script
     # If 'look_around' is None -- there is no data from previous run
     previous_data = look_around(outdir_path, new_dpath, fq_fa_path,
-        blast_algorithm)
+        blast_algorithm, acc_dict, probing_batch_size, logfile_path)
 
     if previous_data is None: # If there is no data from previous run
         num_done_reads = 0 # number of successfully processed sequences
@@ -1443,22 +475,18 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             "classification")) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             infile_hname), blast_algorithm) # form temporary file path
-        acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv") # form path to accession file
         saved_RID = None
     else: # if there is data from previous run
         num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
-        acc_fpath = previous_data["acc_fpath"] # accession file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
-        contin_rtoe = 0 # we will not sleep at the very beginning of resumption
         probing_batch_size -= previous_data["decr_pb"]
     # end if
 
     glob_seqs_processed += num_done_reads
 
     # Calculate total number of packets meant to be sent from current FASTA file
-    # tmp_num = min(probing_batch_size, curr_fasta["nreads"])
     packs_at_all = probing_batch_size // packet_size
 
     if probing_batch_size % packet_size > 0: # And this is ceiling
@@ -1478,20 +506,24 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Assumption that we need to send current packet
         send = True
+        align_xml_text = None
 
         # If current packet has been already send, we can try to get it and not to send again
         if not saved_RID is None:
 
-            align_xml_text = wait_for_align(saved_RID, contin_rtoe,
-                pack_to_send, packs_at_all, os.path.basename(fq_fa_path)) # get BLAST XML response
+            resume_rtoe = 0 # we will not sleep at the very beginning of resumption
+
+            align_xml_text = wait_for_align(saved_RID, resume_rtoe,
+                pack_to_send, packs_at_all, os.path.basename(fq_fa_path), logfile_path) # get BLAST XML response
             saved_RID = None
 
-            if align_xml_text == "expired":
+            if align_xml_text is None:
                 # Resend the packet ('send' remains True)
                 pass
-            elif align_xml_text is None:
+            elif align_xml_text == "[blastsrv4.REAL]":
                 # Halve sequences and resend the packet ('send' remains True)
                 packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
+                align_xml_text = None
             else:
                 # OK -- omit 'if send' statement and write results
                 send = False
@@ -1500,40 +532,37 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         if send:
 
-            printl(logfile_path, "\nGo to BLAST (" + blast_algorithm + ")!")
+            printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
             printl(logfile_path, "Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
                 packs_at_all, len(packet["qual"])))
 
-            align_xml_text = None
             while align_xml_text is None: # until successfull attempt
 
-                request = configure_request(packet["fasta"], blast_algorithm, organisms) # get the request
+                request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email) # get the request
 
                 # Send the request and get BLAST XML response
                 # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
 
-                align_xml_text = send_request(request,
-                    pack_to_send, packs_at_all, os.path.basename(fq_fa_path), tmp_fpath)
-
-                if align_xml_text == "expired":
-                    printl(logfile_path, "Job expired. Trying to send it once again.\n")
-                    continue
-                # end if
+                align_xml_text = send_request(request, pack_to_send, packs_at_all,
+                    os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --
                 #    shorten all sequences in packet twofold and resend it.
-                if align_xml_text is None:
+                if align_xml_text == "[blastsrv4.REAL]":
                     packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
+                    align_xml_text = None
                 # end if
             # end while
         # end if
 
         # Get result tsv lines
         result_tsv_lines = parse_align_results_xml(align_xml_text,
-            packet["qual"]) # get result tsv lines
+            packet["qual"], acc_dict, logfile_path, taxonomy_path) # get result tsv lines
 
-        # Write the result to tsv
-        write_result(result_tsv_lines, tsv_res_path, acc_fpath)
+        # Write classification to TSV file
+        write_classification(result_tsv_lines, tsv_res_path)
+        # Write accessions and GI numbers of hits to TSV file
+        write_hits_to_download(acc_dict, acc_fpath)
 
         seqs_processed += len( packet["qual"] )
         pack_to_send += 1
@@ -1544,20 +573,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             break
         # end if
     # end for
-    remove_tmp_files(tmp_fpath, indsxml_path)
+    remove_tmp_files(tmp_fpath)
     if stop:
         break
     # end if
 # end for
 
 
-def get_undr_sep_number(number):
-    undr_sep_num = str(number)
-    for i in range(len(undr_sep_num)-4, -1, -4):
-        undr_sep_num = undr_sep_num[: i+1] + '_' + undr_sep_num[i+1: ]
-    # end for
-    return undr_sep_num
-# end def get_undr_sep_number
+from src.get_undr_sep_number import get_undr_sep_number
 
 glob_seqs_processed += seqs_processed
 str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
@@ -1591,5 +614,5 @@ printl(logfile_path, """\nYou can edit this file before running 'barapost.py' in
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost.py'.""")
 
-printl(logfile_path, '\n' + get_full_time() + "- Probing task is completed\n")
+printl(logfile_path, '\n' + get_full_time() + "- Task is completed\n")
 platf_depend_exit(0)
