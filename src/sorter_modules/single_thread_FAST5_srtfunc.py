@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from src.sorter_modules.common import *
-
-
 try:
     import h5py
 except ImportError as imperr:
@@ -13,6 +10,16 @@ except ImportError as imperr:
     print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
     platf_depend_exit(1)
 # end try
+
+import sys
+from glob import glob
+
+from src.sorter_modules.sorter_spec import *
+
+from src.printlog import printl, printn, getwt, err_fmt
+from src.filesystem import get_curr_res_dpath, is_fastq
+from src.fmt_readID import fmt_read_id
+from src.platform import platf_depend_exit
 
 
 def copy_read_f5_2_f5(from_f5, read_name, to_f5):
@@ -31,11 +38,11 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5):
         from_f5.copy(read_name, to_f5)
 
     except ValueError as verr:
-        printl("\n\n ! - Error: {}".format( str(verr) ))
-        printl("Reason is probably the following:")
-        printl("  read that is copying to the result file is already in it.")
-        printl("ID of the read: '{}'".format(read_name))
-        printl("File: '{}'".format(to_f5.filename))
+        printl(logfile_path, "\n\n ! - Error: {}".format( str(verr) ))
+        printl(logfile_path, "Reason is probably the following:")
+        printl(logfile_path, "  read that is copying to the result file is already in it.")
+        printl(logfile_path, "ID of the read: '{}'".format(read_name))
+        printl(logfile_path, "File: '{}'".format(to_f5.filename))
         platf_depend_exit(1)
     # end try
 # end def copy_read_f5_2_f5
@@ -72,11 +79,11 @@ def copy_single_f5(from_f5, read_name, to_f5):
             # end if
         # end for
     except ValueError as verr:
-        printl("\n\n ! - Error: {}".format( str(verr) ))
-        printl("Reason is probably the following:")
-        printl("  read that is copying to the result file is already in it.")
-        printl("ID of the read: '{}'".format(read_name))
-        printl("File: '{}'".format(to_f5.filename))
+        printl(logfile_path, "\n\n ! - Error: {}".format( str(verr) ))
+        printl(logfile_path, "Reason is probably the following:")
+        printl(logfile_path, "  read that is copying to the result file is already in it.")
+        printl(logfile_path, "ID of the read: '{}'".format(read_name))
+        printl(logfile_path, "File: '{}'".format(to_f5.filename))
         platf_depend_exit(1)
     # end try
 # end def copy_single_f5
@@ -98,7 +105,8 @@ def fast5_readids(fast5_file):
 # end def fast5_readids
 
 
-def sort_fast5_file(f5_path):
+def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
+        min_qual, min_qlen, logfile_path):
     """
     Function sorts FAST5 file without untwisting.
 
@@ -106,11 +114,14 @@ def sort_fast5_file(f5_path):
     :type f5_path: str;
     """
 
+    outdir_path = os.path.dirname(logfile_path)
+    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
+
     seqs_pass = 0
     seqs_fail = 0
     srt_file_dict = dict()
 
-    trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_ph33_qual),
+    trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_qual),
             minlen_fmt_str))
 
     new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
@@ -132,10 +143,10 @@ def sort_fast5_file(f5_path):
             break
         # end for
     except RuntimeError as runterr:
-        printl(err_fmt("FAST5 file is broken"))
-        printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
-        printl("Reason: {}".format( str(runterr) ))
-        printl("Omitting this file...\n")
+        printl(logfile_path, err_fmt("FAST5 file is broken"))
+        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl(logfile_path, "Reason: {}".format( str(runterr) ))
+        printl(logfile_path, "Omitting this file...\n")
         # Return zeroes -- inc_val won't be incremented and this file will be omitted
         return (0, 0)
     # end try
@@ -151,16 +162,16 @@ def sort_fast5_file(f5_path):
     for i, read_name in enumerate(fast5_readids(from_f5)):
 
         try:
-            hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))] # omit 'read_' in the beginning of FAST5 group's name
+            hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))[1:]] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
-            printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
+            printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
   This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
-            printl("Try running sorter with '-u' (--untwist-fast5') flag.\n")
+            printl(logfile_path, "Try running sorter with '-u' (--untwist-fast5') flag.\n")
             platf_depend_exit(1)
         # end try
         # If read is found in TSV file:
         q_len = SeqLength(q_len)
-        if ph33_qual != '-' and ph33_qual < min_ph33_qual:
+        if ph33_qual != '-' and ph33_qual < min_qual:
             # Get name of result FASTQ file to write this read in
             if trash_fpath not in srt_file_dict.keys():
                 srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
@@ -183,6 +194,10 @@ def sort_fast5_file(f5_path):
     for file_obj in srt_file_dict.values():
         file_obj.close()
     # end for
+
+    printl(logfile_path, "\rFile '{}' is sorted.".format(os.path.basename(f5_path)))
+    printn(" Working...")
+
     return (seqs_pass, seqs_fail)
 # end def sort_fast5_file
 
@@ -195,9 +210,9 @@ def update_file_dict(srt_file_dict, new_fpath):
             srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
         # end if
     except OSError as oserr:
-        printl(err_fmt("error while opening one of result files"))
-        printl("Errorneous file: '{}'".format(new_fpath))
-        printl( str(oserr) )
+        printl(logfile_path, err_fmt("error while opening one of result files"))
+        printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
+        printl(logfile_path,  str(oserr) )
         platf_depend_exit(1)
     # end try
     return srt_file_dict

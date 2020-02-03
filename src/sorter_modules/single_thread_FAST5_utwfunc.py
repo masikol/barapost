@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from src.sorter_modules.common import *  # ??
-
-from shelve import open as open_shelve
-from threading import Thread, Event
-from time import sleep
-
 try:
     import h5py
 except ImportError as imperr:
@@ -16,6 +10,13 @@ except ImportError as imperr:
     print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
     platf_depend_exit(1)
 # end try
+
+from src.sorter_modules.sorter_spec import *
+
+from src.printlog import printl, printn, getwt, err_fmt
+from src.platform import platf_depend_exit
+
+from shelve import open as open_shelve
 
 index_name = "fast5_to_tsvtaxann_idx"
 
@@ -97,10 +98,10 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
             break
         # end for
     except RuntimeError as runterr:
-        printl(err_fmt("FAST5 file is broken"))
-        printl("Reading the file '{}' crashed.".format(os.path.basename(fpath)))
-        printl("Reason: {}".format( str(runterr) ))
-        printl("Omitting this file...\n")
+        printl(logfile_path, err_fmt("FAST5 file is broken"))
+        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl(logfile_path, "Reason: {}".format( str(runterr) ))
+        printl(logfile_path, "Omitting this file...\n")
         return
     # end try
 
@@ -143,11 +144,11 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
     # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
     #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
     if len(readids_to_seek) == len_before:
-        printl(err_fmt("reads from FAST5 file not found"))
-        printl("FAST5 file: '{}'".format(f5_path))
-        printl("Some reads reads have not undergone taxonomic annotation.")
+        printl(logfile_path, err_fmt("reads from FAST5 file not found"))
+        printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
+        printl(logfile_path, "Some reads reads have not undergone taxonomic annotation.")
         missing_log = "missing_reads_lst.txt"
-        printl("List of missing reads are in following file:\n  '{}'\n".format(missing_log))
+        printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
         with open(missing_log, 'w') as missing_logfile:
             missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
             for readid in readids_to_seek:
@@ -160,7 +161,7 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
             # end for
             os.rmdir(index_dirpath)
         except OSError as oserr:
-            printl("error while removing index directory: {}".format(oserr))
+            printl(logfile_path, "error while removing index directory: {}".format(oserr))
         finally:
             platf_depend_exit(3)
         # end try
@@ -173,8 +174,8 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
             index_f5_2_tsv[f5_path] = idx_dict
         # end with
     except OSError as oserr:
-        printl(err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
-        printl( str(oserr) )
+        printl(logfile_path, err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
+        printl(logfile_path,  str(oserr) )
         platf_depend_exit(1)
     # end try
 # end def map_f5reads_2_taxann

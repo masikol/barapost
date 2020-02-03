@@ -19,6 +19,7 @@ FORMATTING_FUNCS = (
 is_gzipped = lambda file: True if file.endswith(".gz") else False
 is_fastq = lambda f: True if not re_search(r".+\.f(ast)?q(\.gz)?$", f) is None else False
 is_fasta = lambda f: True if not re_search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None else False
+is_fast5 = lambda f: f.endswith(".fast5")
 
 
 def rename_file_verbosely(file, logfile_path):
@@ -103,7 +104,7 @@ def create_result_directory(fq_fa_path, outdir_path):
 
     # dpath means "directory path"
     new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
+    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)(\.gz)?$", new_dpath).group(1) # get rid of extention
     if not os.path.exists(new_dpath):
         try:
             os.makedirs(new_dpath)

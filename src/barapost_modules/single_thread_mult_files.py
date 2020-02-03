@@ -1,7 +1,8 @@
 # -*- coding: utf-8  -*-
 
 from src.printlog import getwt, printl, printn
-from src.filesystem import get_curr_res_dpath, create_result_directory, remove_tmp_files, is_fastq
+from src.filesystem import get_curr_res_dpath, create_result_directory
+from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS
 from src.write_classification import write_classification
 
 from src.fasta import fasta_packets
@@ -44,23 +45,33 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
         previous_data = look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path)
 
         if previous_data is None: # If there is no data from previous run
-            num_done_reads = 0 # number of successfully processed sequences
+            num_done_seqs = 0 # number of successfully processed sequences
             tsv_res_path = "{}.tsv".format(os.path.join(new_dpath,
                 "classification")) # form result tsv file path
         else: # if there is data from previous run
-            num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
+            num_done_seqs = previous_data["n_done_reads"] # get number of successfully processed sequences
             tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         # end if
 
-        packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
+        how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
 
-        for packet in packet_generator(fq_fa_path, packet_size, num_done_reads):
+        if is_fastq(fq_fa_path):
+            packet_generator = fastq_packets
+            num_seqs = sum(1 for line in how_to_open(fq_fa_path)) // 4 # 4 lines per record
+        else:
+            packet_generator = fasta_packets
+            num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+                map(fmt_func, how_to_open(fq_fa_path).readlines()))))
+        # end if
 
-            if packet["fasta"] == "":
-                printl(logfile_path, "\nFile '{}' has been already completely processed.".format(fq_fa_path))
-                printl(logfile_path, "Omitting it.")
-                continue
-            # end if
+        if num_seqs == num_done_seqs:
+            printl(logfile_path, "\rFile '{}' has been already completely processed.".format(fq_fa_path))
+            printl(logfile_path, "Omitting it.")
+            printn("  Working...")
+            continue
+        # end if
+
+        for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs):
 
             # Align the packet
             align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,

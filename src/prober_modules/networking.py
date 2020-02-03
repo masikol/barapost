@@ -194,7 +194,7 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
 
     try:
         rid = re_search(r"RID = (.+)", response_text).group(1) # get Request ID
-        rtoe = 60 # this value can be terribly incorrect
+        rtoe = int(re_search(r"RTOE = ([0-9]+)", response_text).group(1)) # get time to wait provided by the NCBI server
     except AttributeError:
         printl(logfile_path, err_fmt("seems, ncbi has denied your request."))
         printl(logfile_path, "Response is in file 'request_denial_response.html'")
@@ -242,12 +242,11 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
     # RTOE can be zero at the very beginning of resumption
     if rtoe > 0:
 
-        printn("{} - The request is being processed. Waiting      \033[6D".format(getwt()))
-        # indicate each 20 seconds with a dot
-        for i in range(1, 7):
-            sleep(10)
-            printn("\r{} - The request is being processed. Waiting{}".format(getwt(), '.'*i))
-        # end for
+        printl(logfile_path, "{} - BLAST server estimates that alignment will be accomplished in {} seconds ".format(getwt(), rtoe))
+        printl(logfile_path, "{} - Waiting for {}+3 (+3 extra) seconds...".format(getwt(), rtoe))
+        # Server migth be wrong -- we will give it 3 extra seconds
+        sleep(rtoe + 3)
+        printl(logfile_path, "{} - {} seconds have passed. Checking if alignment is accomplished...".format(getwt(), rtoe+3))
     # end if
 
     server = "blast.ncbi.nlm.nih.gov"

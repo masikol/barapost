@@ -64,7 +64,11 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
                 packet = prune_seqs(packet.strip(), 'l', max_seq_len)
             # end if
 
-            yield {"fasta": packet.strip(), "qual": qual_dict}
+            if packet != "":
+                yield {"fasta": packet.strip(), "qual": qual_dict}
+            else:
+                return
+            # end if
 
             packet = ""
             qual_dict.clear()

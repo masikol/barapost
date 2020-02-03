@@ -5,25 +5,17 @@
 #    it will produce broken files.
 # Thus we will open these files each time and descriptors will be up-to-date.
 
+from src.sorter_modules.sorter_spec import *
 
-from gzip import open as open_as_gzip
-from re import search as re_search
-from glob import glob
+from src.printlog import printl, printn, getwt, err_fmt
+from src.platform import platf_depend_exit
+from src.filesystem import get_curr_res_dpath, is_fastq
+from src.fmt_readID import fmt_read_id
+
+from src.sorter_modules.fastq_records import fastq_records
+from src.sorter_modules.fasta_records import fasta_records
+
 import os
-
-
-is_gzipped = lambda f: True if f.endswith(".gz") else False
-OPEN_FUNCS = (open, open_as_gzip)
-
-# Data from plain text and gzipped should be parsed in different way,
-#   because data from .gz is read as 'bytes', not 'str'.
-FORMATTING_FUNCS = (
-    lambda line: line,   # format text line
-    lambda line: line.decode("utf-8")  # format gzipped line
-)
-
-
-from src.sorter_modules.common import *
 
 
 def write_fastq_record(sorted_path, fastq_record):
@@ -33,56 +25,45 @@ def write_fastq_record(sorted_path, fastq_record):
     :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ;
     :type fastq_record: dict<str: str>;
     """
-    try:
-        with open(sorted_path, 'a') as sorted_file:
 
-            sorted_file.write(fastq_record["seq_id"])
-            sorted_file.write(fastq_record["seq"])
-            sorted_file.write(fastq_record["opt_id"])
-            sorted_file.write(fastq_record["qual_line"])
-        # end with
-    except OSError as err:
-        printl(err_fmt( str(err) ))
-        printl("File: '{}'".format(sorted_path))
-        platf_depend_exit(0)
-    # end try
+    with open(sorted_path, 'a') as sorted_file:
+
+        sorted_file.write(fastq_record["seq_id"]+'\n')
+        sorted_file.write(fastq_record["seq"]+'\n')
+        sorted_file.write(fastq_record["opt_id"]+'\n')
+        sorted_file.write(fastq_record["qual_line"]+'\n')
+    # end with
 # end def write_fastq_record
 
 
-def write_fasta_record(sorted_path, fasta_record):
+def write_fasta_record(sorted_fpath, fasta_record):
     """
-    :param sorted_path: path to file, in which data from fastq_record is oing to be written;
-    :type sorted_path: str;
-    :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA;
-    :type fasta_record: dict<str: str>;
+    :param sorted_file: file, which data from fasta_record is written in
+    :type sorted_file: _io.TextIOWrapper
+    :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
+    :type fasta_record: dict<str: str>
     """
-    try:
-        with open(sorted_path, 'a') as sorted_file:
-            sorted_file.write(fasta_record["seq_id"])
-            sorted_file.write(fasta_record["seq"])
-        # end with
-    except OSError as err:
-        printl(err_fmt( str(err) ))
-        printl("File: '{}'".format(sorted_path))
-        platf_depend_exit(0)
-    # end try
+
+    with open(sorted_fpath, 'a') as sorted_file:
+        sorted_file.write(fasta_record["seq_id"]+'\n')
+        sorted_file.write(fasta_record["seq"]+'\n')
+    # end with
 # end def write_fasta_record
 
 
-def init_paral_sorting(write_lock_buff, inc_val_buff, inc_val_lock_buff):
+def init_paral_sorting(print_lock_buff, write_lock_buff):
 
+    global print_lock
+    print_lock = print_lock_buff
+    
     global write_lock
     write_lock = write_lock_buff
 
-    global inc_val
-    inc_val = inc_val_buff
-
-    global inc_val_lock
-    inc_val_lock = inc_val_lock_buff
 # end def init_paral_sorting
 
 
-def sort_fastqa_file(fq_fa_lst):
+def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
+    min_qual, min_qlen, logfile_path):
     """
     Function for parallel sorting FASTQ and FASTA files.
     Actually sorts multiple files.
@@ -90,6 +71,9 @@ def sort_fastqa_file(fq_fa_lst):
     :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
     :type fq_fa_lst: list<str>;
     """
+
+    outdir_path = os.path.dirname(logfile_path)
+    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
 
     seqs_pass = 0
     seqs_fail = 0
@@ -104,7 +88,7 @@ def sort_fastqa_file(fq_fa_lst):
         if is_fastq(fq_fa_path):
             seq_records_generator = fastq_records
             write_fun =  write_fastq_record
-            trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_ph33_qual),
+            trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_qual),
                 minlen_fmt_str))
         else:
             seq_records_generator = fasta_records
@@ -133,17 +117,17 @@ def sort_fastqa_file(fq_fa_lst):
                 read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])) # get ID of the sequence
 
                 try:
-                    hit_names, ph33_qual, q_len = resfile_lines[read_name] # find hit corresponding to this sequence
+                    hit_names, ph33_qual, q_len = resfile_lines[read_name[1:]] # find hit corresponding to this sequence
                 except KeyError:
-                    printl(err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
+                    printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
     This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
-                    printl("Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
+                    printl(logfile_path, "Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
                     platf_depend_exit(1)
                 # end try
 
                 # If read is found in TSV file:
                 q_len = SeqLength(q_len)
-                if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_ph33_qual):
+                if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_qual):
                     # Place this sequence to trash file
                     to_write[read_name] = (fastqa_rec, trash_fpath)
                     seqs_fail += 1
@@ -175,7 +159,11 @@ def sort_fastqa_file(fq_fa_lst):
                 # end for
             # end with
         # end if
+
+        printl(logfile_path, "\rFile '{}' is sorted.".format(os.path.basename(fq_fa_path)))
+        printn(" Working...")
     # end for
+
 
     return (seqs_pass, seqs_fail)
 # end def sort_fastqa_file

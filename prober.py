@@ -465,21 +465,21 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         blast_algorithm, acc_dict, probing_batch_size, logfile_path)
 
     if previous_data is None: # If there is no data from previous run
-        num_done_reads = 0 # number of successfully processed sequences
+        num_done_seqs = 0 # number of successfully processed sequences
         tsv_res_path = "{}.tsv".format(os.path.join(new_dpath,
             "classification")) # form result tsv file path
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             infile_hname), blast_algorithm) # form temporary file path
         saved_RID = None
     else: # if there is data from previous run
-        num_done_reads = previous_data["n_done_reads"] # get number of successfully processed sequences
+        num_done_seqs = previous_data["n_done_reads"] # get number of successfully processed sequences
         tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
         probing_batch_size -= previous_data["decr_pb"]
     # end if
 
-    glob_seqs_processed += num_done_reads
+    glob_seqs_processed += num_done_seqs
 
     # Calculate total number of packets meant to be sent from current FASTA file
     packs_at_all = probing_batch_size // packet_size
@@ -493,7 +493,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
 
     # Iterate over packets left to send
-    for packet in packet_generator(fq_fa_path, packet_size, num_done_reads, max_seq_len):
+    for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, max_seq_len):
 
         if packet["fasta"] == "":
             break

@@ -3,11 +3,11 @@
 from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
 
-def fasta_packets(data, packet_size, num_done_reads, max_seq_len=None):
+def fasta_packets_from_str(data, packet_size, num_done_seqs, max_seq_len=None):
     """
     Function (actually, generator) retrieves 'packet_size' records from 'fasta'
         no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
-    This function will pass 'num_done_reads' sequences (i.e. they will not be processed)
+    This function will pass 'num_done_seqs' sequences (i.e. they will not be processed)
         by calling 'pass_processed_files'.
 
     :param data: path to FASTA file OR actual FASTA data of 'str' type;
@@ -16,7 +16,7 @@ def fasta_packets(data, packet_size, num_done_reads, max_seq_len=None):
     :type packet_size: int;
     :param reads_at_all: number of sequences in current file;
     :type reads_at_all: int;
-    :param num_done_reads: number of sequnces in current file that have been already processed;
+    :param num_done_seqs: number of sequnces in current file that have been already processed;
     :type num_doce_reads: int;
     """
 

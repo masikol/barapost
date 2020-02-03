@@ -83,7 +83,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
     # Form path to file with hits to download
     acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
 
-    num_done_reads = None # variable to keep number of succeffdully processed sequences
+    num_done_seqs = None # variable to keep number of succeffdully processed sequences
 
     resume = None
     # Check if there are results from previous run.
@@ -109,7 +109,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             try:
                 with open(tsv_res_fpath, 'r') as res_file:
                     lines = res_file.readlines()
-                    num_done_reads = len(lines) - 1 # the first line is a head
+                    num_done_seqs = len(lines) - 1 # the first line is a head
                     last_line = lines[-1]
                     last_seq_id = last_line.split('\t')[0]
                 # end with
@@ -123,7 +123,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                 return None
             else:
                 printl(logfile_path, "Last sent sequence: " + last_seq_id)
-                printl(logfile_path, "{} sequences have been already processed".format(num_done_reads))
+                printl(logfile_path, "{} sequences have been already processed".format(num_done_seqs))
             # end try
         # end if
         
@@ -160,8 +160,8 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
         # end if
 
         # If we start from the beginning, we have no sequences processed
-        if num_done_reads is None:
-            num_done_reads = 0
+        if num_done_seqs is None:
+            num_done_seqs = 0
         # end if
 
         # Get packet size, number of the last sent packet and RID
@@ -182,17 +182,17 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             return {
                 "RID": None,
                 "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
+                "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,
                 "decr_pb": 0
             }
         else:
-            decr_pb = num_done_reads if num_done_reads < probing_batch_size else 0
+            decr_pb = num_done_seqs if num_done_seqs < probing_batch_size else 0
             # Return data from previous run
             return {
                 "RID": RID_save,
                 "tsv_respath": tsv_res_fpath,
-                "n_done_reads": num_done_reads,
+                "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,
                 "decr_pb": decr_pb
             }

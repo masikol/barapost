@@ -212,7 +212,7 @@ for opt, arg in opts:
             print(" And here is your value: '{}'".format(arg))
             exit(1)
         # end try
-        if n_thr > mp.cpu_count():
+        if n_thr > len(os.sched_getaffinity(0)):
             print("""\nWarning! You have specified {} threads to use
   although {} are available.""".format(n_thr, mp.cpu_count()))
             error = True

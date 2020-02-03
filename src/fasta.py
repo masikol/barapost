@@ -3,22 +3,22 @@
 from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
 
-def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
+def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
     """
     Function passes sequences that have been already processed.
 
     :param fasta_file: FASTA file instalce;
     :type fasta_file: str;
-    :param num_done_reads: amount of sequences that have been already processed;
-    :type num_done_reads: int;
+    :param num_done_seqs: amount of sequences that have been already processed;
+    :type num_done_seqs: int;
     :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
     """
 
-    if num_done_reads == 0:
+    if num_done_seqs == 0:
         return None
     else:
         i = 0
-        while i <= num_done_reads:
+        while i <= num_done_seqs:
 
             line = fmt_func(fasta_file.readline())
             if line == "":
@@ -35,10 +35,10 @@ def pass_processed_seqs(fasta_file, num_done_reads, fmt_func):
 # end def pass_processed_seqs
 
 
-def fasta_packets(fasta, packet_size, num_done_reads, max_seq_len=None):
+def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
     """
     Generator retrieves 'packet_size' records from FASTA file.
-    This function will pass 'num_done_reads' sequences (i.e. they will not be processed)
+    This function will pass 'num_done_seqs' sequences (i.e. they will not be processed)
         by calling 'pass_processed_files'.
 
     :param fasta: path to FASTA file;
@@ -47,7 +47,7 @@ def fasta_packets(fasta, packet_size, num_done_reads, max_seq_len=None):
     :type packet_size: int;
     :param reads_at_all: number of sequences in current file;
     :type reads_at_all: int;
-    :param num_done_reads: number of sequnces in current file that have been already processed;
+    :param num_done_seqs: number of sequnces in current file that have been already processed;
     :type num_doce_reads: int;
     """
 
@@ -62,7 +62,7 @@ def fasta_packets(fasta, packet_size, num_done_reads, max_seq_len=None):
         # If no or all sequences in current FASTA file have been already processed, this variable is None.
         # There is no way to count sequences in multi-FASTA file, accept of counting sequence IDs.
         # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
-        next_id_line = pass_processed_seqs(fasta_file, num_done_reads, fmt_func)
+        next_id_line = pass_processed_seqs(fasta_file, num_done_seqs, fmt_func)
 
         if next_id_line == "":
             yield {"fasta": "", "names": list()}
