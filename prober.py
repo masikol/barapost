@@ -305,31 +305,30 @@ for file in fq_fa_list:
     # end if
 # end for
 
+if send_all:
+    probing_batch_size = seqs_at_all
+# end if
 
 # Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
 # And do not disturb him if he has run 'prober.py' with default batch size.
 if seqs_at_all < probing_batch_size:
     if ("-b" in sys.argv[1:] or "--probing_batch_size" in sys.argv[1:]):
-        if send_all:
-            probing_batch_size = seqs_at_all
-        else:
-            print('\n'+'-'*20)
-            print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
-            print(" Probing batch size specified by you is {}".format(probing_batch_size))
+        print('\n'+'-'*20)
+        print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
+        print(" Probing batch size specified by you is {}".format(probing_batch_size))
 
-            while True:
-                reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
-                if reply == "":
-                    probing_batch_size = seqs_at_all
-                    break
-                elif reply == 'q':
-                    platf_depend_exit(0)
-                else:
-                    print(err_fmt("invalid reply"))
-                    continue
-                # end if
-            # end while
-        # end if
+        while True:
+            reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
+            if reply == "":
+                probing_batch_size = seqs_at_all
+                break
+            elif reply == 'q':
+                platf_depend_exit(0)
+            else:
+                print(err_fmt("invalid reply"))
+                continue
+            # end if
+        # end while
     else:
         probing_batch_size = seqs_at_all
     # end if
@@ -382,6 +381,7 @@ from src.write_classification import write_classification
 from src.prober_modules.prober_spec import ask_for_resumption, look_around
 from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
 from src.prober_modules.lineage import get_lineage
+from src.prune_seqs import prune_seqs
 
 
 #                       |===== Proceed =====|

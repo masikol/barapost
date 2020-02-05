@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from gzip import open as open_as_gzip
-from src.printlog import printl, err_fmt
+from src.printlog import printl, err_fmt, getwt
 from re import search as re_search
 from src.platform import platf_depend_exit
 import os
@@ -32,6 +32,10 @@ def rename_file_verbosely(file, logfile_path):
     :type logfile_path: str;
     """
 
+    if not os.path.exists(file):
+        return
+    # end if
+
     pardir = os.path.abspath(os.path.dirname(file))
     
     # Directory is a file, so let's rename it too.
@@ -46,7 +50,7 @@ def rename_file_verbosely(file, logfile_path):
         is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
         word = "file"
         name_itself = re_search(r"(.*)\..*$", file).group(1)
-        ext = re_search(r".*\.(.*)$", file).group(1)
+        ext = re_search(r".*(\..*)$", file).group(1)
     # end if
 
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
