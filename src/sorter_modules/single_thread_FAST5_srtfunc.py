@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from src.platform import platf_depend_exit
+
 try:
     import h5py
 except ImportError as imperr:
-    print(err_fmt("package 'h5py' is not installed"))
+    print("Package 'h5py' is not installed")
     print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
     print("\n  'h5py' package is necessary for FAST5 files sorting.")
     print("  Please, install it (e.g. 'pip3 install h5py').")
@@ -19,7 +21,6 @@ from src.sorter_modules.sorter_spec import *
 from src.printlog import printl, printn, getwt, err_fmt
 from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
-from src.platform import platf_depend_exit
 
 
 def copy_read_f5_2_f5(from_f5, read_name, to_f5):

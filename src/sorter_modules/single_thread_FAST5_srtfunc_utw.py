@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from src.platform import platf_depend_exit
+
 try:
     import h5py
 except ImportError as imperr:
-    print(err_fmt("package 'h5py' is not installed"))
+    print("Package 'h5py' is not installed")
     print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
     print("\n  'h5py' package is necessary for FAST5 files sorting.")
     print("  Please, install it (e.g. 'pip3 install h5py').")
@@ -19,7 +21,6 @@ from src.sorter_modules.sorter_spec import *
 from src.printlog import printl, printn, getwt, err_fmt
 from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
-from src.platform import platf_depend_exit
 
 from shelve import open as open_shelve
 
@@ -165,9 +166,10 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
 
         for read_name in read_names:
             try:
-                hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))]
+                hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name)[1:])]
             except KeyError:
-                printl(logfile_path, err_fmt("missing taxonomic annotation info for read '{}'".format(fmt_read_id(read_name))))
+                printl(logfile_path,
+                    err_fmt("missing taxonomic annotation info for read '{}'".format(fmt_read_id(read_name)[1:])))
                 printl(logfile_path, "It is stored in '{}' FAST5 file".format(f5_path))
                 printl(logfile_path, "Try to make new index file (press ENTER on corresponding prompt).")
                 printl(logfile_path, """Or, if does not work for you, make sure that taxonomic annotation info

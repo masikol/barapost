@@ -697,8 +697,7 @@ if untwist_fast5 and not use_old_index:
 
     if n_thr == 1:
         for f5_path in fast5_list:
-            utw_module.map_f5reads_2_taxann(f5_path, tsv_taxann_lst)
-            inc_val += 1
+            utw_module.map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_path)
         # end for
     else:
         pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from src.platform import platf_depend_exit
+
 try:
     import h5py
 except ImportError as imperr:
-    print(err_fmt("package 'h5py' is not installed"))
+    print("Package 'h5py' is not installed")
     print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
     print("\n  'h5py' package is necessary for FAST5 files sorting.")
     print("  Please, install it (e.g. 'pip3 install h5py').")
@@ -12,9 +14,8 @@ except ImportError as imperr:
 # end try
 
 from src.sorter_modules.sorter_spec import *
-
+from src.fmt_readID import fmt_read_id
 from src.printlog import printl, printn, getwt, err_fmt
-from src.platform import platf_depend_exit
 
 from shelve import open as open_shelve
 
@@ -68,7 +69,7 @@ def fast5_readids(fast5_file):
 # }
 
 
-def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
+def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_path):
     """
     Function perform mapping of all reads stored in input FAST5 files
         to existing TSV files containing taxonomic annotation info.
@@ -124,12 +125,13 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
             # Iterate over all other reads in current FAST5
             #    ('reversed' is necessary because we remove items from list in this loop)
             for readid in reversed(readids_to_seek):
-                if fmt_read_id(readid) in readids_in_tsv:
+                fmt_id = fmt_read_id(readid)[1:]
+                if fmt_id in readids_in_tsv:
                     # If not first -- write data to dict (and to index later)
                     try:
-                        idx_dict[tsv_taxann_fpath].append(readid) # append to existing list
+                        idx_dict[tsv_taxann_fpath].append("read_"+fmt_id) # append to existing list
                     except KeyError:
-                        idx_dict[tsv_taxann_fpath] = [readid] # create a new list
+                        idx_dict[tsv_taxann_fpath] = ["read_" + fmt_id] # create a new list
                     finally:
                         readids_to_seek.remove(readid)
                     # end try
@@ -154,7 +156,6 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst):
             for readid in readids_to_seek:
                 missing_logfile.write(fmt_read_id(readid) + '\n')
             # end for
-        index_f5_2_tsv.close()
         try:
             for path in glob( os.path.join(index_dirpath, '*') ):
                 os.unlink(path)
