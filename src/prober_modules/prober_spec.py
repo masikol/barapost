@@ -151,9 +151,9 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                 return None
             else:
                 printl(logfile_path, "\nHere are Genbank records encountered during previous run:")
-                for acc in acc_dict.keys():
-                    s_letter = "s" if acc_dict[acc][2] > 1 else ""
-                    printl(logfile_path, " {} hit{} - {}, '{}'".format(acc_dict[acc][2], s_letter, acc, acc_dict[acc][1]))
+                for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
+                    s_letter = "s" if other_info[2] > 1 else ""
+                    printl(logfile_path, " {} hit{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
                 # end for
                 print('-'*20)
             # end try

@@ -261,6 +261,7 @@ for opt, arg in opts:
                 # end if
             # end while
         # end if
+        import multiprocessing as mp
 
     elif opt in ("-d", "--indir"):
         if not os.path.exists(arg):
@@ -308,6 +309,12 @@ if len(fq_fa_list) == 0 and len(fast5_list) == 0:
 # end if
 
 num_files = len(fq_fa_list) + len(fast5_list)
+
+if len(fq_fa_list) == 0 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
+    print("\nWarning! Sorting FAST5 files in parallel doesn't give any profit.")
+    print("Number of threads is switched to 1.")
+    n_thr = 1
+# end if
 
 if len(fast5_list) == 0 and untwist_fast5:
     print("\nWarning! No FAST5 file has been given to sorter's input.")
@@ -593,21 +600,6 @@ except ImportError as imperr:
     platf_depend_exit(1)
 # end try
 
-# for module in filter( lambda m: False if m is None else True,
-#     (QA_srt_module, FAST5_srt_module, utw_module) ):
-
-#     module.logfile = logfile
-#     module.tax_annot_res_dir = tax_annot_res_dir
-#     module.sens = sens
-#     module.n_thr = n_thr
-#     module.outdir_path = outdir_path # calc
-#     module.min_qual = min_qual
-#     module.min_qlen = min_qlen
-
-#     minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
-#     module.minlen_fmt_str = minlen_fmt_str # calc
-# # end for
-
 
 def get_tsv_taxann_lst(tax_annot_res_dir, index_name):
     """
@@ -636,16 +628,8 @@ def get_tsv_taxann_lst(tax_annot_res_dir, index_name):
     # Get path to TSV files containing taxonomy annotation info
     tsv_taxann_lst = list()
     for taxann_dir in taxann_dir_lst:
-        putative_tsvs = glob("{}{}*.tsv".format(taxann_dir, os.sep))
-        if len(putative_tsvs) == 1:
-            tsv_taxann_lst.append(putative_tsvs[0])
-        elif len(putative_tsvs) == 0:
-            pass
-        else:
-            printl(logfile_path, """Error! Multiple TSV files in the following directory:
-'{}'
-Please, remove extra files and leave only one, which contains actual taxononic annotation info.""".format(taxann_dir))
-            platf_depend_exit(1)
+        if os.path.join(taxann_dir, "classification.tsv"):
+            tsv_taxann_lst.append(os.path.join(taxann_dir, "classification.tsv"))
         # end if
     # end for
 
@@ -692,22 +676,26 @@ printl(logfile_path, '-' * 30 + '\n')
 if untwist_fast5 and not use_old_index:
 
     printl(logfile_path, "{} - Untwisting started.".format(getwt()))
+    printn(" Working...")
 
     tsv_taxann_lst = get_tsv_taxann_lst(tax_annot_res_dir, index_name)
 
     if n_thr == 1:
         for f5_path in fast5_list:
             utw_module.map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_path)
+            printl(logfile_path, "\r{} - File '{}' is processed.".format(getwt(), os.path.basename(f5_path)))
+            printn(" Working...")
         # end for
     else:
         pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,
-            initargs=(mp.Lock(), mp.Lock()))
-        pool.starmap(utw_module.map_f5reads_2_taxann, [(sublist, tsv_taxann_lst,) for sublist in spread_files_equally(fast5_list, n_thr)])
+            initargs=(mp.Lock(), mp.Lock(),))
+        pool.starmap(utw_module.map_f5reads_2_taxann,
+            [(sublist, tsv_taxann_lst, tax_annot_res_dir, logfile_path,) for sublist in spread_files_equally(fast5_list, n_thr)])
         pool.close()
         pool.join()
     # end if
 
-    printl(logfile_path, "\n{} - Untwisting is completed.".format(getwt()))
+    printl(logfile_path, "\r{} - Untwisting is completed.".format(getwt()))
     printl(logfile_path, "Index file that maps reads stored in input FAST5 files to\n  TSV files containing taxonomic classification is created.")
     printl(logfile_path, '-'*20+'\n')
 # end if
@@ -744,8 +732,7 @@ if len(fq_fa_list) != 0:
             min_qual, min_qlen, logfile_path))
 # end if
 
-print("\r" + ' ' * len(" Working..."))
-printl(logfile_path, "{} - Sorting is completed.".format(getwt()))
+printl(logfile_path, "\r{} - Sorting is completed.\n".format(getwt()))
 
 # Assign version attribute to '2.0' -- multiFAST5
 if len(fast5_list) != 0:
@@ -848,8 +835,6 @@ if n_thr == 1: # single-thread compressing
 
 else: # compress in parallel
     
-    import multiprocessing as mp
-
     pool = mp.Pool(n_thr)
     pool.starmap(gzip_func, [(sublist,) for sublist in spread_files_equally(fastqa_res_files, n_thr)])
     pool.close()

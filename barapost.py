@@ -390,7 +390,7 @@ if not len(your_own_fasta_lst) == 0:
     # end for
 # end if
 
-printl(logfile_path, '-'*30 + '\n')
+printl(logfile_path, '-'*30)
 
 # Algorithms in 'blast+' are named in a little different way comparing to BLAST server.
 # In order to provide full cli-interface compatibility with 'prober.py' I will merely change values here.

@@ -258,14 +258,12 @@ def build_local_db(acc_dict, tax_annot_res_dir, acc_fpath, your_own_fasta_lst, l
         #If this directory exists
 
         while True:
-            printl(logfile_path, "Database exists in following directory:")
-            printl(logfile_path, "  '{}'".format(os.path.abspath(db_dir)))
             if len(os.listdir(db_dir)) == 0:
-                # If it is empty -- nothing stops us. break and build a database
-                printl(logfile_path, "It is empty, however. Building a database...")
+                # If db directory is empty -- break and build a database
                 break
             else:
-
+                printl(logfile_path, "\nDatabase exists in following directory:")
+                printl(logfile_path, "  '{}'".format(os.path.abspath(db_dir)))
                 reply = input("""\nPress ENTER to continue aligning using this database.
 Enter 'r' to remove all files in this directory and build the database from the beginning:>>""")
 
@@ -282,14 +280,16 @@ Enter 'r' to remove all files in this directory and build the database from the 
                         platf_depend_exit(1)
                     # end if
 
-                    old_classif_files = tuple(filter(
+                    old_classif_dirs = filter(
                         lambda d: os.path.exists(os.path.join(d, "classification.tsv")),
-                        glob(os.path.join(tax_annot_res_dir, "*")) ))
+                        glob(os.path.join(tax_annot_res_dir, "*")) )
+                    old_classif_files = tuple(map(lambda f: os.path.join(f, "classification.tsv"),
+                        old_classif_dirs))
 
                     if len(old_classif_files) > 0:
                         printl(logfile_path, "\n Renaming old classification files:")
                         for classif_file in old_classif_files:
-                            rename_file_verbosely(classif_file)
+                            rename_file_verbosely(classif_file, logfile_path)
                         # end for
                     # end if
 
@@ -339,6 +339,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end if
 
     local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download FASTA file
+    print('\n')
 
     # Add 'your own' FASTA files to database
     if not len(your_own_fasta_lst) == 0:

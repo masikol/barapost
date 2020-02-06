@@ -15,66 +15,22 @@ except ImportError as imperr:
 
 from src.sorter_modules.sorter_spec import *
 
-from src.printlog import printl, printn, getwt, err_Fmt
+from src.printlog import printl, printn, getwt, err_fmt
+from src.fmt_readID import fmt_read_id
+from src.sorter_modules.fast5 import fast5_readids
 
 from shelve import open as open_shelve
 
 index_name = "fast5_to_tsvtaxann_idx"
 
 
-def status_printer(get_inc_val, stop, nfiles):
-    """
-    Function meant to be launched as threading.Thread in order to indicate progress each second.
-
-    :param get_inc_val: function that returns 'inc_val' value -- the number of processed files;
-    :param stop: event that will signal printer when to stop;
-    :type stop: threading.Event;
-    """
-
-    printn("{} - 0/{} files processed. Working...".format(getwt(), nfiles))
-    saved_val = get_inc_val()
-
-    while stop.is_set():
-        loc_inc_val = get_inc_val()
-        printn("\r{} - {}/{} files processed. Working...".format(getwt(), loc_inc_val, nfiles))
-        if loc_inc_val != saved_val:
-            logfile.write("{} - {}/{} files processed.\n".format(getwt(), loc_inc_val, nfiles))
-            saved_val = get_inc_val()
-        sleep(1)
-    # end while
-
-    printn("\r{} - {}/{} files processed.".format(getwt(), get_inc_val(), nfiles) +
-        ' '*len(" Working..."))
-    logfile.write("{} - {}/{} files processed.\n".format(getwt(), get_inc_val(), nfiles))
-# end def status_printer
-
-
-def fast5_readids(fast5_file):
-
-    if "Raw" in fast5_file.keys():
-        yield "read_" + fmt_read_id(fast5_file.filename)
-        return
-    else:
-        for readid in fast5_file:
-            if readid.startswith("read_"):
-                yield readid
-            # end if
-        # end for
-    # end if
-    return
-# end def fast5_readids
-
-
-def init_paral_utw(write_lock_buff, inc_val_buff, inc_val_lock_buff):
+def init_paral_utw(write_lock_buff, print_lock_buff):
 
     global write_lock
     write_lock = write_lock_buff
 
-    global inc_val
-    inc_val = inc_val_buff
-
-    global inc_val_lock
-    inc_val_lock = inc_val_lock_buff
+    global print_lock
+    print_lock = print_lock_buff
 # end def init_paral_sorting
 
 
@@ -109,7 +65,7 @@ def init_paral_utw(write_lock_buff, inc_val_buff, inc_val_lock_buff):
 # }
 
 
-def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
+def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_path):
     """
     Function perform mapping of all reads stored in input FAST5 files
         to existing TSV files containing taxonomic annotation info.
@@ -140,10 +96,12 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
                 break
             # end for
         except RuntimeError as runterr:
-            printl(logfile_path, err_fmt("FAST5 file is broken"))
-            printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
-            printl(logfile_path, "Reason: {}".format( str(runterr) ))
-            printl(logfile_path, "Omitting this file...\n")
+            with print_lock:
+                printl(logfile_path, err_fmt("FAST5 file is broken"))
+                printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+                printl(logfile_path, "Reason: {}".format( str(runterr) ))
+                printl(logfile_path, "Omitting this file...\n")
+            # end with
             return
         # end try
 
@@ -166,12 +124,13 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
                 # Iterate over all other reads in current FAST5
                 #    ('reversed' is necessary because we remove items from list in this loop)
                 for readid in reversed(readids_to_seek):
-                    if fmt_read_id(readid) in readids_in_tsv:
+                    fmt_id = fmt_read_id(readid)[1:]
+                    if fmt_id in readids_in_tsv:
                         # If not first -- write data to dict (and to index later)
                         try:
-                            idx_dict[tsv_taxann_fpath].append(readid) # append to existing list
+                            idx_dict[tsv_taxann_fpath].append("read_"+fmt_id) # append to existing list
                         except KeyError:
-                            idx_dict[tsv_taxann_fpath] = [readid] # create a new list
+                            idx_dict[tsv_taxann_fpath] = ["read_" + fmt_id] # create a new list
                         finally:
                             readids_to_seek.remove(readid)
                         # end try
@@ -186,29 +145,27 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
         # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
         #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
         if len(readids_to_seek) == len_before:
-            printl(logfile_path, err_fmt("reads from FAST5 file not found"))
-            printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
-            printl(logfile_path, "Some reads reads have not undergone taxonomic annotation.")
-            missing_log = "missing_reads_lst.txt"
-            printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
-            with open(missing_log, 'w') as missing_logfile:
-                missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
-                for readid in readids_to_seek:
-                    missing_logfile.write(fmt_read_id(readid) + '\n')
-                # end for
-            try:
-                for path in glob( os.path.join(index_dirpath, '*') ):
-                    os.unlink(path)
-                # end for
-                os.rmdir(index_dirpath)
-            except OSError as oserr:
-                printl(logfile_path, "error while removing index directory: {}".format(oserr))
-            finally:
-                platf_depend_exit(3)
-            # end try
-        else:
-            with inc_val_lock:
-                inc_val.value += 1
+            with print_lock:
+                printl(logfile_path, err_fmt("reads from FAST5 file not found"))
+                printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
+                printl(logfile_path, "Some reads have not undergone taxonomic annotation.")
+                missing_log = "missing_reads_lst.txt"
+                printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
+                with open(missing_log, 'w') as missing_logfile:
+                    missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
+                    for readid in readids_to_seek:
+                        missing_logfile.write(fmt_read_id(readid) + '\n')
+                    # end for
+                try:
+                    for path in glob( os.path.join(index_dirpath, '*') ):
+                        os.unlink(path)
+                    # end for
+                    os.rmdir(index_dirpath)
+                except OSError as oserr:
+                    printl(logfile_path, "error while removing index directory: {}".format(oserr))
+                finally:
+                    platf_depend_exit(3)
+                # end try
             # end with
         # end if
 
@@ -225,5 +182,8 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst):
                 platf_depend_exit(1)
             # end try
         # end with
+
+        printl(logfile_path, "\r{} - File '{}' is processed.".format(getwt(), os.path.basename(f5_path)))
+        printn(" Working...")
     # end for
 # end def map_f5reads_2_taxann

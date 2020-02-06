@@ -16,26 +16,11 @@ except ImportError as imperr:
 from src.sorter_modules.sorter_spec import *
 from src.fmt_readID import fmt_read_id
 from src.printlog import printl, printn, getwt, err_fmt
+from src.sorter_modules.fast5 import fast5_readids
 
 from shelve import open as open_shelve
 
 index_name = "fast5_to_tsvtaxann_idx"
-
-
-def fast5_readids(fast5_file):
-
-    if "Raw" in fast5_file.keys():
-        yield "read_" + fmt_read_id(fast5_file.filename)
-        return
-    else:
-        for readid in fast5_file:
-            if readid.startswith("read_"):
-                yield readid
-            # end if
-        # end for
-    # end if
-    return
-# end def fast5_readids
 
 
 #   Structure of index:
@@ -148,7 +133,7 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
     if len(readids_to_seek) == len_before:
         printl(logfile_path, err_fmt("reads from FAST5 file not found"))
         printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
-        printl(logfile_path, "Some reads reads have not undergone taxonomic annotation.")
+        printl(logfile_path, "Some reads have not undergone taxonomic annotation.")
         missing_log = "missing_reads_lst.txt"
         printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
         with open(missing_log, 'w') as missing_logfile:
