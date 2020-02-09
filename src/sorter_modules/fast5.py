@@ -1,20 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import h5py
+
 from src.platform import platf_depend_exit
-
-try:
-    import h5py
-except ImportError as imperr:
-    print("Package 'h5py' is not installed")
-    print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
-    print("\n  'h5py' package is necessary for FAST5 files sorting.")
-    print("  Please, install it (e.g. 'pip3 install h5py').")
-    print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
-    platf_depend_exit(1)
-# end try
-
-
 from src.printlog import printl
+from src.fmt_readID import fmt_readID
 from re import search as re_search
 
 

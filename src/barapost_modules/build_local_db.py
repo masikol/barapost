@@ -204,7 +204,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
         except OSError:
             pass # we can pass this ecxeption -- we do delete this file if downloading crushes
         # end try
-        printl(logfile_path, "\r{} - {} MB downloaded \n".format(getwt(), fsize))
+        printl(logfile_path, "\r{} - {} MB downloaded ".format(getwt(), fsize))
     # end def download_waiter
 
     error = True
@@ -330,16 +330,17 @@ Enter 'r' to remove all files in this directory and build the database from the 
         gi_list = get_gi_by_acc(acc_dict, logfile_path)
 
         printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
-        for acc in acc_dict.keys():
+        printn("0/{}".format(len(acc_dict)))
+        for i, acc in enumerate(acc_dict.keys()):
             if not acc in tax_exist_accs:
                 download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc, tax_annot_res_dir)
             # end if
+            printn("\r{}/{}".format(i+1, len(acc_dict)))
         # end for
-        printl(logfile_path, "{} - Taxonomy file is consistent.".format(getwt()))
+        printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
 
     local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download FASTA file
-    print('\n')
 
     # Add 'your own' FASTA files to database
     if not len(your_own_fasta_lst) == 0:

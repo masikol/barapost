@@ -114,7 +114,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
         file_obj.close()
     # end for
 
-    printl(logfile_path, "\rFile '{}' is sorted.".format(os.path.basename(fq_fa_path)))
+    printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(fq_fa_path)))
     printn(" Working...")
 
     return (seqs_pass, seqs_fail)

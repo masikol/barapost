@@ -1,23 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from src.platform import platf_depend_exit
-
-try:
-    import h5py
-except ImportError as imperr:
-    print("Package 'h5py' is not installed")
-    print( "Exact error description given by the interpreter: {}".format(str(imperr)) )
-    print("\n  'h5py' package is necessary for FAST5 files sorting.")
-    print("  Please, install it (e.g. 'pip3 install h5py').")
-    print("  Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
-    platf_depend_exit(1)
-# end try
+import h5py
 
 import sys
 from glob import glob
 
 from src.sorter_modules.sorter_spec import *
 
+from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
 from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
@@ -114,7 +104,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
         file_obj.close()
     # end for
 
-    printl(logfile_path, "\rFile '{}' is sorted.".format(os.path.basename(f5_path)))
+    printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(f5_path)))
     printn(" Working...")
 
     return (seqs_pass, seqs_fail)

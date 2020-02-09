@@ -3,6 +3,7 @@
 
 import os
 import sys
+from glob import glob
 from re import search as re_search
 
 
@@ -69,6 +70,28 @@ def get_res_tsv_fpath(new_dpath):
 
     return os.path.join(new_dpath, tsv_res_fpath)
 # end def get_res_tsv_fpath
+
+
+def get_tsv_taxann_lst(tax_annot_res_dir):
+    """
+    Function returns list of path to TSV files that contain taxonomic annotation.
+
+    :param tax_annot_res_dir: path to '-r' directory;
+    :type tax_annot_res_dir: str;
+    """
+
+    # Get all directories nested in 'tax_annot_res_dir':
+    dir_lst = filter(lambda f: True if os.path.isdir(f) else False,
+        glob( os.path.join(tax_annot_res_dir, "*") ))
+    # Get all directories that contain "classification.tsv" file:
+    taxann_dir_lst = filter(lambda d: os.path.exists(os.path.join(d, "classification.tsv")),
+        dir_lst)
+    # Get path to TSV files containing taxonomy annotation info
+    tsv_taxann_lst = map(lambda d: os.path.join(d, "classification.tsv"),
+        taxann_dir_lst)
+
+    return tuple(tsv_taxann_lst)
+# end def get_tsv_taxann_lst
 
 
 # There is an accession number in the beginning of local FASTA file

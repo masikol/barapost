@@ -308,9 +308,21 @@ if len(fq_fa_list) == 0 and len(fast5_list) == 0:
     # end if
 # end if
 
+if len(fast5_list) != 0:
+    try:
+        import h5py
+    except ImportError as imperr:
+        print("\nPackage 'h5py' is not installed: " + str(imperr))
+        print("\n 'h5py' package is necessary for FAST5 files sorting.")
+        print(" Please, install it (e.g. 'pip3 install h5py').")
+        print(" Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
+        platf_depend_exit(1)
+    # end try
+# end if
+
 num_files = len(fq_fa_list) + len(fast5_list)
 
-if len(fq_fa_list) == 0 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
+if len(fq_fa_list) == 0 and n_thr != 1 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
     print("\nWarning! Sorting FAST5 files in parallel doesn't give any profit.")
     print("Number of threads is switched to 1.")
     n_thr = 1
@@ -435,42 +447,30 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
     
     invalid_reply = True
     while invalid_reply:
-        reply = input("""Press ENTER to ovewrite all old sequence-containing files
+        reply = input("""Press ENTER to overwrite all old sequence-containing files
     or enter 'r' to rename old directory and to write current results to a new one
     or enter 'a' to append new data to the existing one:>>""")
 
         if reply == "":
             invalid_reply = False
 
+            printl(logfile_path, "You have chosen to remove old files.")
             for file in filter(is_fastQA5, os.listdir(outdir_path)):
                 printl(logfile_path, "Removing '{}'".format( os.path.join(outdir_path, file) ))
                 os.unlink( os.path.join(outdir_path, file) )
             # end for
-            print()
-            break
         elif reply == 'r':
             invalid_reply = False
 
-            is_analog = lambda d: os.path.basename(outdir_path) in d
-            num_analog_dirs = len( list(filter(is_analog, os.listdir(os.path.dirname(outdir_path)))) )
-            
-            try:
-                printl(logfile_path, '\n' + getwt() + " - Renaming old directory:")
-                new_name = outdir_path+"_old_"+str(num_analog_dirs)
-                printl(logfile_path, "  '{}' --> '{}'".format(outdir_path, new_name))
-                os.rename(outdir_path, new_name)
-            except Exception as err:
-                # Anything (and not only strings) can be passed to the function
-                printl(logfile_path, err_fmt("directory '{}' cannot be renamed".format( outdir_path )))
-                printl(logfile_path, str(err) + '\n')
-                platf_depend_exit(1)
-            # end try
-            print()
+            printl(logfile_path, "You have chosen to rename old directory.")
+            from src.filesystem import rename_file_verbosely
+            rename_file_verbosely(outdir_path, logfile_path)
         elif reply == 'a':
             invalid_reply = False
         else:
-            print("Invalid reply!\n")
+            print("Invalid reply!")
         # end if
+        printl(logfile_path)
     # end while
 # end if
 
@@ -601,42 +601,6 @@ except ImportError as imperr:
 # end try
 
 
-def get_tsv_taxann_lst(tax_annot_res_dir, index_name):
-    """
-    Function returns list of path to TSV files that contain taxonomic annotation.
-
-    :param tax_annot_res_dir: path to '-r' directory;
-    :type tax_annot_res_dir: str;
-    :param index_name: basename of index file;
-    :type index_name: str;
-    """
-
-    index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
-
-    # Get all directories nested in 'tax_annot_res_dir'
-    taxann_dir_lst = list(filter(lambda f: True if os.path.isdir(f) else False,
-        glob( os.path.join(tax_annot_res_dir, "*") )))
-
-    # Exclude "local_database" and "fast5_to_fastq_idx" from this list
-    for dir_to_exclude in (index_name, "local_database"):
-        ldb_dir_path = os.path.join(tax_annot_res_dir, dir_to_exclude)
-        if ldb_dir_path in taxann_dir_lst:
-            taxann_dir_lst.remove(ldb_dir_path)
-        # end if
-    # end for
-
-    # Get path to TSV files containing taxonomy annotation info
-    tsv_taxann_lst = list()
-    for taxann_dir in taxann_dir_lst:
-        if os.path.join(taxann_dir, "classification.tsv"):
-            tsv_taxann_lst.append(os.path.join(taxann_dir, "classification.tsv"))
-        # end if
-    # end for
-
-    return tsv_taxann_lst
-# end def get_tsv_taxann_lst
-
-
 # |===== Proceed =====|
 
 printl(logfile_path, '-' * 30)
@@ -678,7 +642,8 @@ if untwist_fast5 and not use_old_index:
     printl(logfile_path, "{} - Untwisting started.".format(getwt()))
     printn(" Working...")
 
-    tsv_taxann_lst = get_tsv_taxann_lst(tax_annot_res_dir, index_name)
+    from src.sorter_modules.sorter_spec import get_tsv_taxann_lst
+    tsv_taxann_lst = get_tsv_taxann_lst(tax_annot_res_dir)
 
     if n_thr == 1:
         for f5_path in fast5_list:
@@ -696,7 +661,8 @@ if untwist_fast5 and not use_old_index:
     # end if
 
     printl(logfile_path, "\r{} - Untwisting is completed.".format(getwt()))
-    printl(logfile_path, "Index file that maps reads stored in input FAST5 files to\n  TSV files containing taxonomic classification is created.")
+    printl(logfile_path, """Index file that maps reads stored in input FAST5 files to
+  TSV files containing taxonomic classification is created.""")
     printl(logfile_path, '-'*20+'\n')
 # end if
 

@@ -160,7 +160,7 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
             # end with
         # end if
 
-        printl(logfile_path, "\rFile '{}' is sorted.".format(os.path.basename(fq_fa_path)))
+        printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(fq_fa_path)))
         printn(" Working...")
     # end for
 
