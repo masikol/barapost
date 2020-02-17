@@ -15,7 +15,7 @@ if sys.version_info.major < 3:
     # In python 2 'raw_input' does the same thing as 'input' in python 3.
     # Neither does 'input' in python2.
     raw_input("Press ENTER to exit:")
-    exit(1)
+    sys.exit(1)
 # end if
 
 
@@ -254,7 +254,7 @@ for opt, arg in opts:
                     elif reply == 'c':
                         pass
                     elif reply == 'q':
-                        exit(0)
+                        sys.exit(0)
                     # end if
                 else:
                     print("\nInvalid reply!\n")

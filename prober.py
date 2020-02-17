@@ -18,94 +18,94 @@ if sys.version_info.major < 3:
     if sys.platform.startswith("win"):
         raw_input("Press ENTER to exit:")
     # end if
-    exit(1)
+    sys.exit(1)
 # end if
 
 from src.platform import platf_depend_exit
 
-# First search for information-providing options:
+# Firstly search for information-providing options (-h and -v):
 
 if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
 
     print("\n  prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
     print("""This script is designed for determinating the taxonomic position
-  of nucleotide sequences by sending each of them to NCBI BLAST server and regarding the best hit.\n""")
+  of nucleotide sequences by finding the most similar sequence
+  in NCBI Nucleotide database using BLAST web service\n""")
 
-    if "--help" in sys.argv[1:]:
+    if "--help" in sys.argv[1:]: # print more detailed help message
         print("""The main goal of this script is to send a probing batch (see `-b` option) of sequences to
-      NCBI BLAST server and discover, what Genbank records can be downloaded and used for
-      building a database on your local machine by "barapost.py".\n""")
-        print("""This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.\n
-    Results of taxonomic annotation are written in TSV file named according to name of input file(s),
-      that can be found in result directory.\n""")
+ NCBI BLAST servive and discover, what Genbank records can be downloaded and used for
+ building a database on your local machine by "barapost.py" further.""")
+        print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
+        print("\"prober.py\" writes results of taxonomic classification in TSV file named according to name of input file(s).")
         print(""""prober.py" also generates a file named 'hits_to_download.tsv'. It contains accessions and
-      names of Genbank records that can be used for building a database on your local machine by "barapost.py".""")
+ names of Genbank records that can be used for creating a non-redundant
+ database on your local machine by "barapost.py".""")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
-        print(" - all FASTQ and FASTA files in current directory will be processed;")
+        print(""" - if no input files are specified, "prober.py" processes
+ all FASTQ and FASTA files in working directory;""")
         print(" - packet size (see '-p' option): 100 sequences;")
         print(" - probing batch size (see '-b' option): 200 sequences;")
         print(" - algorithm (see '-a' option): `megaBlast`;")
-        print(" - organisms (see '-g' option): full 'nt' database, i.e. no slices;")
-        print(" - output directory ('-o' option): directory named 'barapost_result'")
-        print("   nested in current directory;")
-        print(" - no email information ('-e' option) is send to NCBI;")
-        print(" - prober sends sequences intact (i.e. does not prune them (see '-x' option));")
+        print(" - database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;")
+        print(""" - output directory ('-o' option): directory named 'barapost_result'
+ nested in working directory;""")
+        print(" - prober sends no email information ('-e' option) to NCBI;")
+        print(""" - prober sends sequences intact
+ (i.e. does not prune them before submission (see '-x' option));""")
         print("----------------------------------------------------------\n")
     # end if
 
     print("""Files that you want 'prober.py' to process should be specified as
-  positional arguments (see EXAMPLE #2 running detailed (--help) help message).
-  Wildcards do work: './prober.py my_directory/*' will process all files in 'my_directory'.""")
-    print("----------------------------------------------------------\n")
+  positional arguments (see EXAMPLE #2 in detailed (--help) help message).\n""")
     print("OPTIONS:\n")
     print("""-h (--help) --- show help message.
-        '-h' -- brief, '--help' -- full;\n""")
+   '-h' -- brief, '--help' -- full;\n""")
     print("-v (--version) --- show version;\n")
     print("""-d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
-        I.e. all FASTQ and FASTA files in this direcory will be processed;
-        Input files can be gzipped.\n""")
+   I.e. all FASTQ and FASTA files in this direcory will be processed.
+        Input files can be gzipped;\n""")
     print("""-o (--outdir) --- output directory.
-        Default value: 'barapost_result';\n""")
+   Default value: 'barapost_result';\n""")
     print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
-        Value: integer number [1, 500]. Default value is 100;\n""")
-    print("""-a (--algorithm) --- BLASTn algorithm to use for aligning.
-        Available values: 'megaBlast', 'discoMegablast', 'blastn'.
-        Default is megaBlast;\n""")
+   It means that "prober.py" can preform multiple requests during single run.
+   Value: integer number [1, 500]. Default value is 100;\n""")
+    print("""-a (--algorithm) --- BLASTn algorithm to use for alignment.
+   Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
+   Default is 0 (megaBlast);\n""")
     print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
-        More clearly, functionality of this option is totally equal to "Organism" text boxes
-        on this BLASTn page:
-         'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
-        Format of value: 
-          <organism1_taxid>,<organism2_taxid>...
-        See EXAMPLES #2 and #3 below.
-        Spaces are not allowed.
-        Default value is full 'nt' database, i.e. no slices.
-        You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n""")
+   Functionality of this option is totally equal to "Organism" text boxes on this BLASTn page:
+    'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
+   Format of value (see EXAMPLES #4 and #5 below.):
+     <organism1_taxid>,<organism2_taxid>...
+   Spaces are NOT allowed.
+   Default value is full 'nr/nt' database, i.e. no slices.
+   You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n""")
     print("""-b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
-        during 'prober.py' run.
-        You can specify '-b all' to process all your sequeces by 'prober.py'.
-        Value: positive integer number.
-        Default value is 200;\n""")
+   during 'prober.py' run.
+   You can specify '-b all' to process all your sequeces by 'prober.py'.
+   Value: positive integer number.
+   Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
-        so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.\n""")
-    print("""-x (--max-seq-len) --- maximum length of a sequence that will be sent to NCBI BLAST.
-        It means that prober can prune your sequences before sending in order to spare NCBI servers.
-        This feature is disabled by default;""")
+   so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.\n""")
+    print("""-x (--max-seq-len) --- maximum length of a sequence that prober sends to NCBI BLAST.
+   It means that prober can prune your sequences before submission in order to spare NCBI servers.
+   This feature is disabled by default;""")
 
     if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
   ./prober.py\n""")
-        print("""2. Process all files in the working directory that start with "some_my_fasta".
+        print("""2. Process all files in the working directory that start with "some_fasta".
   Provide NCBI with your email. Use default settings:\n
-  ./prober.py some_my_fasta* -e my.email@smth.com\n""")
+  ./prober.py some_fasta* -e my.email@sth.com\n""")
         print("""3. Process one file with default settings:\n
   ./prober.py reads.fastq\n""")
         print("""4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
-        Search only among Erwinia sequences (551 is Erwinia taxid):\n
+  Search only among Erwinia sequences (551 is Erwinia taxid):\n
   ./prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
         print("""5. Process all FASTQ and FASTA files in directory named `some_dir`.
   Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
@@ -125,6 +125,7 @@ from re import search as re_search
 from glob import glob
 from src.printlog import getwt, get_full_time, printl, err_fmt
 
+# Get command line arguments
 import getopt
 
 try:
@@ -140,14 +141,14 @@ except getopt.GetoptError as gerr:
 is_fq_or_fa = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
 
 # Default values:
-fq_fa_list = list()
-indir_path = None
+fq_fa_list = list() # list of paths to file meant to be processed
+indir_path = None # path to '-d' directory
 outdir_path = "barapost_result"
 packet_size = 100
 probing_batch_size = 200
-send_all = False
+send_all = False # it will be True if '-b all' is specified
 blast_algorithm = "megaBlast"
-taxid_list = list() # default is whole 'nt' database
+taxid_list = list() # list of TaxIDs to perform database slices
 user_email = ""
 max_seq_len = None # maximum length of a sequence sent to NCBI
 
@@ -165,21 +166,18 @@ for arg in args:
     fq_fa_list.append( os.path.abspath(arg) )
 # end for
 
+# Handle command line options and values passed with them:
 for opt, arg in opts:
 
     if opt in ("-d", "--indir"):
-        if not os.path.exists(arg):
+        if not os.pathisdir(arg):
             print(err_fmt("directory '{}' does not exist!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        
-        if not os.path.isdir(arg):
-            print(err_fmt("'{}' is not a directory!".format(arg)))
             platf_depend_exit(1)
         # end if
         
         indir_path = os.path.abspath(arg)
 
+        # Add all fastq and fasta files from '-d' directory to fq_fa_list
         fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
 
     elif opt in ("-o", "--outdir"):
@@ -193,22 +191,24 @@ for opt, arg in opts:
             # end if
         except ValueError:
             print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
+            print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
 
     elif opt in ("-a", "--algorithm"):
-        if not arg in ("megaBlast", "discoMegablast", "blastn"):
+        if not arg in ("0", "1", "2"):
             print(err_fmt("invalid value specified by '-a' option!"))
-            print("Available values: 'megaBlast', 'discoMegablast', 'blastn'")
+            print("Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn")
+            print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end if
-        blast_algorithm = arg
+        blast_algorithm = ("megaBlast", "discoMegablast", "blastn")[int(arg)]
 
     elif opt in ("-g", "--organisms"):
 
         taxid_list = arg.strip().split(',')
 
-        try:
+        try: # primarily verify TaxIds
             for taxid in taxid_list:
                 buff_var = int(taxid)
                 if buff_var < 0:
@@ -216,7 +216,8 @@ for opt, arg in opts:
                 # end if
             # end for
         except ValueError:
-            print(err_fmt("TaxID should be positive integer number\a"))
+            print(err_fmt("TaxID should be a positive integer number!\a"))
+            print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
 
@@ -233,14 +234,15 @@ for opt, arg in opts:
             # end if
         except ValueError:
             print(err_fmt("probing batch size ('-b' option) must be positive integer number!"))
+            print("Your value: {}".format(arg))
             platf_depend_exit(1)
         # end try
 
     elif opt in ("-e", "--email"):
-        if arg != "" and re_search(r"^.+@.+\..+$", arg) is None:
-            print("Your email does not seem like an email.")
-            print("Please check it and, if you are sure that your email is right, \
-\n   but prober still refuses it  -- contact the developer.")
+        if re_search(r"^.+@.+\..+$", arg) is None:
+            print("Your email doesn't look like an email: '{}'".format(arg))
+            print("""Please check it and, if you are sure that your email is right,
+  but prober still refuses it  -- contact the developer.""")
             platf_depend_exit(1)
         # end if
         user_email = arg
@@ -253,7 +255,7 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("maximum sequence length must bu positive interger number!"))
+            print(err_fmt("maximum sequence length must be a positive interger number!"))
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
@@ -266,10 +268,10 @@ if len(fq_fa_list) == 0:
     # If input directory was specified -- exit
     if not indir_path is None:
         print(err_fmt("""no input FASTQ or FASTA files specified
-    or there is no FASTQ and FASTA files in the input directory.\n"""))
+  or there is no FASTQ and FASTA files in the input directory.\n"""))
         platf_depend_exit(1)
     
-    # If input directory was not specified -- look for FASTQ files in current directory
+    # If input directory was not specified -- look for FASTQ files in working directory
     else:
         fq_fa_list = list(filter( is_fq_or_fa, glob("{}{}*".format(os.getcwd(), os.sep)) ))
         if len(fq_fa_list) == 0:
@@ -281,69 +283,46 @@ if len(fq_fa_list) == 0:
 
 # Sort list of files that will be processed -- process them in alphabetical order.
 fq_fa_list.sort()
+print() # just print new line
 
-from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS
+from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS # for gzip handling
 from src.filesystem import remove_tmp_files, create_result_directory
 from src.filesystem import is_gzipped, is_fastq, is_fasta
 from src.platform import get_logfile_path
+from src.check_connection import check_connection
 
-# |=== Check if there are enough sequeneces in files (>= probing_batch_size) ===|
-seqs_at_all = 0
-print() # just print new line
-for file in fq_fa_list:
-    how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
-    if is_fastq(file):
-        seqs_at_all += sum(1 for line in how_to_open(file)) // 4  # 4 lines per record
-    else:
-        fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
-
-        seqs_at_all = len(tuple(filter(lambda l: True if l.startswith('>') else False,
-            map(fmt_func, how_to_open(file).readlines()))))
-    # end if
-    if seqs_at_all >= probing_batch_size:
-        break
-    # end if
-# end for
-
+# If a user wants to send all his/her data -- count all sequences in all input files
+#   and assign it to probing batch size
 if send_all:
-    probing_batch_size = seqs_at_all
+    probing_batch_size = 0
+    is_id_line = lambda l: True if l.startswith('>') else False
+    for file in fq_fa_list:
+        how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
+        if is_fastq(file): # merely count lines in fastq file and divide by 4:
+            probing_batch_size += sum(1 for line in how_to_open(file)) // 4
+        else: # count lines starting with '>' in a fasta file;
+            fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
+
+            probing_batch_size += len(tuple(filter(is_id_line,
+                map(fmt_func, how_to_open(file).readlines()))))
+        # end if
+    # end for
 # end if
 
-# Print a warning message if a user has specified batch size that is greater than number of sequences he has at all.
-# And do not disturb him if he has run 'prober.py' with default batch size.
-if seqs_at_all < probing_batch_size:
-    if ("-b" in sys.argv[1:] or "--probing_batch_size" in sys.argv[1:]):
-        print('\n'+'-'*20)
-        print("\a  Warning!\n There are totally {} sequences in your files.".format(seqs_at_all))
-        print(" Probing batch size specified by you is {}".format(probing_batch_size))
-
-        while True:
-            reply = input("\nPress ENTER to process all your sequences anyway.\n  Or enter 'q' to exit:>>")
-            if reply == "":
-                probing_batch_size = seqs_at_all
-                break
-            elif reply == 'q':
-                platf_depend_exit(0)
-            else:
-                print(err_fmt("invalid reply"))
-                continue
-            # end if
-        # end while
-    else:
-        probing_batch_size = seqs_at_all
-    # end if
-# end if
-
+# If there are any fastq input files -- import fastq record generator
 if len(tuple(filter(is_fastq, fq_fa_list))) != 0:
     from src.fastq import fastq_packets
 # end if
 
+# If there are any fasta input files -- import fasta record generator
 if len(tuple(filter(is_fasta, fq_fa_list))) != 0:
     from src.fasta import fasta_packets
 # end if
 
+# Make packet size consistent with probing batch size
 packet_size = min(packet_size, probing_batch_size)
 
+# Create output directory
 if not os.path.isdir(outdir_path):
     try:
         os.makedirs(outdir_path)
@@ -354,15 +333,18 @@ if not os.path.isdir(outdir_path):
     # end try
 # end if
 
+# Configure path to file, which will contain info about what GenBank records to download
 acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
 
+# Configure path to taxonomy directory
 taxonomy_dir = os.path.join(outdir_path, "taxonomy")
 if not os.path.isdir(taxonomy_dir):
     os.makedirs(taxonomy_dir)
 # end if
 taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
-from src.check_connection import check_connection
+
+#                       |===== Proceed =====|
 
 check_connection("https://blast.ncbi.nlm.nih.gov")
 
@@ -373,6 +355,7 @@ printl(logfile_path, get_full_time() + "- Start working\n")
 
 from src.prober_modules.networking import verify_taxids
 
+# Make sure that TaxIDs specified by user actually exist
 organisms = verify_taxids(taxid_list, logfile_path)
 
 from src.prober_modules.networking import lingering_https_get_request
@@ -384,28 +367,7 @@ from src.prober_modules.lineage import get_lineage
 from src.prune_seqs import prune_seqs
 
 
-#                       |===== Proceed =====|
-
-# 1. 'previous_data' is a dict of the following structure:
-#    {
-#        "RID": saved_RID (str),
-#        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-#        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-#        "tmp_fpath": path_to_pemporary_file (str),
-#        "decr_pb": value to subtract from probing_batch_size
-#                  in orde to resume correctly (int)
-#    }
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 2. 'packet' is a dict of the following structure:
-#    {
-#        "fasta": FASTA_data_containing_query_sequences (str),
-#        "qual": dictionary {seq_id: quality}
-#    }
-#    quality is '-' for fasta files
-
-#                   |===== Kernel loop =====|
-
-
+# Print information about the run
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}'".format(logfile_path))
 if user_email != "":
@@ -426,7 +388,7 @@ if len(organisms) > 0:
 
 s_letter = '' if len(fq_fa_list) == 1 else 's'
 printl(logfile_path, "\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
-with open(logfile_path, 'a') as logfile:
+with open(logfile_path, 'a') as logfile: # write all input files to log file
     logfile.write("Here they are:\n")
     for i, path in enumerate(fq_fa_list):
         logfile.write("    {}. '{}'\n".format(i+1, path))
@@ -437,19 +399,38 @@ printl(logfile_path, '-'*30)
 
 
 # Dictionary of accessions and record names.
-# Accessions are keys, record names are values.
-# This dictionary is filled while processing and at the beginning of resumption.
+# Accessions are keys, values are tuples: (GI_number, record_name, number_of_hits).
 acc_dict = dict()
 
 # Counter of sequences processed during current run
 seqs_processed = 0
-# Counter of sequences processed concerning putative previous run(s)
+# Counter of sequences processed concerning possible previous run(s)
 glob_seqs_processed = 0
 
 # Varible for stopping execution when probing batch is processed completely.
 stop = False
 
-# Iterate through found source FASTQ and FASTA files
+# Further:
+# 1. 'previous_data' is a dict of the following structure:
+#    {
+#        "RID": saved_RID (str),
+#        "tsv_respath": path_to_tsv_file_from_previous_run (str),
+#        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
+#        "tmp_fpath": path_to_pemporary_file (str),
+#        "decr_pb": value to subtract from probing_batch_size
+#                  in order to resume correctly (int)
+#    }
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2. 'packet' is a dict of the following structure:
+#    {
+#        "fasta": FASTA_data_containing_query_sequences (str),
+#        "qual": dictionary {seq_id: quality}
+#    }
+#    quality is '-' for fasta files
+
+#                   |===== Kernel loop =====|
+
+# Iterate over input FASTQ and FASTA files:
 for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Create the result directory with the name of FASTQ of FASTA file being processed:
@@ -457,59 +438,65 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # "hname" means human readable name (i.e. without file path and extention)
     infile_hname = os.path.basename(fq_fa_path)
-    infile_hname = re_search(r"(.+)\.(m)?f(ast)?(a|q)(\.gz)?$", infile_hname).group(1)
+    infile_hname = re_search(r"(.+)\.(m)?f(ast)?(a|q)(\.gz)?$", infile_hname).group(1) # remove extention
 
-    # Look around and ckeck if there are results of previous runs of this script
-    # If 'look_around' is None -- there is no data from previous run
+    # Look around and check if there are results of previous runs of this script
+    # If 'look_around' returns None -- there is no data from previous run
     previous_data = look_around(outdir_path, new_dpath, fq_fa_path,
         blast_algorithm, acc_dict, probing_batch_size, logfile_path)
 
     if previous_data is None: # If there is no data from previous run
-        num_done_seqs = 0 # number of successfully processed sequences
+        num_done_seqs = 0 # no sequences were processed
         tsv_res_path = "{}.tsv".format(os.path.join(new_dpath,
-            "classification")) # form result tsv file path
+            "classification")) # form path of result tsv file
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
-            infile_hname), blast_algorithm) # form temporary file path
+            infile_hname), blast_algorithm) # form path to temporary file
         saved_RID = None
     else: # if there is data from previous run
         num_done_seqs = previous_data["n_done_reads"] # get number of successfully processed sequences
-        tsv_res_path = previous_data["tsv_respath"] # result tsv file sholud be the same as during previous run
-        tmp_fpath = previous_data["tmp_fpath"] # temporary file sholud be the same as during previous run
-        saved_RID = previous_data["RID"] # having this RID we can try to get response for last request
+        tsv_res_path = previous_data["tsv_respath"] # result tsv file should be the same as during previous run
+        tmp_fpath = previous_data["tmp_fpath"] # temporary file should be the same as during previous run
+        saved_RID = previous_data["RID"] # having this RID we can try to get response for last request without resending
+        # Let's assume that a user won't modify his/her brobing_batch size between erroneous runs:
+        #   subtract num_done_reads if probing_batch_size > num_done_reads.
         probing_batch_size -= previous_data["decr_pb"]
     # end if
 
+    # Take previous run into account
     glob_seqs_processed += num_done_seqs
 
     # Calculate total number of packets meant to be sent from current FASTA file
     packs_at_all = probing_batch_size // packet_size
 
-    if probing_batch_size % packet_size > 0: # And this is ceiling
+    if probing_batch_size % packet_size > 0: # and this is ceiling
         packs_at_all += 1
     # end if
 
-    pack_to_send = 1 # number of packet meant to be sent now
+    # Ordinal number of packet meant to be sent (will incrementing after every successful submission)
+    pack_to_send = 1
 
+    # Choose appropriate record generator:
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
 
-    # Iterate over packets left to send
+    # Iterate over packets in current file
     for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, max_seq_len):
 
         if packet["fasta"] == "":
             break
         # end if
 
-        # Assumption that we need to send current packet
+        # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True
-        align_xml_text = None
+        align_xml_text = None # will remain None if a necessity to resend packet appears
 
-        # If current packet has been already send, we can try to get it and not to send again
+        # If current packet has been already send, we can try just to request for results
         if not saved_RID is None:
 
             resume_rtoe = 0 # we will not sleep at the very beginning of resumption
 
+            # Get BLAST XML response
             align_xml_text = wait_for_align(saved_RID, resume_rtoe,
-                pack_to_send, packs_at_all, os.path.basename(fq_fa_path), logfile_path) # get BLAST XML response
+                pack_to_send, packs_at_all, os.path.basename(fq_fa_path), logfile_path)
             saved_RID = None
 
             if align_xml_text is None:
@@ -520,12 +507,12 @@ for i, fq_fa_path in enumerate(fq_fa_list):
                 packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
                 align_xml_text = None
             else:
-                # OK -- omit 'if send' statement and write results
+                # OK -- results are retrieved and we can omit next 'if send' statement
                 send = False
             # end if
         # end if
 
-        if send:
+        if send: # submittie the query to BLAST server
 
             printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
             printl(logfile_path, "Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
@@ -535,9 +522,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
                 request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email) # get the request
 
-                # Send the request and get BLAST XML response
-                # 'align_xml_text' will be None if NCBI BLAST server rejects the request due to too large amount of data in it.
-
+                # Send the request and get BLAST XML response.
+                # 'align_xml_text' will be None if an error occurs.
                 align_xml_text = send_request(request, pack_to_send, packs_at_all,
                     os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
 
@@ -552,31 +538,33 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Get result tsv lines
         result_tsv_lines = parse_align_results_xml(align_xml_text,
-            packet["qual"], acc_dict, logfile_path, taxonomy_path) # get result tsv lines
+            packet["qual"], acc_dict, logfile_path, taxonomy_path)
 
         # Write classification to TSV file
         write_classification(result_tsv_lines, tsv_res_path)
-        # Write accessions and GI numbers of hits to TSV file
+        # Write accessions and GI numbers of hits to TSV file 'hits_to_download.tsv'
         write_hits_to_download(acc_dict, acc_fpath)
 
         seqs_processed += len( packet["qual"] )
         pack_to_send += 1
         remove_tmp_files(tmp_fpath)
 
-        if seqs_processed >= probing_batch_size:
+        if seqs_processed >= probing_batch_size: # probing batch is processed -- finish work
             stop = True
             break
         # end if
     # end for
-    remove_tmp_files(tmp_fpath)
     if stop:
         break
     # end if
 # end for
+#            |===== End of the kernel loop =====|
 
 
+# We want to show large number with underscores
 from src.get_undr_sep_number import get_undr_sep_number
 
+# Print some summary:
 glob_seqs_processed += seqs_processed
 str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
 

@@ -14,7 +14,7 @@ def platf_depend_exit(exit_code):
     if sys.platform.startswith("win"):
         input("Press ENTER to exit:")
     # end if
-    exit(exit_code)
+    sys.exit(exit_code)
 # end def platf_depend_exit
 
 def get_logfile_path(script_name, outdir_path):

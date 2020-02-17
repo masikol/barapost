@@ -18,7 +18,7 @@ if sys.version_info.major < 3:
     if sys.platform.startswith("win"):
         raw_input("Press ENTER to exit:")
     # end if
-    exit(1)
+    sys.exit(1)
 # end if
 
 from src.platform import platf_depend_exit
@@ -210,7 +210,7 @@ for opt, arg in opts:
         except ValueError:
             print(err_fmt("number of threads must be positive integer number!"))
             print(" And here is your value: '{}'".format(arg))
-            exit(1)
+            sys.exit(1)
         # end try
         if n_thr > len(os.sched_getaffinity(0)):
             print("""\nWarning! You have specified {} threads to use
@@ -228,7 +228,7 @@ for opt, arg in opts:
                     elif reply == 'c':
                         pass
                     elif reply == 'q':
-                        exit(0)
+                        sys.exit(0)
                     # end if
                 else:
                     print("\nInvalid reply!\n")
