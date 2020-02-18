@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
+# This module defines functions that are used by barapost.py only (specific to barapost.py).
 
 import os
 import sys
 from glob import glob
 from re import search as re_search
 
-from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
+from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 
-from src.platform import platf_depend_exit
 from src.printlog import printl, err_fmt
+from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
 from src.barapost_modules.lineage import get_lineage
 
+
 def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
     """
-    Function looks around in order to ckeck if there are results from previous runs of this script.
+    Function looks around in order to check if there are results from previous runs of this script.
 
     Returns None if there is no result from previous run.
     If there are results from previous run, returns a dict of the following structure:
@@ -31,6 +33,8 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
     :param blast_algorithm: BLASTn algorithm to use.
         This parameter is necessary because it is included in name of result files;
     :type blast_algorithm: str;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
     """
 
     # "hname" means human readable name (i.e. without file path and extention)
@@ -38,9 +42,9 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
     fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
 
     # Form path to result file
-    tsv_res_fpath = "{}.tsv".format(os.path.join(new_dpath, "classification"))
+    tsv_res_fpath = os.path.join(new_dpath, "classification.tsv")
 
-    num_done_reads = None # variable to keep number of succeffdully processed sequences
+    num_done_reads = 0 # variable to keep number of succeffdully processed sequences
 
     if os.path.exists(tsv_res_fpath):
 
@@ -52,20 +56,15 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
                 last_line = lines[-1]
                 last_seq_id = last_line.split('\t')[0]
             except Exception as err:
-                printl(logfile_path, "\nData in classification file '{}' is broken. Exact reason:".format(tsv_res_fpath))
+                printl(logfile_path, "\nData in classification file '{}' is broken. Reason:".format(tsv_res_fpath))
                 printl(logfile_path,  str(err) )
-                printl(logfile_path, "Start from the beginning.")
+                printl(logfile_path, "Starting from the beginning.")
                 rename_file_verbosely(tsv_res_fpath)
                 return None
             # end try
         # end with
     else:
         return None
-    # end if
-
-    # If we start from the beginning, we have no sequences processed
-    if num_done_reads is None:
-        num_done_reads = 0
     # end if
 
     return {
@@ -83,6 +82,12 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
     :type packet: str;
     :param blast_algorithm: blastn algorithm to use;
     :type blast_algorithm: str;
+    :param use_index: logic value inddicating whether to use index;
+    :type use_index: bool:
+    :param queries_tmp_dir: path to directory with query files;
+    :type queries_tmp_dir: str:
+    :param local_fasta: path to database;
+    :type local_fasta: str:
     """
 
     # PID of current process won't change, so we can use it to mark query files.
@@ -125,7 +130,14 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
         9. Average Phred33 quality of a read (if source file is FASTQ).
         10. Read accuracy (%) (if source file is FASTQ).
 
-        Returns list<str>.
+    :param xml_text: XML text with results of alignment;
+    :type xml_text: str;
+    :param qual_dict: dict, which maps sequence IDs to their quality;
+    :type qual_dict: dict<str: float>;
+    :param taxonomy_path: path to DBM file with taxonomy;
+    :type taxonomy_path: str;
+
+    Returns list<str>.
     """
 
     result_tsv_lines = list()
@@ -178,6 +190,7 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
                 curr_acc = sys.intern(hit.find("Hit_accession").text) # get hit accession
                 hit_accs.append( curr_acc )
 
+                # Get lineage of current hit
                 lineages.append(get_lineage(curr_acc, taxonomy_path))
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
@@ -238,13 +251,15 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
     :type acc_fpath: str;
     :param your_own_fasta_lst: list of paths to user's fasta files;
     :type your_own_fasta_lst: list<str>;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
 
     Returns accession dictionary described above.
     """
 
     acc_dict = dict()
 
-    # if database will be builded only from 'your own' FASTA files -- return empty dict
+    # if database will be created only from 'your own' FASTA files -- return empty dict
     if acc_fpath is None:
         return acc_dict
     # end if
@@ -262,6 +277,9 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
                 if not os.path.exists(line):
                     try:
                         line_splt = line.split('\t')
+                        if len(line_splt) != 4:
+                            raise IndexError
+                        # end if
                         acc = sys.intern(line_splt[0])
                         gi = line_splt[1]
                         name = line_splt[2]
@@ -281,7 +299,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
     # end with
 
     if len(acc_dict) == 0:
-        printl(logfile_path, err_fmt("no accession information found in file '{}".format(acc_fpath)))
+        printl(logfile_path, err_fmt("no accession information found in file '{}'".format(acc_fpath)))
         platf_depend_exit(1)
     # end if
 

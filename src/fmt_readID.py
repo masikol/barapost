@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# This module defines function that formats ID of a sequence passed to it.
+# This function considers Oxford-Nanopore-like sequence IDs in a specific way.
 
 from re import search as re_search
 

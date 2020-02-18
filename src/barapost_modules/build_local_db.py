@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from src.printlog import printl, printn, println, err_fmt, getwt
-from src.platform import platf_depend_exit
-from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
-from src.check_connection import check_connection
-from src.barapost_modules.lineage import download_lineage
-
-import urllib.request
-from urllib.error import HTTPError
-
 import os
 import shelve
 from glob import glob
 from time import sleep
-from re import search as re_search
 from threading import Thread
+from re import search as re_search
+
+import urllib.request
+from urllib.error import HTTPError
+
+from src.platform import platf_depend_exit
+from src.check_connection import check_connection
+from src.barapost_modules.lineage import download_lineage
+from src.printlog import printl, printn, println, err_fmt, getwt
+from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 
 # GNU gzip utility is faster, but there can be presence of absence of it :)
@@ -35,8 +35,8 @@ if not gzip_util_found:
 
 def search_for_related_replicons(acc, acc_dict):
     """
-    Generator finds replicons (other chromosomes or plasmids) that are related to 
-      Genbank record "discodered" by prober.py.
+    Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
+      which are related to Genbank record "discovered" by prober.py.
 
     :param acc: accession of a record "discovered" by prober.py;
     :type acc: str;
@@ -73,7 +73,7 @@ def search_for_related_replicons(acc, acc_dict):
     # end while
 
     # Duplicated records (e.g. from RefSeq) should not be allowed.
-    # This is the list of already encountered record definitions]
+    # This is the list of already encountered record definitions
     #   (e.g. "Erwinia amylovora strain E-2 plasmid pEa-E-2, complete sequence"):
     def_list = [ acc_dict[acc][1] ] # "discovered" one is already here
 
@@ -105,7 +105,12 @@ def search_for_related_replicons(acc, acc_dict):
 
 def get_gi_by_acc(acc_dict, logfile_path):
     """
-    Function returns GI number that corresponds to accessing passed to it.
+    Function returns GI number that corresponds to accession passed to it.
+
+    :param acc_dict: dictionary comntaining accession data of hits;
+    :type acc_dict: dict<str: tuple<str, str, int>>;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
     """
 
     printl(logfile_path, "\n{} - Searching for related replicons...".format(getwt()))

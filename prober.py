@@ -35,26 +35,26 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
 
     if "--help" in sys.argv[1:]: # print more detailed help message
         print("""The main goal of this script is to send a probing batch (see `-b` option) of sequences to
- NCBI BLAST servive and discover, what Genbank records can be downloaded and used for
- building a database on your local machine by "barapost.py" further.""")
+  NCBI BLAST servive and discover, what Genbank records can be downloaded and used for
+  building a database on your local machine by "barapost.py" further.""")
         print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
-        print("\"prober.py\" writes results of taxonomic classification in TSV file named according to name of input file(s).")
+        print("\"prober.py\" writes results of taxonomic classification in TSV file(s) named according to name of input file(s).")
         print(""""prober.py" also generates a file named 'hits_to_download.tsv'. It contains accessions and
- names of Genbank records that can be used for creating a non-redundant
- database on your local machine by "barapost.py".""")
+  names of Genbank records that can be used for creating a non-redundant
+  database on your local machine by "barapost.py".""")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
         print(""" - if no input files are specified, "prober.py" processes
- all FASTQ and FASTA files in working directory;""")
+  all FASTQ and FASTA files in working directory;""")
         print(" - packet size (see '-p' option): 100 sequences;")
         print(" - probing batch size (see '-b' option): 200 sequences;")
         print(" - algorithm (see '-a' option): `megaBlast`;")
         print(" - database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;")
         print(""" - output directory ('-o' option): directory named 'barapost_result'
- nested in working directory;""")
+  nested in working directory;""")
         print(" - prober sends no email information ('-e' option) to NCBI;")
         print(""" - prober sends sequences intact
- (i.e. does not prune them before submission (see '-x' option));""")
+  (i.e. does not prune them before submission (see '-x' option));""")
         print("----------------------------------------------------------\n")
     # end if
 
@@ -71,7 +71,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    Default value: 'barapost_result';\n""")
     print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
    It means that "prober.py" can preform multiple requests during single run.
-   Value: integer number [1, 500]. Default value is 100;\n""")
+   Value: integer number > 1. Default value is 100;\n""")
     print("""-a (--algorithm) --- BLASTn algorithm to use for alignment.
    Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
    Default is 0 (megaBlast);\n""")
@@ -82,14 +82,14 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
      <organism1_taxid>,<organism2_taxid>...
    Spaces are NOT allowed.
    Default value is full 'nr/nt' database, i.e. no slices.
-   You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi'.\n""")
+   You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi';\n""")
     print("""-b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
    during 'prober.py' run.
    You can specify '-b all' to process all your sequeces by 'prober.py'.
-   Value: positive integer number.
+   Value: integer number > 1.
    Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
-   so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below.\n""")
+   so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below;\n""")
     print("""-x (--max-seq-len) --- maximum length of a sequence that prober sends to NCBI BLAST.
    It means that prober can prune your sequences before submission in order to spare NCBI servers.
    This feature is disabled by default;""")
@@ -98,19 +98,19 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
-  ./prober.py\n""")
+   prober.py\n""")
         print("""2. Process all files in the working directory that start with "some_fasta".
-  Provide NCBI with your email. Use default settings:\n
-  ./prober.py some_fasta* -e my.email@sth.com\n""")
+   Provide NCBI with your email. Use default settings:\n
+   prober.py some_fasta* -e my.email@sth.com\n""")
         print("""3. Process one file with default settings:\n
-  ./prober.py reads.fastq\n""")
+   prober.py reads.fastq\n""")
         print("""4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
-  Search only among Erwinia sequences (551 is Erwinia taxid):\n
-  ./prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
+   Search only among Erwinia sequences (551 is Erwinia taxid):\n
+   prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
         print("""5. Process all FASTQ and FASTA files in directory named `some_dir`.
-  Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
-  Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-  ./prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100""")
+   Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
+   Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
+   prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100\n""")
     # end if
     platf_depend_exit(0)
 # end if
@@ -169,40 +169,20 @@ for arg in args:
 # Handle command line options and values passed with them:
 for opt, arg in opts:
 
-    if opt in ("-d", "--indir"):
-        if not os.pathisdir(arg):
-            print(err_fmt("directory '{}' does not exist!".format(arg)))
-            platf_depend_exit(1)
-        # end if
-        
-        indir_path = os.path.abspath(arg)
-
-        # Add all fastq and fasta files from '-d' directory to fq_fa_list
-        fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
-
-    elif opt in ("-o", "--outdir"):
+    if opt in ("-o", "--outdir"):
         outdir_path = os.path.abspath(arg)
 
     elif opt in ("-p", "--packet-size"):
         try:
             packet_size = int(arg)
-            if packet_size < 1 or packet_size > 500:
+            if packet_size <= 0:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("packet_size (-p option) must be integer number from 1 to 500"))
+            print(err_fmt("packet_size (-p option) must be integer number > 1"))
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
-
-    elif opt in ("-a", "--algorithm"):
-        if not arg in ("0", "1", "2"):
-            print(err_fmt("invalid value specified by '-a' option!"))
-            print("Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn")
-            print("Your value: '{}'".format(arg))
-            platf_depend_exit(1)
-        # end if
-        blast_algorithm = ("megaBlast", "discoMegablast", "blastn")[int(arg)]
 
     elif opt in ("-g", "--organisms"):
 
@@ -259,6 +239,26 @@ for opt, arg in opts:
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
+
+    elif opt in ("-d", "--indir"):
+        if not os.pathisdir(arg):
+            print(err_fmt("directory '{}' does not exist!".format(arg)))
+            platf_depend_exit(1)
+        # end if
+        
+        indir_path = os.path.abspath(arg)
+
+        # Add all fastq and fasta files from '-d' directory to fq_fa_list
+        fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
+
+    elif opt in ("-a", "--algorithm"):
+        if not arg in ("0", "1", "2"):
+            print(err_fmt("invalid value specified by '-a' option!"))
+            print("Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn")
+            print("Your value: '{}'".format(arg))
+            platf_depend_exit(1)
+        # end if
+        blast_algorithm = ("megaBlast", "discoMegablast", "blastn")[int(arg)]
     # end if
 # end for
 
@@ -274,9 +274,38 @@ if len(fq_fa_list) == 0:
     # If input directory was not specified -- look for FASTQ files in working directory
     else:
         fq_fa_list = list(filter( is_fq_or_fa, glob("{}{}*".format(os.getcwd(), os.sep)) ))
+
+        # If there are nothing to process -- just show help message
         if len(fq_fa_list) == 0:
-            print(err_fmt("no FASTQ or FASTA files to process found."))
-            platf_depend_exit(1)
+            print("\nprober.py (Version {})\n".format(__version__))
+            print("Usage:")
+            print("  prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
+            print("For more detailed description, run:")
+            print("  prober.py -h\n")
+            platf_depend_exit(0)
+        else:
+            # Ask if a user wants to proceed or he/she ran it occasionally and wants just help message
+            print("\n {} fasta and/or fastq files are found in working directory.\n".format(len(fq_fa_list)))
+            error = True
+            while error:
+                reply = input("""Press ENTER to process them
+  or enter 'h' to just see help message:>> """)
+                if reply == "":
+                    error = False
+                    pass
+                elif reply == 'h':
+                    error = False
+                    print('\n' + '-'*15)
+                    print("  prober.py (Version {})\n".format(__version__))
+                    print("Usage:")
+                    print("  prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
+                    print("For more detailed description, run:")
+                    print("  prober.py -h\n")
+                    platf_depend_exit(0)
+                else:
+                    print("Invalid reply: {}\n".format(reply))
+                # end if
+            # end while
         # end if
     # end if
 # end if
@@ -291,31 +320,13 @@ from src.filesystem import is_gzipped, is_fastq, is_fasta
 from src.platform import get_logfile_path
 from src.check_connection import check_connection
 
-# If a user wants to send all his/her data -- count all sequences in all input files
-#   and assign it to probing batch size
-if send_all:
-    probing_batch_size = 0
-    is_id_line = lambda l: True if l.startswith('>') else False
-    for file in fq_fa_list:
-        how_to_open = OPEN_FUNCS[ is_gzipped(file) ]
-        if is_fastq(file): # merely count lines in fastq file and divide by 4:
-            probing_batch_size += sum(1 for line in how_to_open(file)) // 4
-        else: # count lines starting with '>' in a fasta file;
-            fmt_func = FORMATTING_FUNCS[ is_gzipped(file) ]
-
-            probing_batch_size += len(tuple(filter(is_id_line,
-                map(fmt_func, how_to_open(file).readlines()))))
-        # end if
-    # end for
-# end if
-
 # If there are any fastq input files -- import fastq record generator
-if len(tuple(filter(is_fastq, fq_fa_list))) != 0:
+if any(filter(is_fastq, fq_fa_list)):
     from src.fastq import fastq_packets
 # end if
 
 # If there are any fasta input files -- import fasta record generator
-if len(tuple(filter(is_fasta, fq_fa_list))) != 0:
+if any(filter(is_fasta, fq_fa_list)):
     from src.fasta import fasta_packets
 # end if
 
@@ -376,10 +387,10 @@ if user_email != "":
 printl(logfile_path, " - Probing batch size: {} sequences;".format(probing_batch_size))
 printl(logfile_path, " - Packet size: {} sequences;".format(packet_size))
 if not max_seq_len is None:
-    printl(logfile_path, " - Maximum length of a sequence sent: {} bp;".format(max_seq_len))
+    printl(logfile_path, " - Maximum length of a sequence to submit: {} bp;".format(max_seq_len))
 # end if
 printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
-printl(logfile_path, " - Database: nt;")
+printl(logfile_path, " - Database: nr/nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
         printl(logfile_path, "   {};".format(db_slice))
@@ -388,7 +399,7 @@ if len(organisms) > 0:
 
 s_letter = '' if len(fq_fa_list) == 1 else 's'
 printl(logfile_path, "\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
-with open(logfile_path, 'a') as logfile: # write all input files to log file
+with open(logfile_path, 'a') as logfile: # write paths to all input files to log file
     logfile.write("Here they are:\n")
     for i, path in enumerate(fq_fa_list):
         logfile.write("    {}. '{}'\n".format(i+1, path))
@@ -481,10 +492,6 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # Iterate over packets in current file
     for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, max_seq_len):
 
-        if packet["fasta"] == "":
-            break
-        # end if
-
         # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True
         align_xml_text = None # will remain None if a necessity to resend packet appears
@@ -514,9 +521,10 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         if send: # submittie the query to BLAST server
 
+            s_letter = 's' if len(packet["qual"]) != 1 else ''
             printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
-            printl(logfile_path, "Request number {} out of {}. Sending {} sequences.".format(pack_to_send,
-                packs_at_all, len(packet["qual"])))
+            printl(logfile_path, "Request number {} out of {}. Sending {} sequence{}.".format(pack_to_send,
+                packs_at_all, len(packet["qual"]), s_letter))
 
             while align_xml_text is None: # until successfull attempt
 
@@ -549,7 +557,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         pack_to_send += 1
         remove_tmp_files(tmp_fpath)
 
-        if seqs_processed >= probing_batch_size: # probing batch is processed -- finish work
+        if not send_all and seqs_processed >= probing_batch_size: # probing batch is processed -- finish work
             stop = True
             break
         # end if
@@ -592,7 +600,7 @@ if unkn_num > 0:
 # end if
 
 printl(logfile_path, """\nThey are saved in following file:
-    '{}'""".format(acc_fpath))
+  '{}'""".format(acc_fpath))
 printl(logfile_path, """\nYou can edit this file before running 'barapost.py' in order to
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost.py'.""")

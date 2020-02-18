@@ -1,28 +1,31 @@
 # -*- coding: utf-8 -*-
-
-from src.printlog import printl, println, err_fmt, getwt, printn
-from src.platform import platf_depend_exit
-
-import http.client
-import urllib.request
-from urllib.error import HTTPError
-import urllib.parse
-import socket
+# This module defines functions necessary for prober to interact with NCBI via net.
 
 import os
-from re import search as re_search
 from time import sleep
+from re import search as re_search
+
+import socket
+import http.client
+import urllib.parse
+import urllib.request
+from urllib.error import HTTPError
+
+from src.platform import platf_depend_exit
+from src.printlog import printl, println, err_fmt, getwt, printn
 
 
 def verify_taxids(taxid_list, logfile_path):
     """
-    Funciton verifies TaxIDs passed to 'prober' with -g option.
+    Funciton verifies TaxIDs passed to 'prober' with '-g' option.
     Function requests NCBI Taxonomy Browser and parses organism's name from HTML response.
-    What is more, this function configures 'oraganisms' list - it will be included to BLAST requests.
+    What is more, this function configures 'oraganisms' list - it will be included into BLAST submissions.
 
     :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
         during CL argument parsing;
     :type taxid_list: list<str>;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
 
     Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
     """
@@ -66,8 +69,10 @@ def lingering_https_get_request(server, url, logfile_path):
     :type server: str;
     :param url: the rest of url;
     :type url: str;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
 
-    Returns obtained response decoded to UTF-8 ('str').
+    Returns obtained response coded in UTF-8 ('str').
     """
 
     error = True
@@ -108,7 +113,7 @@ def lingering_https_get_request(server, url, logfile_path):
 
 def configure_request(packet, blast_algorithm, organisms, user_email):
     """
-    Function configures the request to BLAST server.
+    Function configures the submissoin request to BLAST server.
 
     :param packet: FASTA_data_containing_query_sequences;
     :type packet: str;
@@ -162,8 +167,8 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
     :param packs_at all: total number of packets corresponding to current FASTA file.
         This information is printed to console;
     :type packs_at_all: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str;
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
 
     Returns XML text of type 'str' with BLAST response.
     """
@@ -181,11 +186,11 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
             response = conn.getresponse() # get the response
             response_text = str(response.read(), "utf-8") # get response text
         except OSError as oserr:
-            printl(logfile_path, getwt() + "\n - Site 'https://blast.ncbi.nlm.nih.gov' is not available.")
+            printl(logfile_path, "{} - 'https://blast.ncbi.nlm.nih.gov' is not available.".format(getwt()))
             printl(logfile_path,  str(err) )
             printl(logfile_path, "barapost will try to connect again in 30 seconds...\n")
             sleep(30)
-        
+
         # if no exception occured
         else:
             error = False
@@ -212,8 +217,7 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
         tmpfile.write("Request_ID: {}".format(rid))
     # end with
 
-    # /=== Wait for alignment results ===\
-
+    # Wait for results of alignment
     return( wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path) )
 # end def send_request
 
@@ -232,7 +236,9 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
         This information is printed to console;
     :type packs_at_all: int;
     :param filename: basename of current FASTA file;
-    :type filename: str;
+    :type filename: str
+    :param logfile_path: path to logfile: this renaming should be documented;
+    :type logfile_path: str;
 
     Returns XML response ('str').
     """
@@ -279,18 +285,19 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
             printl(logfile_path, "\n{} - Result for query '{}' ({}/{}) is ready!".format(getwt(), filename, pack_to_send, packs_at_all))
             # if there are hits
             if "ThereAreHits=yes" in resp_content:
-                for i in range(45, 0, -5):
+                for i in range(15, 0, -5):
                     printl(logfile_path, '-' * i)
                 # end for
+                print("-\nRetrieving results...")
 
                 # Retrieve human-readable text and put it into result directory
                 retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-                respond_text = lingering_https_get_request(server, retrieve_text_url, logfile_path)
+                txt_align_res = lingering_https_get_request(server, retrieve_text_url, logfile_path)
 
                 txt_hpath = os.path.join(os.path.dirname(logfile_path), "prober_blast_response_{}.txt".format(pack_to_send))
                 # Write text result for a human to read
                 with open(txt_hpath, 'w') as txt_file:
-                    txt_file.write(respond_text + '\n')
+                    txt_file.write(txt_align_res + '\n')
                 # end with
             # if there are no hits
             else:
@@ -311,21 +318,18 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
         printl(logfile_path, getwt() + " - ERROR! Bad Gateway! Data from last packet has been lost.")
         printl(logfile_path, "Resending this packet.")
         return None
-    # end if
 
-    if "Status=FAILED" in xml_text:
+    elif "Status=FAILED" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST ERROR!: request failed")
         printl(logfile_path, "Resending this packet.")
         return None
-    # end if
 
-    if "to start it again" in xml_text:
+    elif "to start it again" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST ERROR!")
         printl(logfile_path, "Resending this packet.")
         return None
-    # end if
 
-    if "[blastsrv4.REAL]" in xml_text:
+    elif "[blastsrv4.REAL]" in xml_text:
         printl(logfile_path, "BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", xml_text).group(1)))
         printl(logfile_path, "All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
         return "[blastsrv4.REAL]"

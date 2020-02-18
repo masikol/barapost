@@ -129,16 +129,18 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
             del names # let it go
 
             if not max_seq_len is None: # prune sequences
-                packet = prune_seqs(packet.strip(), 'l', max_seq_len)
+                packet = prune_seqs(packet, 'l', max_seq_len)
             # end if
 
-            yield {"fasta": packet.strip(), "qual": qual_dict}
-
-            # Reset packet, if it is not the last one
-            if not next_id_line is None:
+            if packet != "":
+                yield {"fasta": packet, "qual": qual_dict}
+                # Reset packet
                 packet = next_id_line+'\n'
                 qual_dict.clear()
+            else:
+                raise StopIteration
             # end if
+
         # end while
     # end with
 # end def fasta_packets

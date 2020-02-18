@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
+# This module defines finctions and other objects, which interact with file system.
 
-from gzip import open as open_as_gzip
-from src.printlog import printl, err_fmt, getwt
-from re import search as re_search
-from src.platform import platf_depend_exit
 import os
+from re import search as re_search
+from gzip import open as open_as_gzip
+from src.platform import platf_depend_exit
+from src.printlog import printl, err_fmt, getwt
 
-
+# For opening plain text and gzipped files
 OPEN_FUNCS = (open, open_as_gzip)
 
 # Data from plain text and gzipped should be parsed in different way,
@@ -17,6 +18,7 @@ FORMATTING_FUNCS = (
 )
 
 is_gzipped = lambda file: True if file.endswith(".gz") else False
+
 is_fastq = lambda f: True if not re_search(r".+\.f(ast)?q(\.gz)?$", f) is None else False
 is_fasta = lambda f: True if not re_search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None else False
 is_fast5 = lambda f: f.endswith(".fast5")
@@ -36,23 +38,23 @@ def rename_file_verbosely(file, logfile_path):
         return
     # end if
 
+    # Path to "file's" parent directory
     pardir = os.path.abspath(os.path.dirname(file))
     
-    # Directory is a file, so let's rename it too.
+    # Function can rename directories
     if os.path.isdir(file):
-        # Count files in 'pardir' that have analogous names as 'file' has:
         is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
         word = "directory"
         name_itself = file
         ext = ""
     else:
-        # Count files in 'pardir' that have analogous names as 'file' has:
         is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
         word = "file"
         name_itself = re_search(r"(.*)\..*$", file).group(1)
         ext = re_search(r".*(\..*)$", file).group(1)
     # end if
 
+    # Count files in 'pardir' that have analogous names as 'file' has:
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
 
     if re_search(r"_old_[0-9]+", file) is None:
@@ -97,11 +99,13 @@ def remove_tmp_files(*paths):
 
 def create_result_directory(fq_fa_path, outdir_path):
     """
-    Function creates a result directory named according 
-        to how source FASTQor FASTA file is named.
+    Function creates a result directory named according
+        to how source FASTQ or FASTA file is named.
 
     :param fq_fa_path: path to source FASTQ or FASTA file;
     :type fq_fa_path: str;
+    :param outdir_path: path to directory in which result_directory will be created;
+    :type outdir_path: str;
 
     Returns 'str' path to the recently created result directory.
     """
@@ -113,7 +117,7 @@ def create_result_directory(fq_fa_path, outdir_path):
         try:
             os.makedirs(new_dpath)
         except OSError as oserr:
-            printl(err_fmt("error while creating result directory"))
+            printl(err_fmt("can't create result directory"))
             printl( str(oserr) )
             platf_depend_exit(1)
         # end try
@@ -130,7 +134,7 @@ def get_curr_res_dpath(fq_fa_path, tax_annot_res_dir):
 
     :param fq_fa_path: path to FASTA/FASTQ file that is procesing;
     :type fq_fa_path: str;
-    :param tax_annot_res_dir: path to directory with results of 'prober.py';
+    :param tax_annot_res_dir: path to directory with results of classification;
     :type tax_annot_res_dir: str;
 
     Returns path to result directory that was recenly created of 'str' type.

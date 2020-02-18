@@ -88,18 +88,17 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
             # end for
 
             if not max_seq_len is None: # prune sequences
-                packet = prune_seqs(packet.strip(), 'l', max_seq_len)
+                packet = prune_seqs(packet, 'l', max_seq_len)
             # end if
 
             if packet != "":
-                yield {"fasta": packet.strip(), "qual": qual_dict}
+                yield {"fasta": packet, "qual": qual_dict}
+                # Reset packet
+                packet = ""
+                qual_dict.clear()
             else:
-                return
+                raise StopIteration
             # end if
-
-            packet = ""
-            qual_dict.clear()
         # end while
     # end with
-
 # end def fastq_packets

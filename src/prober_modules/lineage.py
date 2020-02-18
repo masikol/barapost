@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
+# This module defines functions, which download and format organisms' lineages.
 
-from src.filesystem import remove_tmp_files
-from src.platform import platf_depend_exit
 from src.printlog import err_fmt
+from src.platform import platf_depend_exit
+from src.filesystem import remove_tmp_files
 
 import urllib.request
-from re import search as re_search
 from time import sleep
+from re import search as re_search
 
 import os
 import shelve
-import multiprocessing as mp
 import threading
+import multiprocessing as mp # we can't terminate a thread, thus we need a process
 
 def waiter(path):
+    """
+    Function waits untill taxonomy string appears in file, which 'downloader' is downloading.
+    """
 
     while not os.path.exists(path):
         sleep(0.1)
@@ -28,6 +32,10 @@ def waiter(path):
 
 
 def downloader(retrieve_url, indsxml_path):
+    """
+    Function downloads file of record of interest in INSDSeq XML format.
+    """
+
     error = True
     while error:
         try:
@@ -56,6 +64,8 @@ def get_lineage(gi, hit_def, hit_acc, taxonomy_path):
     :type hit_def: str;
     :param hit_acc: hit accession;
     :type hit_acc: str;
+    :param taxonomy_path: path to DBM file with taxonomy;
+    :type taxonomy_path: str;
     """
 
     indsxml_path = os.path.join(os.path.dirname(taxonomy_path), "indsxml.gbc.xml")
@@ -98,7 +108,7 @@ def get_lineage(gi, hit_def, hit_acc, taxonomy_path):
             # We need to parse it correctly anyway.
             if spec_name != "sp": # no species info will be added to lineage for "Pseudarthrobacter sp."
 
-                # Remove "Bacillus cereus group" from lineage
+                # Remove e.g. "Bacillus cereus group" from lineage
                 for grp_cmplx in (" group", " complex"):
                     if grp_cmplx in lineage:
                         lineage = lineage[: lineage.rfind(';')]
@@ -151,7 +161,7 @@ def get_lineage(gi, hit_def, hit_acc, taxonomy_path):
             tax_file[str(hit_acc)] = lineage
     else:
         # If hit is not new -- simply retrieve it from taxonomy file
-        with shelve.open(taxonomy_path, 'c') as tax_file:
+        with shelve.open(taxonomy_path, 'r') as tax_file:
             lineage = tax_file[str(hit_acc)]
     # end if
 
