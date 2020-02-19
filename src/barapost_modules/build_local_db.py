@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+# This module defines functions, which are necessary for databse creating.
 
 import os
 import shelve
 from glob import glob
 from time import sleep
-from threading import Thread
+from threading import Thread, Event
 from re import search as re_search
 
 import urllib.request
@@ -109,20 +110,19 @@ def get_gi_by_acc(acc_dict, logfile_path):
 
     :param acc_dict: dictionary comntaining accession data of hits;
     :type acc_dict: dict<str: tuple<str, str, int>>;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
     """
 
     printl(logfile_path, "\n{} - Searching for related replicons...".format(getwt()))
 
-    gi_list = list()
-
-    start_accs = tuple(acc_dict.keys())
+    gi_list = list() # list for GI numbers
+    start_accs = tuple(acc_dict.keys()) # accessions, which were "discoveted" by prober
 
     for i, acc in enumerate(start_accs):
         if not acc_dict[acc][0] in gi_list:
             try:
-                gi_list.append(acc_dict[acc][0])
+                gi_list.append(acc_dict[acc][0]) # fill the GI list
             except KeyError:
                 printl(logfile_path, err_fmt("GI number error. Please, contact the developer"))
                 platf_depend_exit(1)
@@ -137,6 +137,7 @@ def get_gi_by_acc(acc_dict, logfile_path):
             print("Please, contact the developer")
         else:
             for rel_acc, rel_gi, definition in related_repls:
+                # Fill GI list with GI numbers of related replicons
                 if not rel_gi in gi_list:
                     gi_list.append(rel_gi)
                     printl(logfile_path, "\r {} - {}".format(rel_acc, definition))
@@ -147,7 +148,7 @@ def get_gi_by_acc(acc_dict, logfile_path):
         # end try
     # end for
 
-    if len(start_accs) != len(acc_dict):
+    if len(start_accs) != len(acc_dict): # there are some new replicons
         printl(logfile_path, "\r{} - {} related replicons have been found.".format(getwt(),
             len(acc_dict) - len(start_accs)))
     else:
@@ -167,22 +168,24 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
     :type gi_list: list<str>;
     :param db_dir: path to directory in which downloaded FASTA file will be placed;
     :type db_dir: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
 
     Returns path to downloaded FASTA file of 'str'.
     """
 
     local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
-    if len(gi_list) == 0:
+    if len(gi_list) == 0: # just in case
         return local_fasta
     # end if
 
     gis_del_comma = ','.join(gi_list) # GI numbers must be separated by comma in url
-    # E-utilities provide us with possibility of downloading records from Genbank by GI numbers.
+    # E-utilities provide a possibility to download records from Genbank by GI numbers.
     retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
     
-    global stop_wait # a flag variable that will signal waiter-function to stop executing
+    stop_wait = Event() # a flag variable that will signal waiter-function to stop executing
 
-    def download_waiter():
+    def download_waiter(stop_wait):
         """
         Function waits untill 'local_fasta' file is downloaded.
         It prints size of downloaded data to console during downloading.
@@ -190,24 +193,28 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
         """
         # Wait untill downloading starts
         while not os.path.exists(local_fasta):
-            if stop_wait:
+            if not stop_wait.is_set():
                 return
             # end if
             sleep(1)
         # end while
 
-        while not stop_wait:
+        MB_size = 1024**2 # we will divide by it to get megabytes
+
+        while stop_wait.is_set():
             # Get size of downloaded data
-            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1) # get megabytes
+            fsize = round(os.path.getsize(local_fasta) / MB_size, 1) # get megabytes
             printn("\r{} - {} MB downloaded ".format(getwt(), fsize))
             sleep(1) # instant updates are not necessary
         # end while
         
         # Print total size of downloaded file (it can be deleted by this time)
         try:
-            fsize = round(os.path.getsize(local_fasta) / (1024**2), 1)
+            fsize = round(os.path.getsize(local_fasta) / MB_size, 1)
         except OSError:
-            pass # we can pass this ecxeption -- we do delete this file if downloading crushes
+            # We can pass this ecxeption -- we do delete this file if downloading crushes
+            # And this function just waits :)
+            pass
         # end try
         printl(logfile_path, "\r{} - {} MB downloaded ".format(getwt(), fsize))
     # end def download_waiter
@@ -215,13 +222,12 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
     error = True
     while error:
         try:
-            waiter = Thread(target=download_waiter) # create thread
-            stop_wait = False # raise the flag
+            waiter = Thread(target=download_waiter, args=(stop_wait,)) # create thread
+            stop_wait.set() # raise the flag
             waiter.start() # start waiting
-            printl(logfile_path, "\n{} - Downloading sequences for local database building started".format(getwt()))
+            printl(logfile_path, "\n{} - Downloading sequences for creating a database started".format(getwt()))
             urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
         except Exception as err:
-            stop_wait = True
             printl(logfile_path, err_fmt("error while downloading FASTA files"))
             printl(logfile_path,  str(err) )
             printl(logfile_path, "'barapost.py' will try again in 30 seconds")
@@ -232,7 +238,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
         else:
             error = False
         finally:
-            stop_wait = True # lower the flag
+            stop_wait.clear() # lower the flag
             waiter.join() # main thread will wait until waiter function ends it's work
         # end try
     # end while
@@ -245,15 +251,22 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
 
 def build_local_db(acc_dict, tax_annot_res_dir, acc_fpath, your_own_fasta_lst, logfile_path):
     """
-    Function builds a local indexed database with utilities from 'blast+' toolkit.
+    Function creates a database with utilities from 'blast+' toolkit
+        according to acc_dict and your_own_fasta_lst.
 
     :param acc_dict: a dictionary of accessions and record names
         Accession are keys, record names are values;
     :type acc_dict: dict<str, str>;
     :param tax_annot_res_dir: path to current result directory (each processed file has it's own result directory);
     :type tax_annot_res_dir: str;
+    :param acc_fpath: path to file "hits_to_download.tsv";
+    :type acc_fpath: str;
+    :param your_own_fasta_lst: list of user's fasta files to be included in database;
+    :type your_own_fasta_lst: list<str>;
+    :param logfile_path: path to logfile;
+    :type logfile_path: str;
 
-    Returns path to builded local indexed database.
+    Returns path to created database.
     """
 
     db_dir = os.path.join(tax_annot_res_dir, "local_database") # path to directory in which database will be placed
@@ -274,17 +287,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
 
                 if reply == "":
                     # Do not build a database, just return path to it.
-                    printl(logfile_path, ) # just print blank line
+                    printl(logfile_path, "") # just print blank line
                     return os.path.join(db_dir, "local_seq_set.fasta")
                 
                 elif reply == 'r':
-                    if acc_fpath is None and len(your_own_fasta_lst) == 0:
-                        printl(logfile_path, err_fmt("missing data to build a database from"))
-                        printl(logfile_path, """ There is no accession file in directory '{}'
- and no FASTA file have been specified with '-l' option.""")
-                        platf_depend_exit(1)
-                    # end if
 
+                    # Rename old classification files and write actual data to new one:
                     old_classif_dirs = filter(
                         lambda d: os.path.exists(os.path.join(d, "classification.tsv")),
                         glob(os.path.join(tax_annot_res_dir, "*")) )
@@ -298,28 +306,36 @@ Enter 'r' to remove all files in this directory and build the database from the 
                         # end for
                     # end if
 
-                    # Empty this directory and break from the loop in order to build a database.
+                    # Empty database directory
                     for file in glob("{}{}*".format(db_dir, os.sep)):
                         os.unlink(file)
                     # end for
 
+                    # Empty taxonomy file
+                    with shelve.open(taxonomy_path, 'n') as tax_file:
+                        pass
+                    # end with
+
+                    # Break from the loop in order to build a database
                     break
                 else:
-                    # Ask again
+                    print("Invalid reply: '{}'\n".format(reply))
                     continue
                 # end if
             # end if
         # end while
     # end try
 
+    # Path to DBM taxonomy file
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
 
+    # Retrieve already existing taxonomy data from taxonomy file
     with shelve.open(taxonomy_path, 'c') as tax_file:
         tax_exist_accs = tuple( tax_file.keys() )
     # end with
 
     # If accession file does not exist and execution has reached here -- everything is OK --
-    #    we are building local database from local files only.
+    #    we are building a database from user's files only.
     if not acc_fpath is None:
         print()
         check_connection("https://www.ncbi.nlm.nih.gov/")
@@ -340,21 +356,22 @@ Enter 'r' to remove all files in this directory and build the database from the 
             if not acc in tax_exist_accs:
                 download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc, tax_annot_res_dir)
             # end if
-            printn("\r{}/{}".format(i+1, len(acc_dict)))
+            # Accessions can be of different length
+            printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
         # end for
         printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
 
-    local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download FASTA file
+    local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download fasta file
 
-    # Add 'your own' FASTA files to database
+    # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:
 
         # This variable counts sequences from local files.
-        # It is necessary for accession deduplication.
+        # It is necessary for not allowing duplicated accessions.
         own_seq_counter = 0
 
-        # Check if these files are SPAdes of a5 assembly
+        # Check if these files are assembly made by SPAdese or a5
         spades_patt = r"NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
         spades_counter = 0 # variable counts number of SPAdes assembly files
         spades_assms = list() # this list will contain paths to SPAdes assembly files
@@ -362,7 +379,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         a5_counter = 0 # variable counts number of a5 assembly files
         a5_assms = list() # this list will contain paths to a5 assembly files
 
-        for own_fasta_path in your_own_fasta_lst:
+        for own_fasta_path in reversed(your_own_fasta_lst):
 
             how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
             fmt_func = FORMATTING_FUNCS[ is_gzipped(own_fasta_path) ]
@@ -378,7 +395,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 continue
             # end if
             
-            # if we've got SPAdes assembly
+            # if we've got a5 assembly
             if not re_search(a5_patt, first_seq_id) is None:
                 a5_counter += 1
                 a5_assms.append(own_fasta_path)
@@ -386,10 +403,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
             # end if
         # end for
 
+        # Include assembly files in multi-fasta file
         for counter, assm_lst in zip((spades_counter, a5_counter), (spades_assms, a5_assms)):
 
             # If there are more than one file with assembly of one assembler,
             #    we need to distinguish these files (i.e. these assemblies).
+            # Otherwise they will be processed just like any other file
             if counter > 1:
 
                 # Remove this files from list -- they will be processed in a specific way
@@ -401,14 +420,14 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 assm_basenames = list( map(os.path.basename, assm_lst) ) # get basenames
 
                 # If this sum is equal to length of 'assm_basenames' -- there are no duplicated basenames.
-                # So, there is no need to use absolute paths.# Absolute path will be used otherwise.
+                # So, there is no need to use absolute paths.
                 dedpul_sum = sum( map(assm_basenames.count, assm_basenames) )
 
                 # Path conversion according to 'deduplication sum':
                 if dedpul_sum == len(assm_basenames):
-                    assm_lst = list( map(os.path.basename, assm_lst) )
+                    assm_lst = map(os.path.basename, assm_lst)
                 else:
-                    assm_lst = list( map(os.path.abspath, assm_lst) )
+                    assm_lst = map(os.path.abspath, assm_lst)
                 # end if
 
                 # Add assembled sequences to database
@@ -417,17 +436,18 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     printl(logfile_path, "{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
 
                     how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
+                    fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
                     with how_to_open(assm_path) as fasta_file:
                         for line in fasta_file:
-                            line = line.strip()
-                            # You can find comments to "OWN_SEQ..." below. I don't want to duplicate them.
+                            line = fmt_func(line)
+                            # You can find comments to "OWN_SEQ..." below.
                             # Paths will be written to seq IDs in following way:
                             #   (_/some/happy/path.fastq_)
                             # in order to retrieve them securely with regex later.
                             if line.startswith('>'):
                                 own_seq_counter += 1
                                 own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                                own_def = "(_{}_)_" + line[1:]
+                                own_def = "(_{}_)_".format(assm_path) + line[1:]
                                 with shelve.open(taxonomy_path, 'c') as tax_file:
                                     tax_file[own_acc] = own_def
                                 # end with
@@ -451,7 +471,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 for line in fasta_file:
                     line = fmt_func(line)
                     # 'makeblastdb' considers first word (sep. is space) as sequence ID
-                    #   and throws an error if there are duplicate IDs.
+                    #   and throws an error if there are duplicated IDs.
                     # In order not to allow this duplication we'll create our own sequence IDs:
                     #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
                     if line.startswith('>'):
@@ -462,7 +482,6 @@ Enter 'r' to remove all files in this directory and build the database from the 
                         # end with
                         line = ">" + own_acc + ' ' + line[1:]
                     # end if
-                    
                     fasta_db.write(line + '\n')
                 # end for
             # end with
@@ -489,7 +508,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         printl(logfile_path, err_fmt("error while creating database index"))
         platf_depend_exit(exit_code)
     # end if
-    
+
     printl(logfile_path, "{} - Database index has been successfully created\n".format(getwt()))
 
     # Gzip downloaded FASTA file

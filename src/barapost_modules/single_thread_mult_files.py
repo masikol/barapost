@@ -1,29 +1,36 @@
 # -*- coding: utf-8  -*-
+# This module defines functions necessary for barapost.py to perform single-thread work.
+
+import os
+from re import search as re_search
 
 from src.printlog import getwt, printl, printn
+from src.write_classification import write_classification
 from src.filesystem import get_curr_res_dpath, create_result_directory
 from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS
-from src.write_classification import write_classification
 
 from src.fasta import fasta_packets
 from src.fastq import fastq_packets
 
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
-import os
-from re import search as re_search
-
 
 def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_index, logfile_path):
     """
-    Function performs 'many_files'-parallel mode of single-thread mode.
-    They differ only in ptinting to the console.
+    Function launches parallel processing in "many-files" mode by barapost.py.
 
-    :param fq_fa_list: list of paths to FASTA and FASTQ files meant to be processed;
+    :param fq_fa_list: list of paths to files meant to be processed;
     :type fq_fa_list: list<str>;
-    :param parallel: flag indicating if parallel mode if enabled.
-        Influences only on printing to the console;
-    :type parallel: bool;
+    :param packet_size: number of sequences processed by blast in a single launching;
+    :type packet_size: int;
+    :param tax_annot_res_dir: path to ouput directory that contains taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param blast_algorithm: blast algorithm to use;
+    :type blast_algorithm: str;
+    :param use_index: logic value indicationg whether to use indes;
+    :type use_index: bool;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")

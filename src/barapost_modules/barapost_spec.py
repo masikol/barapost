@@ -33,7 +33,7 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
     :param blast_algorithm: BLASTn algorithm to use.
         This parameter is necessary because it is included in name of result files;
     :type blast_algorithm: str;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
     """
 
@@ -251,7 +251,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
     :type acc_fpath: str;
     :param your_own_fasta_lst: list of paths to user's fasta files;
     :type your_own_fasta_lst: list<str>;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns accession dictionary described above.

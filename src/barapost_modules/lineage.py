@@ -1,4 +1,5 @@
-# -*- codingL utf-8 -*-
+# -*- coding: utf-8 -*-
+# This module defines function used bt barapost.py for dealing with lineages.
 
 import os
 import shelve
@@ -9,11 +10,11 @@ from re import search as re_search
 from threading import Thread
 import multiprocessing as mp
 
-from src.filesystem import remove_tmp_files
-from src.platform import platf_depend_exit
 from src.printlog import err_fmt
+from src.platform import platf_depend_exit
+from src.filesystem import remove_tmp_files
 
-own_seq_regex = r"OWN_SEQ_[0-9]+"
+own_seq_regex = r"OWN_SEQ_[0-9]+" # pattern for recognizing user's sequences
 
 
 def download_lineage(gi, hit_def, acc, tax_annot_res_dir):
@@ -29,6 +30,8 @@ def download_lineage(gi, hit_def, acc, tax_annot_res_dir):
     :type hit_def: str;
     :param acc: hit accession;
     :type acc: str;
+    :param taxonomy_path: path to DBM file with taxonomy;
+    :type taxonomy_path: str;
     """
 
     indsxml_path = os.path.join(tax_annot_res_dir, "indsxml.gbc.xml")
@@ -163,6 +166,8 @@ def get_lineage(hit_acc, taxonomy_path):
 
     :param hit_acc: hit accession;
     :type hit_acc: str;
+    :param taxonomy_path: path to DBM file with taxonomy;
+    :type taxonomy_path: str;
     """
 
     try:

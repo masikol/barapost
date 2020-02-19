@@ -1,49 +1,32 @@
 # -*- coding: utf-8 -*-
+# This packet defines generator that splits fasta-formatted string
+#   into smaller "packets" and yields them.
 
 from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
 
-def fasta_packets_from_str(data, packet_size, num_done_seqs, max_seq_len=None):
-    """
-    Function (actually, generator) retrieves 'packet_size' records from 'fasta'
-        no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
-    This function will pass 'num_done_seqs' sequences (i.e. they will not be processed)
-        by calling 'pass_processed_files'.
 
-    :param data: path to FASTA file OR actual FASTA data of 'str' type;
+def fasta_packets_from_str(data, packet_size, max_seq_len=None):
+    """
+    Generator retrieves 'packet_size' records from 'fasta'
+        no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
+
+    :param data: FASTA-formatted string;
     :type data: str;
     :param packet_size: number of sequences to align in one 'blastn' launching;
     :type packet_size: int;
     :param reads_at_all: number of sequences in current file;
     :type reads_at_all: int;
-    :param num_done_seqs: number of sequnces in current file that have been already processed;
-    :type num_doce_reads: int;
+    :param max_seq_len: maximum length of a sequence proessed;
+    :type max_seq_len: int (None if pruning is disabled);
     """
 
     fasta_lines = data.splitlines()
+    fasta_lines.append("") # append fictive value imitating end of file
     del data # let interpreter get rid of this large string -- we do not need it any more
-    line_i = 0 # variable for line counting
 
-    def get_next_line():
-        """
-        Function retrieves element from 'fasta_lines' by 'line_i' index
-            and increases 'line_i' variable by 1.
-        """
-        nonlocal line_i
-        try:
-            line = fasta_lines[line_i]
-            line_i += 1
-        
-        except IndexError:
-            # if IndexError is raised -- we have reached the end of data.
-            # Simulate returning of empty string, just like io.TextIOWrapper.readline() does
-            #    if end of file is reached:
-            return ""
-        
-        else:
-            return line
-        # end try
-    # end def get_next_line
+    # Variable for counting lines (it is list in order to circumvent immutability of int type)
+    line_i = 0
 
     # Variable that contains id of next sequence in current FASTA file.
     # If no or all sequences in current FASTA file have been already processed, this variable is None.
@@ -51,16 +34,13 @@ def fasta_packets_from_str(data, packet_size, num_done_seqs, max_seq_len=None):
     # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
     next_id_line = None
 
-    packet = ""
-
-    line = get_next_line()
-    if line.startswith('>'):
-        line = fmt_read_id(line) # prune sequence ID
-    # end if
+    # The first line is always a sequence ID if data is not a file, but a fasta-formatted string.
+    #   Because in this case all "done" sequences are already passed by function 'fasta_packets'
+    line = fmt_read_id(fasta_lines[line_i])
+    line_i += 1
 
     packet += line+'\n' # add recently read line
 
-    qual_dict = dict()
     eof = False
 
     # Iterate over packets left to process
@@ -70,14 +50,17 @@ def fasta_packets_from_str(data, packet_size, num_done_seqs, max_seq_len=None):
 
         while i < packet_size:
 
-            line = get_next_line()
+            line = fasta_lines[line_i]
+
+            if line == "": # if end of data is reached
+                break
+            # end if
+
+            line_i += 1
+
             if line.startswith('>'):
                 line = fmt_read_id(line)
                 i += 1
-            # end if
-            
-            if line == "": # if end of file (data) is reached
-                break
             # end if
             packet += line + '\n' # add line to packet
         # end while
@@ -89,28 +72,19 @@ def fasta_packets_from_str(data, packet_size, num_done_seqs, max_seq_len=None):
             next_id_line = None
         # end if
 
-        # Get list of sequence IDs:
-        names = list( filter(lambda l: True if l.startswith('>') else False, packet.splitlines()) )
-        names = list( map(lambda l: l.replace('>', ''), names) )
-
-        for name in names:
-            qual_dict[name] = '-'
-        # end for
-        del names # let it go
-
         if not max_seq_len is None:
             packet = prune_seqs(packet.strip(), 'l', max_seq_len)
         # end if
 
-        yield {"fasta": packet.strip(), "qual": qual_dict}
-
-        # Reset packet
-        if not next_id_line is None:
+        # No way to get quality from fasta-formatted string.
+        # However, we will have it from 'packet_generator()' launching 
+        #   (see function 'process' in src/barapost_modules/parallel_single_file.py).
+        if packet != "":
+            yield {"fasta": packet}
+            # Reset packet
             packet = next_id_line+'\n'
-            qual_dict.clear()
         else:
-            return
+            raise StopIteration
         # end if
     # end while
-# end with
 # end def fasta_packets_from_str

@@ -17,7 +17,7 @@ def ask_for_resumption(logfile_path):
     """
     Function asks a user if he/she wants to resume the previous run.
 
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns True if the decision is to resume, else False
@@ -81,7 +81,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
     :param probing_batch_size: amount of sequences meant to be processed in a single run;
     :type probing_batch_size: str;
     :type blast_algorithm: str;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
     """
 
@@ -285,7 +285,7 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
     :type qual_dict: dict<str: float>;
     :param acc_dict: dictionary comntaining accession data of hits;
     :type acc_dict: dict<str: tuple<str, str, int>>;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
     :param taxonomy_path: path to DBM file with taxonomy;
     :type taxonomy_path: str;

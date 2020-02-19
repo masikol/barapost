@@ -24,7 +24,7 @@ def verify_taxids(taxid_list, logfile_path):
     :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
         during CL argument parsing;
     :type taxid_list: list<str>;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
@@ -69,7 +69,7 @@ def lingering_https_get_request(server, url, logfile_path):
     :type server: str;
     :param url: the rest of url;
     :type url: str;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns obtained response coded in UTF-8 ('str').
@@ -167,7 +167,7 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
     :param packs_at all: total number of packets corresponding to current FASTA file.
         This information is printed to console;
     :type packs_at_all: int;
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns XML text of type 'str' with BLAST response.
@@ -237,7 +237,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
     :type packs_at_all: int;
     :param filename: basename of current FASTA file;
     :type filename: str
-    :param logfile_path: path to logfile: this renaming should be documented;
+    :param logfile_path: path to logfile;
     :type logfile_path: str;
 
     Returns XML response ('str').

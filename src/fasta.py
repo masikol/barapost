@@ -126,7 +126,6 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
             for name in names:
                 qual_dict[name] = '-' # there is no quality info in fasta files
             # end for
-            del names # let it go
 
             if not max_seq_len is None: # prune sequences
                 packet = prune_seqs(packet, 'l', max_seq_len)
