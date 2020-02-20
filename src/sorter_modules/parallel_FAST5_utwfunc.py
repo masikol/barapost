@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
+# Module defines function that creates index mapping reads in FAST5 files to their
+#   taxonomic annotation in parallel.
 
 import h5py
 
-from src.sorter_modules.sorter_spec import *
-
-from src.platform import platf_depend_exit
-from src.printlog import printl, printn, getwt, err_fmt
-from src.fmt_readID import fmt_read_id
-from src.sorter_modules.fast5 import fast5_readids
-
 from shelve import open as open_shelve
+
+from src.fmt_readID import fmt_read_id
+from src.platform import platf_depend_exit
+from src.sorter_modules.fast5 import fast5_readids
+from src.printlog import printl, printn, getwt, err_fmt
 
 index_name = "fast5_to_tsvtaxann_idx"
 
 
 def init_paral_utw(write_lock_buff, print_lock_buff):
+    """
+    Function initializes global locks for funciton 'map_f5reads_2_taxann'.
+
+    :param write_lock_buff: lock for writing to output file(s);
+    :type write_lock_buff: mp.Lock;
+    :param print_lock_buff: lock for printing to console;
+    :type print_lock_buff: mp.Lock;
+    """
 
     global write_lock
     write_lock = write_lock_buff
@@ -66,6 +74,10 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
     :type f5_fpaths: list<str>;
     :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
     :type tsv_taxann_lst: list<str>;
+    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies

@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
+# Module defines functions necessary for sorting FASTA and FASTQ files in parallel.
 
 # If we process files in parallel, we need to open output files each time we need to write to it,
 #    because different processed cannot correctly write to the same file and have their own file descriptors:
 #    it will produce broken files.
 # Thus we will open these files each time and descriptors will be up-to-date.
 
+import os
+import sys
+
 from src.sorter_modules.sorter_spec import *
 
-from src.printlog import printl, printn, getwt, err_fmt
-from src.platform import platf_depend_exit
-from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
+from src.platform import platf_depend_exit
+from src.printlog import printl, printn, getwt, err_fmt
+from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.sorter_modules.fastq_records import fastq_records
 from src.sorter_modules.fasta_records import fasta_records
-
-import os
 
 
 def write_fastq_record(sorted_path, fastq_record):

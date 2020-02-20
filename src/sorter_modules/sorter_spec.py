@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+# Module defines finctions that are "miscallaneous" for sorter.
 
 import os
 import sys
@@ -267,6 +267,8 @@ def configure_resfile_lines(tsv_res_fpath, sens):
 
     :param tsv_res_fpath: path to current TSV file. Sorting will be performed accorfing to this TSV file;
     :type tsv_res_fpath: str;
+    :param sens: sorting sensitivity;
+    :type sens: str;
     """
 
     resfile_lines = dict()

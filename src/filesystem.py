@@ -30,7 +30,7 @@ def rename_file_verbosely(file, logfile_path):
 
     :param file: path to file (directory) meant to be renamed;
     :type file: str;
-    :param logfile_path: path to logfile;
+    :param logfile_path: path to log file;
     :type logfile_path: str;
     """
 

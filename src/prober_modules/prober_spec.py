@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# This module defines functions that are used by prober only (specific to prober).
+# Module defines finctions that are "miscallaneous" for prober.
 
 import os
 import sys

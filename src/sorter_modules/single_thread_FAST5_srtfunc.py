@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+# Module defines functions necessary for sorting FAST5 files "directly": without index.
 
 import h5py
 
+import os
 import sys
 from glob import glob
 
@@ -21,6 +23,16 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
 
     :param f5_path: path to FAST5 file meant to be processed;
     :type f5_path: str;
+    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param sens: sorting sensitivity;
+    :type sens: str;
+    :param min_qual: minimum quality to keep;
+    :type min_qual: float;
+    :param min_qlen: minimmum sequence length to keep;
+    :type min_qlen: int (or None, if this feature is disabled);
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     outdir_path = os.path.dirname(logfile_path)
@@ -88,7 +100,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
             f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath], logfile_path)
             seqs_fail += 1
         else:
-            for hit_name in hit_names.split("&&"):
+            for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
                 if sorted_file_path not in srt_file_dict.keys():
@@ -109,30 +121,3 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
 
     return (seqs_pass, seqs_fail)
 # end def sort_fast5_file
-
-
-def update_file_dict(srt_file_dict, new_fpath):
-    try:
-        if new_fpath.endswith(".fast5"):
-            srt_file_dict[sys.intern(new_fpath)] = h5py.File(new_fpath, 'a')
-        else:
-            srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
-        # end if
-    except OSError as oserr:
-        printl(logfile_path, err_fmt("error while opening one of result files"))
-        printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
-        printl(logfile_path,  str(oserr) )
-        platf_depend_exit(1)
-    # end try
-    return srt_file_dict
-# end def update_file_dict
-
-
-def assign_version_2(fast5_list):
-    # Assign version attribute to '2.0' -- multiFAST5
-    for f5path in fast5_list:
-        with h5py.File(f5path, 'a') as f5file:
-            f5file.attrs["file_version"] = b"2.0"
-        # end with
-    # end for
-# end def assign_version_2

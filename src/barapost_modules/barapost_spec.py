@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# This module defines functions that are used by barapost.py only (specific to barapost.py).
+# Module defines finctions that are "miscallaneous" for barapost.
 
 import os
 import sys

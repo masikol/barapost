@@ -4,8 +4,8 @@
 def spread_files_equally(fq_fa_list, n_thr):
     """
     Function distributes files among threads equally.
-    :param fq_fa_list: list of paths to files meant to be processed:
-    :type fq_fa_list: list<str>;
+    :param fq_fa_list: tuple (or list) of paths to files meant to be processed:
+    :type fq_fa_list: tuple<str>, list<str>;
     :param n_thr: number of therads;
     :type n_thr: int;
     """

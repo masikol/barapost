@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+# Module defines generator that yields records retrieved from fasta files.
 
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 def fasta_records(fa_path):
     """
+    Generator yields records retrieved from fasta files.
+
     :param fasta_file: file instance of FASTA file to retrieve sequences from;
     :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
-    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
     Returns dictionary of the following structure:
     {
         "seq_id": ID_of_sequence,

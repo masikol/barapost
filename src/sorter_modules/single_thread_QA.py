@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
+# Module defines functions necessary for sorting FASTA and FASTQ files in single thread.
 
+import os
 import sys
 
 from src.sorter_modules.sorter_spec import *
 
-from src.printlog import printl, printn, getwt, err_fmt
-from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
+from src.printlog import printl, printn, getwt, err_fmt
+from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.sorter_modules.fastq_records import fastq_records
 from src.sorter_modules.fasta_records import fasta_records
@@ -48,6 +50,16 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
 
     :param fq_fa_path: path to FASTQ (of FASTA) file meant to be processed;
     :type fq_fa_path: str;
+    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param sens: sorting sensitivity;
+    :type sens: str;
+    :param min_qual: minimum quality to keep;
+    :type min_qual: float;
+    :param min_qlen: minimmum sequence length to keep;
+    :type min_qlen: int (or None, if this feature is disabled);
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     outdir_path = os.path.dirname(logfile_path)
@@ -55,13 +67,13 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
 
     seqs_pass = 0
     seqs_fail = 0
-    srt_file_dict = dict()
+    srt_file_dict = dict() # dict containing file objects of existing output files
 
     new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
 
-    # Configure path to trash file
+    # Configure generator, write function and path to trash file
     if is_fastq(fq_fa_path):
         seq_records_generator = fastq_records
         write_fun =  write_fastq_record
@@ -96,7 +108,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
             write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
             seqs_fail += 1
         else:
-            for hit_name in hit_names.split("&&"):
+            for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
                     'q' if is_fastq(fq_fa_path) else 'a'))
