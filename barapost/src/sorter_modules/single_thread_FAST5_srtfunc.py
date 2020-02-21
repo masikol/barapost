@@ -8,6 +8,7 @@ import sys
 from glob import glob
 
 from src.sorter_modules.sorter_spec import *
+from src.sorter_modules.fast5 import update_file_dict
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
@@ -95,7 +96,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
         if ph33_qual != '-' and ph33_qual < min_qual:
             # Get name of result FASTQ file to write this read in
             if trash_fpath not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
+                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
             # end if
             f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath], logfile_path)
             seqs_fail += 1
@@ -104,7 +105,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
                 if sorted_file_path not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path, logfile_path)
                 # end if
                 f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path], logfile_path)
             # end for

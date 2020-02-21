@@ -1,5 +1,18 @@
 # "Barapost" changelog
 
+## 2020-02-21 edition.
+
+- all: code restructirized, adding directory with executable scripts to PATH variable is necessary;
+- prober, barapost: `-a` option syntax changed;
+- sorter: `-s` and `-z` options syntax changed;
+- several bug fixes;
+
+### Version changes:
+
+1. prober: `1.15.b --> 1.16.a`;
+2. barapost: `3.9.a --> 3.10.a`;
+3. sorter: `4.2.b --> 4.3.a`
+
 ## 2020-01-29 evening edition.
 
 - barapost.py now downloads all replicons related to records "discovered" by prober.py (other chromosomes, plasmids) and adds them to database;

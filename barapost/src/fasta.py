@@ -137,7 +137,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
                 packet = next_id_line+'\n'
                 qual_dict.clear()
             else:
-                raise StopIteration
+                return
             # end if
 
         # end while

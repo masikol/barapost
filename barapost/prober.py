@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.15.b"
+__version__ = "1.16.a"
 # Year, month, day
-__last_update_date__ = "2020-01-29"
+__last_update_date__ = "2020-02-21"
 
 # |===== Check python interpreter version =====|
 
@@ -29,26 +29,25 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
 
     print("\n  prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
-    print("""This script is designed for determinating the taxonomic position
+    print("""This script is designed for taxonomic classification
   of nucleotide sequences by finding the most similar sequence
-  in NCBI Nucleotide database using BLAST web service\n""")
+  in NCBI Nucleotide database using BLAST web service.\n""")
 
     if "--help" in sys.argv[1:]: # print more detailed help message
-        print("""The main goal of this script is to send a probing batch (see `-b` option) of sequences to
-  NCBI BLAST servive and discover, what Genbank records can be downloaded and used for
-  building a database on your local machine by "barapost.py" further.""")
+        print("""Processing entire data set with "prober.py" is not expedient,
+  since servers are in public use and handling a request can linger for a long time.""")
+        print("""Therefore the main goal of this script is to submit a relatively small
+  probing batch (see `-b` option) of sequences to NCBI BLAST service and discover,
+  what Genbank records can be downloaded and used as reference sequences in a database
+  stored on local machine. Further classification will be performed by "barapost.py" on local machine.""")
         print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
-        print("\"prober.py\" writes results of taxonomic classification in TSV file(s) named according to name of input file(s).")
-        print(""""prober.py" also generates a file named 'hits_to_download.tsv'. It contains accessions and
-  names of Genbank records that can be used for creating a non-redundant
-  database on your local machine by "barapost.py".""")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
         print(""" - if no input files are specified, "prober.py" processes
   all FASTQ and FASTA files in working directory;""")
         print(" - packet size (see '-p' option): 100 sequences;")
         print(" - probing batch size (see '-b' option): 200 sequences;")
-        print(" - algorithm (see '-a' option): `megaBlast`;")
+        print(" - algorithm (see '-a' option): 0 (megaBlast);")
         print(" - database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;")
         print(""" - output directory ('-o' option): directory named 'barapost_result'
   nested in working directory;""")
@@ -65,17 +64,16 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    '-h' -- brief, '--help' -- full;\n""")
     print("-v (--version) --- show version;\n")
     print("""-d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
-   I.e. all FASTQ and FASTA files in this direcory will be processed.
-        Input files can be gzipped;\n""")
+   I.e. all FASTQ and FASTA files in this direcory will be processed;\n""")
     print("""-o (--outdir) --- output directory.
    Default value: 'barapost_result';\n""")
     print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
    It means that "prober.py" can preform multiple requests during single run.
-   Value: integer number > 1. Default value is 100;\n""")
+   Value: positive integer number. Default value is 100;\n""")
     print("""-a (--algorithm) --- BLASTn algorithm to use for alignment.
    Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
    Default is 0 (megaBlast);\n""")
-    print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nt' database slices.
+    print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nr/nt' database slices.
    Functionality of this option is totally equal to "Organism" text boxes on this BLASTn page:
     'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
    Format of value (see EXAMPLES #4 and #5 below.):
@@ -83,14 +81,14 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    Spaces are NOT allowed.
    Default value is full 'nr/nt' database, i.e. no slices.
    You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi';\n""")
-    print("""-b (--probing-batch-size) --- total number of sequences that will be sent to BLAST server
+    print("""-b (--probing-batch-size) --- total number of sequences that will be submitted to BLAST server
    during 'prober.py' run.
    You can specify '-b all' to process all your sequeces by 'prober.py'.
-   Value: integer number > 1.
+   Value: positive integer number.
    Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
-   so that the NCBI can contact you if there is a problem. See EXAMPLE #2 below;\n""")
-    print("""-x (--max-seq-len) --- maximum length of a sequence that prober sends to NCBI BLAST.
+   so that the NCBI can contact you if there is a problem. See Example #2 below;\n""")
+    print("""-x (--max-seq-len) --- maximum length of a sequence that prober subits to NCBI BLAST service.
    It means that prober can prune your sequences before submission in order to spare NCBI servers.
    This feature is disabled by default;""")
 
@@ -99,8 +97,8 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
    prober.py\n""")
-        print("""2. Process all files in the working directory that start with "some_fasta".
-   Provide NCBI with your email. Use default settings:\n
+        print("""2. Process all files starting with "some_fasta" in the working directory with default settings.
+   Provide NCBI with your email:\n
    prober.py some_fasta* -e my.email@sth.com\n""")
         print("""3. Process one file with default settings:\n
    prober.py reads.fastq\n""")
@@ -384,7 +382,7 @@ printl(logfile_path, " - Logging to '{}'".format(logfile_path))
 if user_email != "":
     printl(logfile_path, " - Your email: {}".format(user_email))
 # end if
-printl(logfile_path, " - Probing batch size: {} sequences;".format(probing_batch_size))
+printl(logfile_path, " - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
 printl(logfile_path, " - Packet size: {} sequences;".format(packet_size))
 if not max_seq_len is None:
     printl(logfile_path, " - Maximum length of a sequence to submit: {} bp;".format(max_seq_len))
@@ -485,6 +483,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Ordinal number of packet meant to be sent (will incrementing after every successful submission)
     pack_to_send = 1
+    # Pretty string to print "Request 3 out of 7" if not 'send_all'
+    out_of_n = "" if send_all else " out of {}".format(packs_at_all)
 
     # Choose appropriate record generator:
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
@@ -503,7 +503,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
             # Get BLAST XML response
             align_xml_text = wait_for_align(saved_RID, resume_rtoe,
-                pack_to_send, packs_at_all, os.path.basename(fq_fa_path), logfile_path)
+                pack_to_send, os.path.basename(fq_fa_path), logfile_path)
             saved_RID = None
 
             if align_xml_text is None:
@@ -523,8 +523,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
             s_letter = 's' if len(packet["qual"]) != 1 else ''
             printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
-            printl(logfile_path, "Request number {} out of {}. Sending {} sequence{}.".format(pack_to_send,
-                packs_at_all, len(packet["qual"]), s_letter))
+            printl(logfile_path, "Request number {}{}. Sending {} sequence{}.".format(pack_to_send,
+                out_of_n, len(packet["qual"]), s_letter))
 
             while align_xml_text is None: # until successfull attempt
 
@@ -532,7 +532,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
                 # Send the request and get BLAST XML response.
                 # 'align_xml_text' will be None if an error occurs.
-                align_xml_text = send_request(request, pack_to_send, packs_at_all,
+                align_xml_text = send_request(request, pack_to_send,
                     os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --

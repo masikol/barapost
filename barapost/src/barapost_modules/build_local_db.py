@@ -270,6 +270,9 @@ def build_local_db(acc_dict, tax_annot_res_dir, acc_fpath, your_own_fasta_lst, l
     """
 
     db_dir = os.path.join(tax_annot_res_dir, "local_database") # path to directory in which database will be placed
+    # Path to DBM taxonomy file
+    taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
+
     try:
         os.makedirs(db_dir)
     except OSError as err:
@@ -326,8 +329,6 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # end while
     # end try
 
-    # Path to DBM taxonomy file
-    taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
 
     # Retrieve already existing taxonomy data from taxonomy file
     with shelve.open(taxonomy_path, 'c') as tax_file:

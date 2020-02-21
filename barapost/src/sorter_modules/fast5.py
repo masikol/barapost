@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 # This module defines functions, via which sorter manipulated FAST5 data
 
+import sys
 import h5py
 
 from src.platform import platf_depend_exit
 from src.printlog import printl
-from src.fmt_readID import fmt_readID
+from src.fmt_readID import fmt_read_id
 from re import search as re_search
 
 
@@ -113,3 +114,16 @@ def assign_version_2(fast5_list):
         # end with
     # end for
 # end def assign_version_2
+
+
+def update_file_dict(srt_file_dict, new_fpath, logfile_path):
+    try:
+        srt_file_dict[sys.intern(new_fpath)] = h5py.File(new_fpath, 'a')
+    except OSError as oserr:
+        printl(logfile_path, err_fmt("error while opening one of result files"))
+        printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
+        printl(logfile_path,  str(oserr) )
+        platf_depend_exit(1)
+    # end try
+    return srt_file_dict
+# end def update_file_dict

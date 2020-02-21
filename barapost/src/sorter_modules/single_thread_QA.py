@@ -43,6 +43,19 @@ def write_fasta_record(sorted_file, fasta_record):
 # end def write_fasta_record
 
 
+def update_file_dict(srt_file_dict, new_fpath, logfile_path):
+    try:
+        srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
+    except OSError as oserr:
+        printl(logfile_path, err_fmt("error while opening one of result files"))
+        printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
+        printl(logfile_path,  str(oserr) )
+        platf_depend_exit(1)
+    # end try
+    return srt_file_dict
+# end def update_file_dict
+
+
 def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
         min_qual, min_qlen, logfile_path):
     """
@@ -103,7 +116,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
         if q_len < min_qlen or (quality != '-' and quality < min_qual):
             # Place this sequence to trash file
             if trash_fpath not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath)
+                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
             # end if
             write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
             seqs_fail += 1
@@ -113,7 +126,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
                 sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
                     'q' if is_fastq(fq_fa_path) else 'a'))
                 if sorted_file_path not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path)
+                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path, logfile_path)
                 # end if
                 write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
             # end for

@@ -2,6 +2,7 @@
 # Module defines function that creates index mapping reads in FAST5 files to their
 #   taxonomic annotation in parallel.
 
+import os
 import h5py
 
 from shelve import open as open_shelve

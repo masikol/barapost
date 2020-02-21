@@ -1,5 +1,2 @@
-*.fastq*
-*.fasta*
 *xml*
-*test/*
 *__pycache__*

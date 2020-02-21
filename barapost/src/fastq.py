@@ -97,7 +97,7 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
                 packet = ""
                 qual_dict.clear()
             else:
-                raise StopIteration
+                return
             # end if
         # end while
     # end with

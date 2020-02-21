@@ -84,7 +84,7 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
             # Reset packet
             packet = next_id_line+'\n'
         else:
-            raise StopIteration
+            return
         # end if
     # end while
 # end def fasta_packets_from_str

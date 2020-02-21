@@ -155,7 +155,7 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
 # end def configure_request
 
 
-def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfile_path):
+def send_request(request, pack_to_send, filename, tmp_fpath, logfile_path):
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
         and then waits for satisfaction of the request and retrieves response text.
@@ -164,9 +164,6 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
     :param request: dict<dict>;
     :param pack_to_send: current number (like id) of packet meant to be sent now.
     :type pack_to_send: int;
-    :param packs_at all: total number of packets corresponding to current FASTA file.
-        This information is printed to console;
-    :type packs_at_all: int;
     :param logfile_path: path to logfile;
     :type logfile_path: str;
 
@@ -218,11 +215,11 @@ def send_request(request, pack_to_send, packs_at_all, filename, tmp_fpath, logfi
     # end with
 
     # Wait for results of alignment
-    return( wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path) )
+    return( wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path) )
 # end def send_request
 
 
-def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path):
+def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     """
     Function waits untill BLAST server accomplishes the request.
     
@@ -232,9 +229,6 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
     :type rtoe: int;
     :param pack_to_send: current packet (id) number to send;
     :type pack_to_send: int;
-    :param packs_at_all: total number of packets corresponding to current FASTA file.
-        This information is printed to console;
-    :type packs_at_all: int;
     :param filename: basename of current FASTA file;
     :type filename: str
     :param logfile_path: path to logfile;
@@ -243,8 +237,8 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
     Returns XML response ('str').
     """
 
-    printl(logfile_path, "\n{} - Requesting for current query status. Request ID: {},\n '{}' ({}/{})".format(getwt(),
-    rid, filename, pack_to_send, packs_at_all))
+    printl(logfile_path, "\n{} - Requesting for current query status. Request ID: {},\n '{}'; Submission #{}".format(getwt(),
+    rid, filename, pack_to_send,))
     # RTOE can be zero at the very beginning of resumption
     if rtoe > 0:
 
@@ -282,7 +276,7 @@ def wait_for_align(rid, rtoe, pack_to_send, packs_at_all, filename, logfile_path
             return None
         # if results are ready
         elif "Status=READY" in resp_content:
-            printl(logfile_path, "\n{} - Result for query '{}' ({}/{}) is ready!".format(getwt(), filename, pack_to_send, packs_at_all))
+            printl(logfile_path, "\n{} - Result for query '{}' #{} is ready!".format(getwt(), filename, pack_to_send))
             # if there are hits
             if "ThereAreHits=yes" in resp_content:
                 for i in range(15, 0, -5):
