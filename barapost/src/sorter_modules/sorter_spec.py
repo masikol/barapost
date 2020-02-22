@@ -6,41 +6,8 @@ import sys
 from glob import glob
 from re import search as re_search
 
-
-class SeqLength:
-    """
-    Class contains the only one field -- length of a sequence.
-    This class is necessary because:
-        1) length filtering is disabled by default;
-        2) it is useful to create the length-comparing interface that will
-            always tell that the sequence is long enough to keep it
-            if length filtering is disabled;
-    """
-
-    def __init__(self, init_len):
-        """
-        :param init_len: length value to initialize
-        :type init_len: int;
-        """
-        self.value = init_len
-    # end def __init__
-
-    def __lt__(self, rcmp_len):
-        """
-        "Less than" (<) dunder method.
-        It will always return False if length filtering is disabled
-            (i.e. if the rigth operand is None).
-        :param rcmp_len: the rigth operand of '<' operator;
-        :type rcmp_len: int or None;
-        """
-        if not rcmp_len is None:
-            return self.value < rcmp_len
-        else:
-            return False
-        # end if
-    # end def __lt__
-
-# end class seq_length
+from src.platform import platf_depend_exit
+from src.printlog import printl
 
 
 def get_res_tsv_fpath(new_dpath):
@@ -282,6 +249,22 @@ def configure_resfile_lines(tsv_res_fpath, sens):
             splt = line.split('\t')
             read_name = sys.intern(splt[0])
             hit_name = splt[1]
+
+            try:
+                quality = float(splt[8]) # we will filter by quality
+            except ValueError as verr:
+                if splt[8] == '-':
+                    # Keep minus as quality if there is no quality information.
+                    # Error will not be raised.
+                    quality = splt[8]
+                else:
+                    printl(logfile_path, err_fmt("query quality parsing error"))
+                    printl(logfile_path,  str(verr) )
+                    printl(logfile_path, "Please, contact the developer.")
+                    platf_depend_exit(1)
+                # end if
+            # end try
+
             try:
                 query_len = int(splt[3])  # we will filter by length
             except ValueError as verr:
@@ -290,29 +273,43 @@ def configure_resfile_lines(tsv_res_fpath, sens):
                 printl(logfile_path, "Please, contact the developer.")
                 platf_depend_exit(1)
             # end try
+
             try:
-                phred33 = float(splt[8]) # we will filter by quality
+                pident = float(splt[5]) # we will filter by identity
             except ValueError as verr:
-                if splt[8] == '-':
+                if splt[5] == '-':
                     # Keep minus as quality if there is no quality information.
                     # Error will not be raised.
-                    phred33 = splt[8]
+                    pident = splt[5]
                 else:
-                    printl(logfile_path, err_fmt("query quality parsing error"))
+                    printl(logfile_path, err_fmt("alignment identity parsing error"))
                     printl(logfile_path,  str(verr) )
                     printl(logfile_path, "Please, contact the developer.")
                     platf_depend_exit(1)
                 # end if
             # end try
-            resfile_lines[read_name] = [hit_name, phred33, query_len]
+
+            try:
+                coverage = float(splt[4]) # we will filter by coverage
+            except ValueError as verr:
+                if splt[4] == '-':
+                    # Keep minus as quality if there is no quality information.
+                    # Error will not be raised.
+                    coverage = splt[4]
+                else:
+                    printl(logfile_path, err_fmt("alignment coverage parsing error"))
+                    printl(logfile_path,  str(verr) )
+                    printl(logfile_path, "Please, contact the developer.")
+                    platf_depend_exit(1)
+                # end if
+            # end try
+
+            resfile_lines[read_name] = [format_taxonomy_name(hit_name, sens),
+                quality, query_len, pident, coverage]
+
             line = brpst_resfile.readline().strip() # get next line
         # end while
     # end with
-
-    # |===== Format taxonomy names =====|
-    for read_name in resfile_lines.keys():
-        resfile_lines[read_name][0] = format_taxonomy_name(resfile_lines[read_name][0], sens)
-    # end for
 
     return resfile_lines
 # end def configure_resfile_lines

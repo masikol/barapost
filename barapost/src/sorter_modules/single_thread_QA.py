@@ -13,6 +13,7 @@ from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.sorter_modules.fastq_records import fastq_records
 from src.sorter_modules.fasta_records import fasta_records
+from src.sorter_modules.filters import get_filter, get_trash_fpath
 
 
 def write_fastq_record(sorted_file, fastq_record):
@@ -57,7 +58,7 @@ def update_file_dict(srt_file_dict, new_fpath, logfile_path):
 
 
 def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
-        min_qual, min_qlen, logfile_path):
+        min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
     Function for single-thread sorting FASTQ and FASTA files.
 
@@ -67,16 +68,19 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
     :type tax_annot_res_dir: str;
     :param sens: sorting sensitivity;
     :type sens: str;
-    :param min_qual: minimum quality to keep;
+    :param min_qual: threshold for quality filter;
     :type min_qual: float;
-    :param min_qlen: minimmum sequence length to keep;
-    :type min_qlen: int (or None, if this feature is disabled);
+    :param min_qlen: threshold for length filter;
+    :type min_qlen: int (or None, if this filter is disabled);
+    :param min_pident: threshold for alignment identity filter;
+    :type min_pident: float (or None, if this filter is disabled);
+    :param min_coverage: threshold for alignment coverage filter;
+    :type min_coverage: float (or None, if this filter is disabled);
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
 
     outdir_path = os.path.dirname(logfile_path)
-    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
 
     seqs_pass = 0
     seqs_fail = 0
@@ -90,20 +94,22 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
     if is_fastq(fq_fa_path):
         seq_records_generator = fastq_records
         write_fun =  write_fastq_record
-        trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_qual),
-            minlen_fmt_str))
     else:
         seq_records_generator = fasta_records
         write_fun = write_fasta_record
-        trash_fpath = os.path.join(outdir_path, "len_less_{}.fasta".format(min_qlen))
     # end if
+
+    # Make filter
+    seq_filter = get_filter(fq_fa_path, min_qual, min_qlen, min_pident, min_coverage)
+    # Configure path to trash file
+    trash_fpath = get_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen, min_pident, min_coverage)
 
     for fastq_rec in seq_records_generator(fq_fa_path):
 
         read_name = sys.intern(fmt_read_id(fastq_rec["seq_id"])[1:]) # get ID of the sequence
 
         try:
-            hit_names, quality, q_len = resfile_lines[read_name]  # find hit corresponding to this sequence
+            hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
         except KeyError:
             printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
 This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
@@ -112,15 +118,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
         # end try
 
         # If read is found in TSV file:
-        q_len = SeqLength(q_len)
-        if q_len < min_qlen or (quality != '-' and quality < min_qual):
-            # Place this sequence to trash file
-            if trash_fpath not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
-            # end if
-            write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
-            seqs_fail += 1
-        else:
+        if seq_filter(vals_to_filter):
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
@@ -131,6 +129,13 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
                 write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
             # end for
             seqs_pass += 1
+        else:
+            # Place this sequence to trash file
+            if trash_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
+            # end if
+            write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
+            seqs_fail += 1
         # end if
     # end for
 

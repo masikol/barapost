@@ -95,7 +95,7 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
                 yield {"fasta": packet, "qual": qual_dict}
                 # Reset packet
                 packet = ""
-                qual_dict.clear()
+                qual_dict = dict()
             else:
                 return
             # end if

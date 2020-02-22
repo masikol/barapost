@@ -13,7 +13,7 @@ from src.printlog import getwt, printl, printn
 from src.write_classification import write_classification
 from src.spread_files_equally import spread_files_equally
 from src.filesystem import get_curr_res_dpath, create_result_directory
-from src.filesystem import remove_tmp_files, is_fastq, OPEN_FUNCS, is_gzipped
+from src.filesystem import remove_tmp_files, is_fastq, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
@@ -93,6 +93,7 @@ def process_paral(fq_fa_list):
         # end if
 
         how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+        fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
         if is_fastq(fq_fa_path):
             packet_generator = fastq_packets

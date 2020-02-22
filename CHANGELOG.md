@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-02-22 edition.
+
+- sorter: alignment identity and coverage filters added;
+- prober, barapost: fasta reading bug fixed;
+
+### Version changes:
+
+1. prober: `1.16.a --> 1.16.b`;
+2. barapost: `3.10.a --> 3.10.b`;
+3. sorter: `4.3.a --> 4.4.a`
+
 ## 2020-02-21 edition.
 
 - all: code restructirized, adding directory with executable scripts to PATH variable is necessary;

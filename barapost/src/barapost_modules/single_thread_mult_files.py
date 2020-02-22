@@ -7,7 +7,7 @@ from re import search as re_search
 from src.printlog import getwt, printl, printn
 from src.write_classification import write_classification
 from src.filesystem import get_curr_res_dpath, create_result_directory
-from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS
+from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS, FORMATTING_FUNCS
 
 from src.fasta import fasta_packets
 from src.fastq import fastq_packets
@@ -61,6 +61,7 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
         # end if
 
         how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+        fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
         if is_fastq(fq_fa_path):
             packet_generator = fastq_packets

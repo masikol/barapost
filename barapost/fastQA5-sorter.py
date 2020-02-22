@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.3.a"
+__version__ = "4.4.a"
 # Year, month, day
-__last_update_date__ = "2020-02-21"
+__last_update_date__ = "2020-02-22"
 
 # |===== Check python interpreter version =====|
 
@@ -42,6 +42,8 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    nested in working directory;
  - minimum mean quality of a read to keep ('-q' option): 10;
  - filtering by length ('-m' option) is disabled;
+ - filtering by alignment identity ('-i' option) is disabled;
+ - filtering by alignment coverage ('-c' option) is disabled;
  - "FAST5 untwisting" is disaled;
  - number of CPU threads to use (`-t` option): 1;""")
 # end if
@@ -63,12 +65,6 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-s (--sorting-sensitivity) --- sorting sensitivity,
    i.e. the lowest taxonomy rank that sorter regards;
    Available values: 0 for species, 1 for genus. Default is 1 (genus);\n""")
-    print("""-q (--min-qual) --- minimum mean Q quality of a read to keep;
-   Reads of lower quality will be written to separate "trash" file;
-   Default value: 10;\n""")
-    print("""-m (--min-seq-len) --- minimum length of a sequence to keep.
-   Shorter sequences will be written to separate "trash" file (see Example #2).
-   Filtering by length is disabled by default;\n""")
     print("""-u (--untwist-fast5) --- flag option. If specified, FAST5 files will be
    sorted considering that corresponding FASTQ files may contain reads from other FAST5 files
    and reads from a particular FAST5 file may be ditributed among multiple FASTQ files.
@@ -76,10 +72,25 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-z (--gzip) --- Compress output files with gzip.
    Compression affects only FASTA and FASTQ files;
    Values: 1 for compress, 0 for not to compress (see Example #2).
-   1 is default value.""")
+   1 is default value.\n""")
     print("""-t (--threads) --- number of CPU threads to use.
    Affects only FASTA and FASTQ sorting.
-   Sorter processes FAST5 files in 1 thread anyway (exception is "FAST5 untwisting").""")
+   Sorter processes FAST5 files in 1 thread anyway (exception is "FAST5 untwisting").\n""")
+    print("  Filter options:\n")
+    print("""-q (--min-qual) --- threshold for quality filter;
+   Reads of lower quality will be written to separate "trash" file;
+   Default value: 10;\n""")
+    print("""-m (--min-seq-len) ---threshold for query length filter.
+   Shorter sequences will be written to separate "trash" file.
+   This filter is disabled by default;\n""")
+    print("""-i (--min-pident) --- threshold for alignment identity filter (in percents).
+   Sequences, which align to best hit with lower identity will be
+     written to separate "trash" file.
+   This filter is disabled by default;\n""")
+    print("""-c (--min-coverage) --- threshold for alignment coverage filter (in percents).
+   Sequences, which align to best hit with lower coverage will be
+     written to separate "trash" file.
+   This filter is disabled by default;\n""")
 
     if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
@@ -89,8 +100,9 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("""  2. Process all files starting with "some_fasta" in the working directory with default settings.
   Move reads with mean quality < Q15 to "trash" file.
   Move sequences with shorter than 3000 b.p. to "trash" file.
+  Move sequences, which align to best hit with identity or coverage lower than 90% to "trash" file.
   Do not compress output files:\n
-  fastQA5-sorter.py some_my_fastq* -q 15 -z 0 -m 3000\n""")
+  fastQA5-sorter.py some_my_fastq* -q 15 -z 0 -m 3000 -i 90 -c 90\n""")
         print("""  3. Process one FASTQ file with default settings.
   File 'reads.fastq' has been already classified and
    results of classification are in directory 'prober_outdir':\n
@@ -120,9 +132,9 @@ from re import search as re_search
 from src.printlog import err_fmt, printl, printn, getwt, get_full_time
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:ut:z:",
-        ["help", "version", "taxannot-resdir=", "indir=", "outdir=",
-         "sorting-sensitivity=", "min-qual=", "min-seq-len=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:i:c:ut:z:",
+        ["help", "version", "taxannot-resdir=", "indir=", "outdir=", "sorting-sensitivity=",
+         "min-qual=", "min-seq-len=", "min-pident=", "min-coverage=",
          "untwist-fast5", "threads=", "gzip="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
@@ -144,6 +156,8 @@ outdir_path = "sorter_result_{}".format(now.replace(' ', '_')) # path to output 
 sens = "genus" # sorting sensitivity
 min_qual = 10 # minimum mean read quality to keep
 min_qlen = None # minimum seqeunce length to keep
+min_pident = None # minimum alignment identity in percent
+min_coverage = None # minimum alignment coverage in percent
 untwist_fast5 = False # flag indicating whether to run 'FAST5-untwisting' or not
 n_thr = 1 # number of threads to launch
 compress = True # flag indicating whether to compress output files or not
@@ -188,7 +202,9 @@ for opt, arg in opts:
     elif opt in ("-q", "--min-qual"):
         try:
             min_qual = float(arg)
-            if min_qual < 0:
+            # Comparing numbers with floating point for equality is not a grateful thing,
+            #   therefore we'll just in case add 1e-9.
+            if min_qual < 1e-9:
                 raise ValueError
             # end if
         except ValueError:
@@ -205,6 +221,35 @@ for opt, arg in opts:
             # end if
         except ValueError:
             print(err_fmt("minimum length of the sequence must be integer number > 1!"))
+            print("Your value: '{}'".format(arg))
+            platf_depend_exit(1)
+        # end try
+
+    elif opt in ("-i", "--min-pident"):
+        try:
+            min_pident = float(arg) / 100
+            # Comparing numbers with floating point for equality is not a grateful thing,
+            #   therefore we'll just in case add 1e-9.
+            if not 1e-9 < min_pident <= 100 + 1e-9:
+                raise ValueError
+            # end if
+        except ValueError:
+            print(err_fmt("minimum alignment identity must be positive number (0; 100]"))
+            print("Your value: '{}'".format(arg))
+            platf_depend_exit(1)
+        # end try
+
+    elif opt in ("-c", "--min-coverage"):
+        try:
+            min_coverage = float(arg) / 100
+            # Comparing numbers with floating point for equality is not a grateful thing,
+            #   therefore we'll just in case add 1e-9.
+            # Coverage can be greater than 100% because of gaps.
+            if min_coverage <= 1e-9:
+                raise ValueError
+            # end if
+        except ValueError:
+            print(err_fmt("minimum alignment coverage must be positive number!"))
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
@@ -640,14 +685,21 @@ printl(logfile_path, '-' * 30)
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}';".format(logfile_path))
 printl(logfile_path, " - Sorting according to classification in directory '{}';".format(outdir_path))
-printl(logfile_path, " - Sorting sensitivity: '{}';".format(sens))
-printl(logfile_path, " - Minimum mean quality of a read to keep: {};".format(min_qual))
-if not min_qlen is None:
-    printl(logfile_path, " - Minimum length of a read to keep: {};".format(min_qlen))
-# end if
+printl(logfile_path, " - Sorting sensitivity: {};".format(sens))
 printl(logfile_path, " - Threads: {};".format(n_thr))
 if untwist_fast5:
     printl(logfile_path, " - \"FAST5 untwisting\" is enabled;")
+# end if
+printl(logfile_path, "\n   Following filters will be applied:")
+printl(logfile_path, " - Quality filter. Threshold: Q{};".format(min_qual))
+if not min_qlen is None:
+    printl(logfile_path, " - Length filter. Threshold: {} b.p.".format(min_qlen))
+# end if
+if not min_pident is None:
+    printl(logfile_path, " - Alignment identity filter. Threshold: {}%".format(round(min_pident * 100, 2)))
+# end if
+if not min_coverage is None:
+    printl(logfile_path, " - Alignment coverage filter. Threshold: {}%".format(round(min_coverage * 100, 2)))
 # end if
 
 s_letter = '' if num_files == 1 else 's'
@@ -723,7 +775,7 @@ res_stats = list()
 if len(fast5_list) != 0:
     res_stats.extend(launch_single_thread_sorting(fast5_list,
         FAST5_srt_module.sort_fast5_file, tax_annot_res_dir, sens,
-            min_qual, min_qlen, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
 
     # Assign version attribute in FAST5 files to '2.0' -- multiFAST5
     from src.sorter_modules.fast5 import assign_version_2
@@ -737,11 +789,11 @@ if len(fq_fa_list) != 0:
     if n_thr != 1: # in single thread
         res_stats.extend(launch_parallel_sorting(fq_fa_list,
             QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens, n_thr,
-            min_qual, min_qlen, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
     else: # in parallel
         res_stats.extend(launch_single_thread_sorting(fq_fa_list,
             QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens,
-            min_qual, min_qlen, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
 # end if
 
 printl(logfile_path, "\r{} - Sorting is completed.\n".format(getwt()))
@@ -756,9 +808,9 @@ from src.get_undr_sep_number import get_undr_sep_number
 
 printl(logfile_path, "{} sequences have been processed.".format(get_undr_sep_number(seqs_pass + seqs_fail)))
 if seqs_fail > 0:
-    len_fmt_str = " and length ({} bp)".format(min_qlen) if not min_qlen is None else ""
-    printl(logfile_path, "{} of them have passed quality (Q{}){} controle.".format(get_undr_sep_number(seqs_pass),
-        int(min_qual), len_fmt_str))
+    printl(logfile_path, "{} of them have passed filter(s).".format(get_undr_sep_number(seqs_pass)))
+else:
+    printl("All sequences have passed filter(s).")
 # end if
 
 fastqa_res_files = tuple(filter(is_fastqa, glob(os.path.join(outdir_path, '*'))))

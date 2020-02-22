@@ -26,6 +26,7 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
     del data # let interpreter get rid of this large string -- we do not need it any more
 
     # Variable for counting lines (it is list in order to circumvent immutability of int type)
+    print(len(fasta_lines))
     line_i = 0
 
     # Variable that contains id of next sequence in current FASTA file.
@@ -39,7 +40,7 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
     line = fmt_read_id(fasta_lines[line_i])
     line_i += 1
 
-    packet += line+'\n' # add recently read line
+    packet = line+'\n' # add recently read line
 
     eof = False
 
@@ -53,6 +54,7 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
             line = fasta_lines[line_i]
 
             if line == "": # if end of data is reached
+                eof = True
                 break
             # end if
 
@@ -82,7 +84,9 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
         if packet != "":
             yield {"fasta": packet}
             # Reset packet
-            packet = next_id_line+'\n'
+            if not next_id_line is None:
+                packet = next_id_line+'\n'
+            # end if
         else:
             return
         # end if

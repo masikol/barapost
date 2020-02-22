@@ -134,12 +134,13 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
             if packet != "":
                 yield {"fasta": packet, "qual": qual_dict}
                 # Reset packet
-                packet = next_id_line+'\n'
-                qual_dict.clear()
+                qual_dict = dict()
+                if not next_id_line is None:
+                    packet = next_id_line+'\n'
+                # end if
             else:
                 return
             # end if
-
         # end while
     # end with
 # end def fasta_packets

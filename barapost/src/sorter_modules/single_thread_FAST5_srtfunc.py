@@ -9,16 +9,17 @@ from glob import glob
 
 from src.sorter_modules.sorter_spec import *
 from src.sorter_modules.fast5 import update_file_dict
+from src.sorter_modules.filters import get_filter, get_trash_fpath
+from src.sorter_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
 from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
-from src.sorter_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
 
 
 def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
-        min_qual, min_qlen, logfile_path):
+        min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
     Function sorts FAST5 file without untwisting.
 
@@ -28,27 +29,32 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
     :type tax_annot_res_dir: str;
     :param sens: sorting sensitivity;
     :type sens: str;
-    :param min_qual: minimum quality to keep;
+    :param min_qual: threshold for quality filter;
     :type min_qual: float;
-    :param min_qlen: minimmum sequence length to keep;
-    :type min_qlen: int (or None, if this feature is disabled);
+    :param min_qlen: threshold for length filter;
+    :type min_qlen: int (or None, if this filter is disabled);
+    :param min_pident: threshold for alignment identity filter;
+    :type min_pident: float (or None, if this filter is disabled);
+    :param min_coverage: threshold for alignment coverage filter;
+    :type min_coverage: float (or None, if this filter is disabled);
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
 
     outdir_path = os.path.dirname(logfile_path)
-    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
 
     seqs_pass = 0
     seqs_fail = 0
     srt_file_dict = dict()
 
-    trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fast5".format(int(min_qual),
-            minlen_fmt_str))
-
     new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
+
+    # Make filter
+    seq_filter = get_filter(f5_path, min_qual, min_qlen, min_pident, min_coverage)
+    # Configure path to trash file
+    trash_fpath = get_trash_fpath(f5_path, outdir_path, min_qual, min_qlen, min_pident, min_coverage)
 
     # File validation:
     #   RuntimeError will be raised if FAST5 file is broken.
@@ -84,7 +90,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
     for i, read_name in enumerate(fast5_readids(from_f5)):
 
         try:
-            hit_names, ph33_qual, q_len = resfile_lines[sys.intern(fmt_read_id(read_name))[1:]] # omit 'read_' in the beginning of FAST5 group's name
+            hit_names, *vals_to_filter = resfile_lines[sys.intern(fmt_read_id(read_name))[1:]] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
             printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
   This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
@@ -92,15 +98,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
             platf_depend_exit(1)
         # end try
         # If read is found in TSV file:
-        q_len = SeqLength(q_len)
-        if ph33_qual != '-' and ph33_qual < min_qual:
-            # Get name of result FASTQ file to write this read in
-            if trash_fpath not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
-            # end if
-            f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath], logfile_path)
-            seqs_fail += 1
-        else:
+        if seq_filter(vals_to_filter):
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
@@ -110,6 +108,13 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
                 f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path], logfile_path)
             # end for
             seqs_pass += 1
+        else:
+            # Get name of result FASTQ file to write this read in
+            if trash_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
+            # end if
+            f5_cpy_func(from_f5, read_name, srt_file_dict[trash_fpath], logfile_path)
+            seqs_fail += 1
         # end if
     # end for
     # Close all sorted files

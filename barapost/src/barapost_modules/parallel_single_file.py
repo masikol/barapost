@@ -12,7 +12,7 @@ from src.barapost_modules.fasta_packets_from_str import fasta_packets_from_str
 
 from src.printlog import getwt, printl, printn
 from src.write_classification import write_classification
-from src.filesystem import OPEN_FUNCS, is_gzipped, is_fastq
+from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped, is_fastq
 from src.filesystem import get_curr_res_dpath, create_result_directory, remove_tmp_files
 
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
@@ -77,7 +77,7 @@ def process_part_of_file(data, tsv_res_path):
     queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
     local_fasta = os.path.join(tax_annot_res_dir, "local_database", "local_seq_set.fasta")
 
-    for packet in fasta_packets_from_str(data, packet_size):
+    for packet in fasta_packets_from_str(data["fasta"], packet_size):
 
         # Blast the packet
         align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,
@@ -130,6 +130,7 @@ def process(fq_fa_path, n_thr, packet_size, tax_annot_res_dir,
     # end if
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fq_fa_path) ]
+    fmt_func = FORMATTING_FUNCS[ is_gzipped(fq_fa_path) ]
 
     if is_fastq(fq_fa_path):
         packet_generator = fastq_packets
@@ -139,6 +140,8 @@ def process(fq_fa_path, n_thr, packet_size, tax_annot_res_dir,
         num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
             map(fmt_func, how_to_open(fq_fa_path).readlines()))))
     # end if
+
+    packet_size = min(packet_size, num_seqs // n_thr)
 
     if num_seqs == num_done_seqs:
         printl(logfile_path, "\rFile '{}' have been already completely processed.".format(fq_fa_path))
@@ -162,10 +165,11 @@ def process(fq_fa_path, n_thr, packet_size, tax_annot_res_dir,
             blast_algorithm, use_index,
             logfile_path))
 
-    pool.starmap(process_part_of_file, [(file_part["fasta"],
+    pool.starmap(process_part_of_file, [(file_part,
         tsv_res_path) for file_part in packet_generator(fq_fa_path,
-        file_part_size, # part of file instead of actually packet size (piece of data to Process)
-        num_done_seqs)])
+        # Part of file instead of actually packet size (piece of data to Process)
+            file_part_size,
+            num_done_seqs)])
 
     # Reaping zombies
     pool.close()

@@ -18,6 +18,7 @@ from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.sorter_modules.fastq_records import fastq_records
 from src.sorter_modules.fasta_records import fasta_records
+from src.sorter_modules.filters import get_filter, get_trash_fpath
 
 
 def write_fastq_record(sorted_path, fastq_record):
@@ -65,17 +66,26 @@ def init_paral_sorting(print_lock_buff, write_lock_buff):
 
 
 def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
-    min_qual, min_qlen, logfile_path):
+    min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
     Function for parallel sorting FASTQ and FASTA files.
     Actually sorts multiple files.
 
     :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
     :type fq_fa_lst: list<str>;
+    :param min_qual: threshold for quality filter;
+    :type min_qual: float;
+    :param min_qlen: threshold for length filter;
+    :type min_qlen: int (or None, if this filter is disabled);
+    :param min_pident: threshold for alignment identity filter;
+    :type min_pident: float (or None, if this filter is disabled);
+    :param min_coverage: threshold for alignment coverage filter;
+    :type min_coverage: float (or None, if this filter is disabled);
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     outdir_path = os.path.dirname(logfile_path)
-    minlen_fmt_str = "_len_less_{}".format(min_qlen) if not min_qlen is None else ""
 
     seqs_pass = 0
     seqs_fail = 0
@@ -90,13 +100,15 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
         if is_fastq(fq_fa_path):
             seq_records_generator = fastq_records
             write_fun =  write_fastq_record
-            trash_fpath = os.path.join(outdir_path, "qual_less_Q{}{}.fastq".format(int(min_qual),
-                minlen_fmt_str))
         else:
             seq_records_generator = fasta_records
             write_fun = write_fasta_record
-            trash_fpath = os.path.join(outdir_path, "len_less_{}.fasta".format(min_qlen))
         # end if
+
+        # Make filter
+        seq_filter = get_filter(fq_fa_path, min_qual, min_qlen, min_pident, min_coverage)
+        # Configure path to trash file
+        trash_fpath = get_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen, min_pident, min_coverage)
 
         # Create an iterator that will yield records
         seq_records_iterator = iter(seq_records_generator(fq_fa_path))
@@ -116,10 +128,10 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                     break
                 # end try
 
-                read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])) # get ID of the sequence
+                read_name = sys.intern(fmt_read_id(fastqa_rec["seq_id"])[1:]) # get ID of the sequence
 
                 try:
-                    hit_names, ph33_qual, q_len = resfile_lines[read_name[1:]] # find hit corresponding to this sequence
+                    hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
                 except KeyError:
                     printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
     This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
@@ -128,12 +140,7 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                 # end try
 
                 # If read is found in TSV file:
-                q_len = SeqLength(q_len)
-                if q_len < min_qlen or (ph33_qual != '-' and ph33_qual < min_qual):
-                    # Place this sequence to trash file
-                    to_write[read_name] = (fastqa_rec, trash_fpath)
-                    seqs_fail += 1
-                else:
+                if seq_filter(vals_to_filter):
                     for hit_name in hit_names.split("&&"):
                         # Get name of result FASTQ file to write this read in
                         sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
@@ -141,6 +148,10 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                         to_write[read_name] = (fastqa_rec, sorted_file_path)
                     # end for
                     seqs_pass += 1
+                else:
+                    # Place this sequence to trash file
+                    to_write[read_name] = (fastqa_rec, trash_fpath)
+                    seqs_fail += 1
                 # end if
             # end for
 
