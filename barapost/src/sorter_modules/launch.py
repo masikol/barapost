@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Module defines functions that launch sorting.
 
-from functools import partial
 import multiprocessing as mp
+from functools import partial
 
-from src.sorter_modules.parallel_QA import init_paral_sorting
 from src.spread_files_equally import spread_files_equally
+from src.sorter_modules.parallel_QA import init_paral_sorting
 
 
 def launch_single_thread_sorting(fpath_list, str_func, tax_annot_res_dir, sens,
@@ -79,14 +79,15 @@ def launch_parallel_sorting(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
         initargs=(print_lock, write_lock))
 
     res_stats = pool.starmap(partial(str_func,
-        tax_annot_res_dir=tax_annot_res_dir,
-        sens=sens,
-        n_thr=n_thr,
-        min_qual=min_qual,
-        min_qlen=min_qlen,
-        min_pident=min_pident,
-        min_coverage=min_coverage,
-        logfile_path=logfile_path), [(sublist,) for sublist in spread_files_equally(fpath_list, n_thr)])
+            tax_annot_res_dir=tax_annot_res_dir,
+            sens=sens,
+            n_thr=n_thr,
+            min_qual=min_qual,
+            min_qlen=min_qlen,
+            min_pident=min_pident,
+            min_coverage=min_coverage,
+            logfile_path=logfile_path),
+        [(sublist,) for sublist in spread_files_equally(fpath_list, n_thr)])
 
     pool.close()
     pool.join()
