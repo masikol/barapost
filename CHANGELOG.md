@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-02-23 edition.
+
+- sorter: separate filter for alignment identity and coverage added;
+
+### Version changes:
+
+1. sorter: `4.4.a --> 4.4.b`
+
 ## 2020-02-22 edition.
 
 - sorter: alignment identity and coverage filters added;
