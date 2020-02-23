@@ -27,10 +27,11 @@ from src.filesystem import is_fasta
 # It is just implication: R = (A => B) = (!A OR B)
 
 
-def get_filter(fpath, quality, length, pident, coverage):
+def get_QL_filter(fpath, quality, length):
     """
     Function returns a filter function.
     This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
+    Returns quality and length filter.
 
     :param fpath: path to input file;
     :type fpath: str;
@@ -38,10 +39,6 @@ def get_filter(fpath, quality, length, pident, coverage):
     :type quality: float;
     :param length: threshold for length filter;
     :type length: int or None, if filter is disabled;
-    :param pident: threshold for alignment identity filter;
-    :type pident: float or None, if filter is disabled;
-    :param coverage: threshold for alignment coverage filter;
-    :type coverage: float or None, if filter is disabled;
     """
 
     filters = list()
@@ -56,6 +53,25 @@ def get_filter(fpath, quality, length, pident, coverage):
     if not length is None:
         filters.append(lambda x: x[1] >= length)
     # end if
+
+    # Return "integral" filter
+    return lambda line: all( (f(line) for f in filters) )
+# end def get_QL_filter
+
+
+def get_align_filter(pident, coverage):
+    """
+    Function returns a filter function.
+    This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
+    Returns alignment identity and coverage filter.
+
+    :param pident: threshold for alignment identity filter;
+    :type pident: float or None, if filter is disabled;
+    :param coverage: threshold for alignment coverage filter;
+    :type coverage: float or None, if filter is disabled;
+    """
+
+    filters = list()
 
     # Add identity filter
     # It will be placed to trash file only if identity is not "minus"
@@ -73,15 +89,15 @@ def get_filter(fpath, quality, length, pident, coverage):
 
     # Return "integral" filter
     return lambda line: all( (f(line) for f in filters) )
-# end def get_filter
+# end def get_align_filter
 
 # Pattern will match .fasta, .fastq and .fast5 extentions without '.gz'
 ext_pattern = r".*(\.(m)?f(ast)?(q|a|5))(\.gz)?$"
 
 
-def get_trash_fpath(fpath, outdir_path, quality, length, pident, coverage):
+def get_QL_trash_fpath(fpath, outdir_path, quality, length):
     """
-    Function configures path to trash file according to filter options.
+    Function configures path to trash (quality and length) file according to filter options.
 
     :param fpath: path to input file;
     :type fpath: str;
@@ -91,10 +107,6 @@ def get_trash_fpath(fpath, outdir_path, quality, length, pident, coverage):
     :type quality: float;
     :param length: threshold for length filter;
     :type length: int or None, if filter is disabled;
-    :param pident: threshold for alignment identity filter;
-    :type pident: float or None, if filter is disabled;
-    :param coverage: threshold for alignment coverage filter;
-    :type coverage: float or None, if filter is disabled;
     """
 
     trash_fpath = os.path.join(outdir_path, "trash")
@@ -108,6 +120,28 @@ def get_trash_fpath(fpath, outdir_path, quality, length, pident, coverage):
     if not length is None:
         trash_fpath += "-m{}".format(length)
     # end if
+
+    # Add appropriate extention
+    trash_fpath += re_search(ext_pattern, fpath).group(1)
+
+    return trash_fpath
+# end def get_QL_trash_fpath
+
+
+def get_align_trash_fpath(fpath, outdir_path, pident, coverage):
+    """
+    Function configures path to trash (identity and coverage) file according to filter options.
+
+    :param fpath: path to input file;
+    :type fpath: str;
+    :param outdir_path: path to output directory;
+    :param pident: threshold for alignment identity filter;
+    :type pident: float or None, if filter is disabled;
+    :param coverage: threshold for alignment coverage filter;
+    :type coverage: float or None, if filter is disabled;
+    """
+
+    trash_fpath = os.path.join(outdir_path, "align_trash")
 
     # Add identity to name name of trash file
     if not pident is None:
@@ -123,4 +157,4 @@ def get_trash_fpath(fpath, outdir_path, quality, length, pident, coverage):
     trash_fpath += re_search(ext_pattern, fpath).group(1)
 
     return trash_fpath
-# end def get_trash_fpath
+# end def get_align_trash_fpath

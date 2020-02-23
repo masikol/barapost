@@ -13,7 +13,9 @@ from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.sorter_modules.fastq_records import fastq_records
 from src.sorter_modules.fasta_records import fasta_records
-from src.sorter_modules.filters import get_filter, get_trash_fpath
+
+from src.sorter_modules.filters import get_QL_filter, get_QL_trash_fpath
+from src.sorter_modules.filters import get_align_filter, get_align_trash_fpath
 
 
 def write_fastq_record(sorted_file, fastq_record):
@@ -82,8 +84,10 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
 
     outdir_path = os.path.dirname(logfile_path)
 
-    seqs_pass = 0
-    seqs_fail = 0
+    seqs_pass = 0 # counter for sequences, which pass filters
+    QL_seqs_fail = 0 # counter for too short or too low-quality sequences
+    align_seqs_fail = 0 # counter for sequences, which align to their best hit with too low identity or coverage
+
     srt_file_dict = dict() # dict containing file objects of existing output files
 
     new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
@@ -99,10 +103,15 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
         write_fun = write_fasta_record
     # end if
 
-    # Make filter
-    seq_filter = get_filter(fq_fa_path, min_qual, min_qlen, min_pident, min_coverage)
+    # Make filter for quality and length
+    QL_filter = get_QL_filter(fq_fa_path, min_qual, min_qlen)
     # Configure path to trash file
-    trash_fpath = get_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen, min_pident, min_coverage)
+    QL_trash_fpath = get_QL_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen,)
+
+    # Make filter for identity and coverage
+    align_filter = get_align_filter(min_pident, min_coverage)
+    # Configure path to this trash file
+    align_trash_fpath = get_align_trash_fpath(fq_fa_path, outdir_path, min_pident, min_coverage)
 
     for fastq_rec in seq_records_generator(fq_fa_path):
 
@@ -117,8 +126,22 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
             platf_depend_exit(1)
         # end try
 
-        # If read is found in TSV file:
-        if seq_filter(vals_to_filter):
+        # Apply filters
+        if not QL_filter(vals_to_filter):
+            # Place this sequence to QL trash file
+            if QL_trash_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, QL_trash_fpath, logfile_path)
+            # end if
+            write_fun(srt_file_dict[QL_trash_fpath], fastq_rec) # write current read to sorted file
+            QL_seqs_fail += 1
+        elif not align_filter(vals_to_filter):
+            # Place this sequence to align_trash file
+            if align_trash_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, align_trash_fpath, logfile_path)
+            # end if
+            write_fun(srt_file_dict[align_trash_fpath], fastq_rec) # write current read to sorted file
+            align_seqs_fail += 1
+        else:
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
                 sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
@@ -129,13 +152,6 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
                 write_fun(srt_file_dict[sorted_file_path], fastq_rec) # write current read to sorted file
             # end for
             seqs_pass += 1
-        else:
-            # Place this sequence to trash file
-            if trash_fpath not in srt_file_dict.keys():
-                srt_file_dict = update_file_dict(srt_file_dict, trash_fpath, logfile_path)
-            # end if
-            write_fun(srt_file_dict[trash_fpath], fastq_rec) # write current read to sorted file
-            seqs_fail += 1
         # end if
     # end for
 
@@ -147,5 +163,5 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
     printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(fq_fa_path)))
     printn(" Working...")
 
-    return (seqs_pass, seqs_fail)
+    return (seqs_pass, QL_seqs_fail, align_seqs_fail)
 # end def sort_fastqa_file
