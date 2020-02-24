@@ -10,7 +10,7 @@ from src.printlog import printl, err_fmt, println, getwt
 from src.platform import platf_depend_exit
 from src.filesystem import OPEN_FUNCS, rename_file_verbosely, is_gzipped
 
-from src.prober_modules.lineage import get_lineage
+from src.lineage import find_lineage
 
 
 def ask_for_resumption(logfile_path):
@@ -331,7 +331,7 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
             # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
             top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
-            lineages = list()
+            annotations = list()
             hit_accs = list()
 
             for hit in iter_hit:
@@ -351,14 +351,8 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                 gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
                 hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
-                # Get lineage
-                try:
-                    lineages.append(get_lineage(hit_gi, hit_def,
-                        hit_accs[len(hit_accs)-1], taxonomy_path).split(';'))
-                except OSError as oserr:
-                    print(err_fmt(str(oserr)))
-                    platf_depend_exit(1)
-                # end try
+                # Get annotation
+                annotations.append( find_lineage(hit_gi, taxonomy_path) )
 
                 # Update accession dictionary
                 try:
@@ -376,34 +370,18 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
-            # Find LCA:
-            lineage = list()
+            # Divide taxonomic names with '|'
+            annotations = '|'.join(annotations)
 
-            for i in range(len(lineages[0])):
-                if len(set(map(lambda t: t[i], lineages))) == 1:
-                    lineage.append(lineages[0][i]) 
-                else:
-                    break
-                # end if
-            # end for
+            printl(logfile_path, """\n{} - {}
+Query length - {} nt;
+Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, annotations,
+                query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
-            if len(lineage) != 0:
-                # Divide taxonomic names with semicolon
-                lineage = ';'.join(lineage)
-                printl(logfile_path, """\n{} - {}
-    Query length - {} nt;
-    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, lineage,
-                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
-                # Append new tsv line containing recently collected information
-                result_tsv_lines.append( '\t'.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
-                    align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
-            else:
-                # If hits are from different domains (i.e. Bacteria, Archaea, Eukaryota) -- no let it be unknown
-                printl(logfile_path, """\n '{}' -- No significant similarity found;
-  Query length - {};""".format(query_name, query_len))
-                result_tsv_lines.append('\t'.join( (query_name, "No significant similarity found", "-", query_len,
-                    "-", "-", "-", "-", str(avg_quality), str(accuracy)) ))
-            # end if
+            # Append new tsv line containing recently collected information
+            result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
+                align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
+
         # end if
         println(logfile_path, qual_info_to_print)
     # end for

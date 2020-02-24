@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
-from src.barapost_modules.lineage import download_lineage
+from src.barapost_modules.lineage import download_lineage, save_own_seq_taxonomy
 from src.printlog import printl, printn, println, err_fmt, getwt
 from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
@@ -355,7 +355,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         printn("0/{}".format(len(acc_dict)))
         for i, acc in enumerate(acc_dict.keys()):
             if not acc in tax_exist_accs:
-                download_lineage(acc_dict[acc][0], acc_dict[acc][1], acc, tax_annot_res_dir)
+                download_lineage(acc, taxonomy_path)
             # end if
             # Accessions can be of different length
             printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
@@ -364,6 +364,27 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end if
 
     local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download fasta file
+
+    # 'lcl|ACCESSION...' entries can be given with '.1'
+    #   (or '.2', whatever) terminus by blastn.
+    # There is no '.1' terminus in taxonomy file.
+    # Therefore we will prune accessions in advance.
+    println(logfile, "{} - Formatting accessions...".format(getwt()))
+    corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
+    with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
+        for line in source_file:
+            if line.startswith('>'):
+                line = line.strip()
+                acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
+                acc = acc.partition('.')[0]
+                line = ' '.join( (acc, seq_name) ) + '\n'
+            # end if
+            dest_file.write(line)
+        # end for
+    # end with
+    os.unlink(local_fasta)
+    os.rename(corrected_path, local_fasta)
+    printl(logfile, "\r{} - Formatting accessions... ok\n".format(getwt()))
 
     # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:
@@ -478,9 +499,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                     if line.startswith('>'):
                         own_seq_counter += 1
                         own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                        with shelve.open(taxonomy_path, 'c') as tax_file:
-                            tax_file[own_acc] = line[1:]
-                        # end with
+                        save_own_seq_taxonomy(line[1:], own_acc, taxonomy_path)
                         line = ">" + own_acc + ' ' + line[1:]
                     # end if
                     fasta_db.write(line + '\n')

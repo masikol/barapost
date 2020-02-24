@@ -367,13 +367,11 @@ from src.prober_modules.networking import verify_taxids
 # Make sure that TaxIDs specified by user actually exist
 organisms = verify_taxids(taxid_list, logfile_path)
 
-from src.prober_modules.networking import lingering_https_get_request
-from src.prober_modules.networking import configure_request, send_request, wait_for_align
-from src.write_classification import write_classification
-from src.prober_modules.prober_spec import ask_for_resumption, look_around
-from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
-from src.prober_modules.lineage import get_lineage
 from src.prune_seqs import prune_seqs
+from src.prober_modules.prober_spec import look_around
+from src.write_classification import write_classification
+from src.prober_modules.networking import configure_request, send_request, wait_for_align
+from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
 
 
 # Print information about the run
