@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-02-26 edition.
+
+- all: new taxonomy system embedded;
+- sorter: sorting sensitivity can now vary from domain to species;
+
+### Version changes:
+
+1. prober: `1.16.b --> 1.17.a`;
+2. barapost: `3.10.b --> 3.11.a`;
+3. sorter: `4.4.b --> 4.5.a`
+
 ## 2020-02-23 edition.
 
 - sorter: separate filter for alignment identity and coverage added;

@@ -18,32 +18,48 @@ from src.filesystem import get_curr_res_dpath, create_result_directory, remove_t
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
-def init_proc_single_file_in_paral():
+def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff, packet_size_buff, tax_annot_res_dir_buff,
+    blast_algorithm_buff, use_index_buff, logfile_path_buff):
     """
     Function initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
+
+    :param print_lock_buff: lock that synchronizes printing to the console;
+    :type print_lock_buff: multiprocessing.Lock;
+    :param write_lock_buff: lock that synchronizes wriiting to result file;
+    :type write_lock_buff: multiprocessing.Lock;
+    :param packet_size_buff: number of sequences processed by blast in a single launching;
+    :type packet_size_buff: int;
+    :param tax_annot_res_dir_buff: path to ouput directory that contains taxonomic annotation;
+    :type tax_annot_res_dir_buff: str;
+    :param blast_algorithm_buff: blast algorithm to use;
+    :type blast_algorithm_buff: str;
+    :param use_index_buff: logic value indicationg whether to use indes;
+    :type use_index_buff: bool;
+    :param logfile_path_buff: path to log file;
+    :type logfile_path_buff: str;
     """
 
     global print_lock
-    print_lock = mp.Lock()
+    print_lock = print_lock_buff
 
     global write_lock
-    write_lock = mp.Lock()
+    write_lock = write_lock_buff
 
     global packet_size
-    packet_size = mp.Lock()
+    packet_size = packet_size_buff
 
     global tax_annot_res_dir
-    tax_annot_res_dir = mp.Lock()
+    tax_annot_res_dir = tax_annot_res_dir_buff
 
     global blast_algorithm
-    blast_algorithm = mp.Lock()
+    blast_algorithm = blast_algorithm_buff
 
     global use_index
-    use_index = mp.Lock()
+    use_index = use_index_buff
 
     global logfile_path
-    logfile_path = mp.Lock()
+    logfile_path = logfile_path_buff
 # end def init_proc_single_file_in_paral
 
 
@@ -140,10 +156,9 @@ def process(fq_fa_path, n_thr, packet_size, tax_annot_res_dir,
         file_part_size += 1
     # end if
 
-    print_lock = mp.Lock() # lock for printing to the console
-    write_lock = mp.Lock() # lock for writing to the result file
-
-    pool = mp.Pool(n_thr, initializer=init_proc_single_file_in_paral)
+    pool = mp.Pool(n_thr, initializer=init_proc_single_file_in_paral,
+        initargs=(mp.Lock(), mp.Lock(), packet_size, tax_annot_res_dir,
+            blast_algorithm, use_index, logfile_path,))
 
     pool.starmap(process_part_of_file, [(file_part,
         tsv_res_path) for file_part in packet_generator(fq_fa_path,

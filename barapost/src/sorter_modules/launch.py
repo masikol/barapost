@@ -72,7 +72,8 @@ def launch_parallel_sorting(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
     # trick
     n_thr = min(n_thr, len(fpath_list))
 
-    pool = mp.Pool(n_thr, initializer=init_paral_sorting)
+    pool = mp.Pool(n_thr, initializer=init_paral_sorting,
+        initargs=(mp.Lock(), mp.Lock(),))
 
     res_stats = pool.starmap(partial(str_func,
             tax_annot_res_dir=tax_annot_res_dir,

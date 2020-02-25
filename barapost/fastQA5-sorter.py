@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.4.b"
+__version__ = "4.5.a"
 # Year, month, day
-__last_update_date__ = "2020-02-23"
+__last_update_date__ = "2020-02-26"
 
 # |===== Check python interpreter version =====|
 
@@ -37,7 +37,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("""Default parameters:\n
  - if no input files are specified, all FASTQ, FASTA and FAST5 files in current directory will be processed;
- - sorting sensitivity (see '-s' option): 1 (genus);
+ - sorting sensitivity (see '-s' option): 5 (genus);
  - output directory ('-o' option): directory named 'sorter_result_<date_and_time_of_run>'
    nested in working directory;
  - minimum mean quality of a read to keep ('-q' option): 10;
@@ -64,7 +64,11 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("-o (--outdir) --- output directory;\n")
     print("""-s (--sorting-sensitivity) --- sorting sensitivity,
    i.e. the lowest taxonomy rank that sorter regards;
-   Available values: 0 for species, 1 for genus. Default is 1 (genus);\n""")
+   Available values:
+     0 for domain, 1 for phylum, 2 for class,
+     3 for order, 4 for family, 5 for genus,
+     6 for species.
+   Default is 5 (genus);\n""")
     print("""-u (--untwist-fast5) --- flag option. If specified, FAST5 files will be
    sorted considering that corresponding FASTQ files may contain reads from other FAST5 files
    and reads from a particular FAST5 file may be ditributed among multiple FASTQ files.
@@ -113,10 +117,10 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
   Files 'reads.fastq.gz' and 'another_sequences.fasta' have been already classified and
    results of classification are in directory 'prober_outdir':\n
   fastQA5-sorter.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n""")
-        print("""  5. Process all FASTQ, FASTA and FAST5 files in directory named 'dir_with_seqs'. Sort by species.
-  All these files have been already classified and
+        print("""  5. Process all FASTQ, FASTA and FAST5 files in directory named 'dir_with_seqs'.
+  Sort by species ('-s 6'). All these files have been already classified and
    results of classification are in directory 'prober_outdir'. Perform "FAST5 untwisting":\n
-  fastQA5-sorter.py -d dir_with_seqs -o outdir -r prober_outdir/ -s 0 -u""")
+  fastQA5-sorter.py -d dir_with_seqs -o outdir -r prober_outdir/ -s 6 -u""")
         # end if
     platf_depend_exit(0)
 # end if
@@ -760,7 +764,8 @@ if untwist_fast5 and not use_old_index:
             printn(" Working...")
         # end for
     else:
-        pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw)
+        pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,
+            initargs=(mp.Lock(), mp.Lock(),))
         pool.starmap(utw_module.map_f5reads_2_taxann,
             [(sublist, tsv_taxann_lst, tax_annot_res_dir, logfile_path,) for sublist in spread_files_equally(fast5_list, n_thr)])
         pool.close()

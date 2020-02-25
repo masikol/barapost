@@ -53,16 +53,21 @@ def search_for_related_replicons(acc, acc_dict):
     summary_html = urllib.request.urlopen(summary_url).read().decode("utf-8")
     # Get reference to BioSample web page:
     biosample_regex = r"href=\"/(biosample\?LinkName=nuccore_biosample&amp;from_uid=[0-9]+)"
-    biosample_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(biosample_regex, summary_html).group(1)
+
+    biosample_match = re_search(biosample_regex, summary_html)
+    if not biosample_match is None:
+        biosample_ref = "https://www.ncbi.nlm.nih.gov/" + biosample_match.group(1)
+    else:
+        return
     del summary_html # let it go
 
     # Get BioSample web page:
     biosample_html = urllib.request.urlopen(biosample_ref).read().decode("utf-8")
     # Get reference to list nucleotide links:
     nucl_regex = r"href=\"/(nuccore\?LinkName=biosample_nuccore&amp;from_uid=[0-9]+)"
-    biosample_match = re_search(nucl_regex, biosample_html)
-    if not re_search(nucl_regex, biosample_html) is None:
-        nucl_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(nucl_regex, biosample_html).group(1)
+    nucl_match = re_search(nucl_regex, biosample_html)
+    if not nucl_match is None:
+        nucl_ref = "https://www.ncbi.nlm.nih.gov/" + nucl_match.group(1)
     else:
         return
     # end if
@@ -467,7 +472,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 # Add assembled sequences to database
                 fasta_db = open(local_fasta, 'a')
                 for assm_path in assm_lst:
-                    printl(logfile_path, "{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
+                    println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
 
                     how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
                     fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
@@ -498,9 +503,10 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # No 'with open' here in order not to indent too much.
         fasta_db = open(local_fasta, 'a')
         for own_fasta_path in your_own_fasta_lst:
-            printl(logfile_path, "{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
+            println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
 
             how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
+            fmt_func = FORMATTING_FUNCS[ is_gzipped(own_fasta_path) ]
             with how_to_open(own_fasta_path) as fasta_file:
                 for line in fasta_file:
                     line = fmt_func(line)

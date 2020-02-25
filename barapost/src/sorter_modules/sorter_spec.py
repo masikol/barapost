@@ -98,7 +98,7 @@ def find_rank_for_filename(sens, taxonomy):
 # end def find_rank_for_filename
 
 
-def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
+def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
     """
     Function formats taxonomy name according to chosen sensibiliry of sorting.
     :param hit_acc: accession(s) of best hit(s);
@@ -108,8 +108,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
     :param sens: sensibility returned by 'get_classif_sensibility()' function.
         It's value can be one of the following strings: "genus", "species";
     :type sens: str;
-    :param taxonomy_path: path to taxonomy file;
-    :type taxonomy_path: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
 
     Returns formatted hit name of 'str' type;
     """
@@ -125,12 +125,10 @@ def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
 
         # Get taxonomy
         try:
-            with shelve.open(taxonomy_path, 'r') as tax_file:
-                taxonomy = tax_file[acc]
-            # end with
+            taxonomy = tax_file[acc]
         except KeyError:
             printl("taxonomy file error 994")
-            printl("Cant find taxonomy for reference sequnce '{}'".format(acc))
+            printl("Cant find taxonomy for reference sequence '{}'".format(acc))
             printl("It's annotation: '{}'".format(annotation))
             printl("Probably you should run \"barapost.py\" once again and rebuild the database --")
             printl("  \"barapost.py\" will make taxonomy file consistent.")
@@ -152,8 +150,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
         elif isinstance(taxonomy, str):
 
             # Check if hit is a sequence from SPAdes or a5 assembly:
-            spades_match_obj = re_search(spades_patt, modif_hit_name)
-            a5_match_obj = re_search(a5_patt, modif_hit_name)
+            spades_match_obj = re_search(spades_patt, annotation)
+            a5_match_obj = re_search(a5_patt, annotation)
 
             if not spades_match_obj is None or not a5_match_obj is None:
 
@@ -164,7 +162,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
 
                         # Find path to file with assembly:
                         try:
-                            assm_path = re_search(path_patt, modif_hit_name).group(1)
+                            assm_path = re_search(path_patt, annotation).group(1)
                         except AttributeError:
                             assm_path = None
                         # end
@@ -238,7 +236,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
 
     resfile_lines = dict()
 
-    with open(tsv_res_fpath, 'r') as brpst_resfile:
+    with open(tsv_res_fpath, 'r') as brpst_resfile, shelve.open(taxonomy_path, 'r') as tax_file:
 
         brpst_resfile.readline() # pass the head of the table
         line = brpst_resfile.readline().strip() # get the first informative line
@@ -303,7 +301,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
                 # end if
             # end try
 
-            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, taxonomy_path),
+            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_file),
                 quality, query_len, pident, coverage]
 
             line = brpst_resfile.readline().strip() # get next line

@@ -252,7 +252,7 @@ def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
     # Pattern for matching whole taxonomy string.
     # 6 semisolons with probable absence of name ending with species name.
     # All without spaces.
-    proposed_fmt = r"((%s)?;{6}(%s)?" % (high_tax_name_patt, species_patt)
+    proposed_fmt = r"(((%s)?;){6}(%s)?)" % (high_tax_name_patt, species_patt)
 
     # Find match
     proper_tax_match = re_search(proposed_fmt, seq_name)
@@ -268,6 +268,7 @@ def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
         for i in range(len(ranks)):
             lineage.append( (ranks[i], tax_names[i]) )
         # end for
+        lineage = tuple(lineage)
     # Otherwise we will merely use this sequence ID
     else:
         lineage = seq_name.replace(' ', '_')

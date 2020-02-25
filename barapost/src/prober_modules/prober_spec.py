@@ -370,8 +370,8 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
-            # Divide taxonomic names with '&&'
-            annotations = '&&'.join(annotations)
+            # Divide deduplicated taxonomic names with '&&'
+            annotations = '&&'.join(set(annotations))
 
             printl(logfile_path, """\n{} - {}
 Query length - {} nt;

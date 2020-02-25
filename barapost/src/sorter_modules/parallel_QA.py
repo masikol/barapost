@@ -57,16 +57,21 @@ def write_fasta_record(sorted_fpath, fasta_record):
 # end def write_fasta_record
 
 
-def init_paral_sorting():
+def init_paral_sorting(print_lock_buff, write_lock_buff):
+    """
+    Function initializes global locks for parallel sorting of fasta and fastq files.
+
+    :param print_lock_buff: lock for printing to console;
+    :type print_lock_buff: multiprocessing.Lock;
+    :param write_lock_buff: lock for printing writing to sorted files;
+    :type write_lock_buff: multiprocessing.Lock;
+    """
 
     global print_lock
-    print_lock = mp.Lock()
+    print_lock = print_lock_buff
     
     global write_lock
-    write_lock = mp.Lock()
-
-    global tax_lock
-    tax_lock = mp.Lock()
+    write_lock = write_lock_buff
 
 # end def init_paral_sorting
 
@@ -101,10 +106,8 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
 
         new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
         tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-        with tax_lock:
-            resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
-                os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
-        # end with
+        resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
+            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
 
         # Configure path to trash file
         if is_fastq(fq_fa_path):

@@ -11,7 +11,7 @@ from src.filesystem import is_fasta
 
 # A = {Value is not minus};
 # B = {Value passes filter};
-# R = {Place sequence NOT to trash file};
+# R = {Do NOT place sequence to trash file};
 # 
 # +---+---+---+
 # | A | B | R |

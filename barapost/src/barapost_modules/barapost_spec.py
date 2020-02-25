@@ -202,8 +202,8 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
-            # If there are multiple best hits -- divide their annotations woth '&&':
-            annotations = '&&'.join(annotations)
+            # If there are multiple best hits -- divide their deduplicated annotations woth '&&':
+            annotations = '&&'.join(set(annotations))
 
             # Append new tsv line containing recently collected information
             result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
