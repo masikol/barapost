@@ -46,7 +46,7 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5, logfile_path):
     """
     try:
         from_f5.copy(read_name, to_f5)
-    except ValueError as verr:
+    except Exception as verr:
         printl(logfile_path, "\n\n ! - Error: {}".format( str(verr) ))
         printl(logfile_path, "Reason is probably the following:")
         printl(logfile_path, "  read that is copying to the result file is already in it.")

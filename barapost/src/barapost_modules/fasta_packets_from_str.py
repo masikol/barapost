@@ -26,7 +26,6 @@ def fasta_packets_from_str(data, packet_size, max_seq_len=None):
     del data # let interpreter get rid of this large string -- we do not need it any more
 
     # Variable for counting lines (it is list in order to circumvent immutability of int type)
-    print(len(fasta_lines))
     line_i = 0
 
     # Variable that contains id of next sequence in current FASTA file.

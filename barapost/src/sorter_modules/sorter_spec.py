@@ -3,11 +3,12 @@
 
 import os
 import sys
+import shelve
 from glob import glob
 from re import search as re_search
 
 from src.platform import platf_depend_exit
-from src.printlog import printl
+from src.printlog import printl, err_fmt
 
 
 def get_res_tsv_fpath(new_dpath):
@@ -71,163 +72,158 @@ a5_patt = r"(scaffold)_([0-9]+)"
 path_patt = r"\(_(.+)_\)"
 
 
-def format_taxonomy_name(hit_name, sens):
+ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+
+
+def find_rank_for_filename(sens, taxonomy):
+    """
+    Function forms name of sorted file according to annotation and sorting sensitivity.
+
+    :param sens: sorting sensitivity;
+    :type sens: tuple<str, int>;
+    :param taxonomy: taxonomy from taxopnomy file;
+    :type taxonomy: tuple<tuple<str>>;
+    """
+    rank_name = sens[0]
+    rank_num = sens[1]
+
+    if taxonomy[rank_num][1] != "":
+        # If we've got rank that we need -- return it
+        return taxonomy[rank_num][1]
+    else:
+        # Otherwise -- recursively go up to the root of taxonomy tree
+        new_sens = (ranks[rank_num-1], rank_num-1)
+        return find_rank_for_filename( new_sens, taxonomy ) + ";no_{}".format(rank_name)
+    # end if
+# end def find_rank_for_filename
+
+
+def format_taxonomy_name(hit_acc, hit_def, sens, taxonomy_path):
     """
     Function formats taxonomy name according to chosen sensibiliry of sorting.
-    :param hit_name: full_fit_name_of_the_subject_sequence;
-    :type hit_name: str;
+    :param hit_acc: accession(s) of best hit(s);
+    :type hit_acc: str;
+    :param hit_def: annotation of best hit;
+    :type hit_def: str;
     :param sens: sensibility returned by 'get_classif_sensibility()' function.
-        It's value can be one of the following strings: "genus", "sprcies", "strain";
+        It's value can be one of the following strings: "genus", "species";
     :type sens: str;
+    :param taxonomy_path: path to taxonomy file;
+    :type taxonomy_path: str;
+
     Returns formatted hit name of 'str' type;
     """
 
-    hit_names = hit_name.split('&&')
-    bricks = list()
+    # If there is no hit -- we are sure what to do!
+    if hit_def == "No significant similarity found":
+        return "unknown"
+    # end if
 
-    for modif_hit_name in hit_names:
-        # This string can be edited in this funtion, original hei name will be kept intact
-        modif_hit_name = modif_hit_name.strip()
+    best_hit_annots = list() # list of strings that will be names of sorted files
 
-        # If there is no hit -- we are sure what to do!
-        if modif_hit_name == "No significant similarity found":
-            return "unknown"
-        # end if
+    for acc, annotation in zip(hit_acc.split('&&'), hit_def.split('&&')):
 
-        # Check if hit is a sequence from SPAdes or a5 assembly:
-        spades_match_obj = re_search(spades_patt, modif_hit_name)
-        a5_match_obj = re_search(a5_patt, modif_hit_name)
+        # Get taxonomy
+        try:
+            with shelve.open(taxonomy_path, 'r') as tax_file:
+                taxonomy = tax_file[acc]
+            # end with
+        except KeyError:
+            printl("taxonomy file error 994")
+            printl("Cant find taxonomy for reference sequnce '{}'".format(acc))
+            printl("It's annotation: '{}'".format(annotation))
+            printl("Probably you should run \"barapost.py\" once again and rebuild the database --")
+            printl("  \"barapost.py\" will make taxonomy file consistent.")
+            platf_depend_exit(1)
+        # end try
 
-        for match_obj in (spades_match_obj, a5_match_obj):
+        # If it is beautiful tuple-formatted taxonomy -- find rank name for filename
+        if isinstance(taxonomy, tuple):
 
-            # If hit is a sequence from SPAdes or a5 assembly
-            if not match_obj is None:
-
-                # Find path to file with assembly:
-                try:
-                    assm_path = re_search(path_patt, modif_hit_name).group(1)
-                except AttributeError:
-                    assm_path = None
-                # end
-
-                node_or_scaff = match_obj.group(1) # get word "NODE" or "scaffold"
-                node_scaff_num = match_obj.group(2) # get it's number
-
-                # SPAdes generate "NODEs"
-                if node_or_scaff == "NODE":
-                    assmblr_name = "SPAdes"
-                # a5 generates "scaffolds"
-                elif node_or_scaff == "scaffold":
-                    assmblr_name = "a5"
-                # There cannot be enything else
-                else:
-                    print(err_fmt("signature of sequence ID from assembly not recognized: '{}'".format(hit_name)))
-                    platf_depend_exit(1)
-                # end if
-
-                # Include file path to sorted file name
-                # Replace path separetor with underscore in order not to held a bacchanalia in file system.
-                if assm_path is not None:
-                    if sens == "genus":
-                        # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
-                        bricks.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff) ))
-                    else:
-                        # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                        bricks.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff,
-                            node_scaff_num) ))
-                    # end if
-                else:
-                    if sens == "genus":
-                        # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
-                        bricks.append(assmblr_name + "_assembly_" + node_or_scaff)
-                    else:
-                        # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                        bricks.append('_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num )))
-                    # end if
-                # end if
+            best_hit_annots.append(find_rank_for_filename(sens, taxonomy))
+            if sens[0] == "species":
+                genus_sens = ("genus", sens[1]-1)
+                genus_name = find_rank_for_filename(genus_sens, taxonomy)
+                species_name = best_hit_annots[len(best_hit_annots)-1]
+                best_hit_annots[len(best_hit_annots)-1] = "{}_{}".format(genus_name, species_name)
             # end if
-        # end for
 
-        if not ' ' in modif_hit_name and ';' in modif_hit_name:
-            # We have lineage
-            taxa_splitnames = modif_hit_name.split(';')
-            if not re_search(r";[a-z]", modif_hit_name) is None:
-                if sens == "genus":
-                    bricks.append(taxa_splitnames[-2])
-                else:
-                    bricks.append(taxa_splitnames[-2] + '_' + taxa_splitnames[-1])
-                # end if
-            else:
-                try:
-                    if sens == "genus":
-                        bricks.append(taxa_splitnames[5])
-                    else:
-                        raise IndexError
+        # Otherwise consider sequence ID
+        elif isinstance(taxonomy, str):
+
+            # Check if hit is a sequence from SPAdes or a5 assembly:
+            spades_match_obj = re_search(spades_patt, modif_hit_name)
+            a5_match_obj = re_search(a5_patt, modif_hit_name)
+
+            if not spades_match_obj is None or not a5_match_obj is None:
+
+                for match_obj in (spades_match_obj, a5_match_obj):
+
+                    # If hit is a sequence from SPAdes or a5 assembly
+                    if not match_obj is None:
+
+                        # Find path to file with assembly:
+                        try:
+                            assm_path = re_search(path_patt, modif_hit_name).group(1)
+                        except AttributeError:
+                            assm_path = None
+                        # end
+
+                        node_or_scaff = match_obj.group(1) # get word "NODE" or "scaffold"
+                        node_scaff_num = match_obj.group(2) # get it's number
+
+                        # SPAdes generate "NODEs"
+                        if node_or_scaff == "NODE":
+                            assmblr_name = "SPAdes"
+                        # a5 generates "scaffolds"
+                        elif node_or_scaff == "scaffold":
+                            assmblr_name = "a5"
+                        # There cannot be enything else
+                        else:
+                            print(err_fmt("signature of sequence ID from assembly not recognized: '{}'".format(hit_name)))
+                            platf_depend_exit(1)
+                        # end if
+
+                        # Include file path to sorted file name
+                        # Replace path separetor with underscore in order not to held a bacchanalia in file system.
+                        if assm_path is not None:
+                            if sens[0] != "species":
+                                # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
+                                best_hit_annots.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff) ))
+                            else:
+                                # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
+                                best_hit_annots.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff,
+                                    node_scaff_num) ))
+                            # end if
+                        else:
+                            if sens[0] != "species":
+                                # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
+                                best_hit_annots.append(assmblr_name + "_assembly_" + node_or_scaff)
+                            else:
+                                # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
+                                best_hit_annots.append('_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num )))
+                            # end if
+                        # end if
                     # end if
-                except IndexError:
-                    return "unknown"
-                # end try
+                # end for
+            else:
+                # If it is not assembly -- merely return sequence ID
+                best_hit_annots.append(annotation)
             # end if
         else:
-
-            #                                      Genus    species                   strain name and anything after it
-            hit_name_patt = r"(PREDICTED)?(:)?(_)?[A-Z][\.a-z]+_[a-z]*(sp\.)?(phage)?_(strain_)?.+$"
-
-            # If structure of hit name is strange
-            if re_search(hit_name_patt, modif_hit_name) is None:
-                bricks.append(modif_hit_name.strip().replace(' ', '_'))   # return full name
-                continue
-            # end if
-
-            taxa_name = modif_hit_name.partition(',')[0]
-            taxa_splitnames = taxa_name.strip().split('_')
-
-            # Sometimes query sequence hits records lke this:
-            # XM_009008688, 'PREDICTED: Callithrix jacchus cyclin dependent kinase inhibitor 1C (CDKN1C), mRNA'
-            if "PREDICTED" in taxa_splitnames[0].upper():
-                taxa_splitnames = taxa_splitnames[1:]
-            # end if
-
-            # If hit is a phage sequence
-            if taxa_splitnames[1] == "phage":
-                # Assumming that the man who sortes by genus or species isn't interested in phage strain name
-                bricks.append('_'.join( [taxa_splitnames[0], taxa_splitnames[1]] )) # return "<Host_name> phage"
-            # end if
-
-            # E.g. 'Bacterium clone zdt-9n2'
-            if "clone" in taxa_splitnames:
-                bricks.append(taxa_name.replace(' ', '_'))   # return full name
-            # end if
-
-            # If someone has shortened genus name
-            if '.' in taxa_splitnames[0] or '.' in taxa_splitnames[1]:
-                # 'E. coli'
-                if not re_search(r"^[A-Z]\.$", taxa_splitnames[0]) is None:
-                    bricks.append('_'.join( [taxa_splitnames[0], taxa_splitnames[1]] )) # return genus and species
-                # 'E.coli' (without space)
-                elif not re_search(r"^[A-Z]\.[a-z]+$", taxa_splitnames[0]) is None:
-                    bricks.append(taxa_splitnames[0]) # 'E.coli' will be returned
-            # end if 
-
-            if sens == "genus":
-                bricks.append(taxa_splitnames[0]) # return genus
-            
-            elif sens == "species":
-                # if species is not specified
-                if taxa_splitnames[1] == "sp.":
-                    return taxa_name.replace(' ', '_')   # return full name
-                else:
-                    bricks.append('_'.join( [taxa_splitnames[0], taxa_splitnames[1]] )) # return genus and species
-                # end if
-            # end if
+            # Execution must not reach here
+            print("\nFatal error 8754.")
+            print("Please, contact the developer -- it is his fault.")
+            platf_depend_exit(1)
         # end if
     # end for
 
-    return "&&".join(bricks)
+    # Return deduplicated names
+    return "&&".join(set(best_hit_annots))
 # end def format_taxonomy_name
 
 
-def configure_resfile_lines(tsv_res_fpath, sens):
+def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
     """
     Function returns dictionary, where keys are sequence (i.e. sequences meant to be sorted) IDs,
         and values are corresponding hit names.
@@ -236,6 +232,8 @@ def configure_resfile_lines(tsv_res_fpath, sens):
     :type tsv_res_fpath: str;
     :param sens: sorting sensitivity;
     :type sens: str;
+    :parm taxonomy_path: path to taxonomy file;
+    :type taxonomy_file: str;
     """
 
     resfile_lines = dict()
@@ -249,6 +247,7 @@ def configure_resfile_lines(tsv_res_fpath, sens):
             splt = line.split('\t')
             read_name = sys.intern(splt[0])
             hit_name = splt[1]
+            hit_acc = splt[2]
 
             try:
                 quality = float(splt[8]) # we will filter by quality
@@ -304,7 +303,7 @@ def configure_resfile_lines(tsv_res_fpath, sens):
                 # end if
             # end try
 
-            resfile_lines[read_name] = [format_taxonomy_name(hit_name, sens),
+            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, taxonomy_path),
                 quality, query_len, pident, coverage]
 
             line = brpst_resfile.readline().strip() # get next line

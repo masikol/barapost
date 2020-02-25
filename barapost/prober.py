@@ -239,7 +239,7 @@ for opt, arg in opts:
         # end try
 
     elif opt in ("-d", "--indir"):
-        if not os.pathisdir(arg):
+        if not os.path.isdir(arg):
             print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if

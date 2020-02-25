@@ -119,7 +119,8 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
     for tsv_path in index_f5_2_tsv[f5_path].keys():
 
         read_names = index_f5_2_tsv[f5_path][tsv_path]
-        resfile_lines = configure_resfile_lines(tsv_path, sens)
+        resfile_lines = configure_resfile_lines(tsv_path, sens,
+            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
 
         for read_name in read_names:
             try:

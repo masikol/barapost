@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
-from src.barapost_modules.lineage import download_lineage, save_own_seq_taxonomy
+from src.lineage import download_lineage, save_own_seq_taxonomy
 from src.printlog import printl, printn, println, err_fmt, getwt
 from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
@@ -60,7 +60,12 @@ def search_for_related_replicons(acc, acc_dict):
     biosample_html = urllib.request.urlopen(biosample_ref).read().decode("utf-8")
     # Get reference to list nucleotide links:
     nucl_regex = r"href=\"/(nuccore\?LinkName=biosample_nuccore&amp;from_uid=[0-9]+)"
-    nucl_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(nucl_regex, biosample_html).group(1)
+    biosample_match = re_search(nucl_regex, biosample_html)
+    if not re_search(nucl_regex, biosample_html) is None:
+        nucl_ref = "https://www.ncbi.nlm.nih.gov/" + re_search(nucl_regex, biosample_html).group(1)
+    else:
+        return
+    # end if
     del biosample_html # let it go
 
     # Get list nucleotide links:
@@ -120,6 +125,9 @@ def get_gi_by_acc(acc_dict, logfile_path):
     start_accs = tuple(acc_dict.keys()) # accessions, which were "discoveted" by prober
 
     for i, acc in enumerate(start_accs):
+
+        println(logfile_path, "\r  {}:".format(acc, i+1, len(start_accs)) + ' '*5)
+
         if not acc_dict[acc][0] in gi_list:
             try:
                 gi_list.append(acc_dict[acc][0]) # fill the GI list
@@ -136,15 +144,19 @@ def get_gi_by_acc(acc_dict, logfile_path):
             print("\nParsing error: cannot find replicons related to {}.".format(acc))
             print("Please, contact the developer")
         else:
+            found_new = False
             for rel_acc, rel_gi, definition in related_repls:
                 # Fill GI list with GI numbers of related replicons
                 if not rel_gi in gi_list:
+                    found_new = True
                     gi_list.append(rel_gi)
-                    printl(logfile_path, "\r {} - {}".format(rel_acc, definition))
-                    printn("{} - Searching for related replicons...".format(getwt()))
+                    println(logfile_path, "\n{} - {}".format(rel_acc, definition))
                     # print(gi_list)
                 # end if
             # end for
+            if found_new:
+                print() # print new line for next accession
+            # end if
         # end try
     # end for
 
@@ -225,7 +237,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
             waiter = Thread(target=download_waiter, args=(stop_wait,)) # create thread
             stop_wait.set() # raise the flag
             waiter.start() # start waiting
-            printl(logfile_path, "\n{} - Downloading sequences for creating a database started".format(getwt()))
+            printl(logfile_path, "\n{} - Downloading reference sequences to be included in the database...".format(getwt()))
             urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
         except Exception as err:
             printl(logfile_path, err_fmt("error while downloading FASTA files"))
@@ -352,13 +364,12 @@ Enter 'r' to remove all files in this directory and build the database from the 
         gi_list = get_gi_by_acc(acc_dict, logfile_path)
 
         printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
-        printn("0/{}".format(len(acc_dict)))
         for i, acc in enumerate(acc_dict.keys()):
+            printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
             if not acc in tax_exist_accs:
                 download_lineage(acc, taxonomy_path)
             # end if
             # Accessions can be of different length
-            printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
         # end for
         printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
@@ -369,7 +380,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
     #   (or '.2', whatever) terminus by blastn.
     # There is no '.1' terminus in taxonomy file.
     # Therefore we will prune accessions in advance.
-    println(logfile, "{} - Formatting accessions...".format(getwt()))
+    println(logfile_path, "\n\n{} - Formatting accessions...".format(getwt()))
     corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
     with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
         for line in source_file:
@@ -384,7 +395,8 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end with
     os.unlink(local_fasta)
     os.rename(corrected_path, local_fasta)
-    printl(logfile, "\r{} - Formatting accessions... ok\n".format(getwt()))
+    sleep(3)
+    println(logfile_path, "\r{} - Formatting accessions... ok".format(getwt()))
 
     # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:

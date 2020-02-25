@@ -18,43 +18,29 @@ from src.filesystem import remove_tmp_files, is_fastq, OPEN_FUNCS, FORMATTING_FU
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
-def init_process(print_lock_buff, packet_size_buff, tax_annot_res_dir_buff,
-    blast_algorithm_buff, use_index_buff, logfile_path_buff):
+def init_process():
     """
     Function initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
-
-    :param print_lock_buff: lock that synchronizes printing to the console;
-    :type print_lock_buff: multiprocessing.Lock;
-    :param packet_size_buff: number of sequences processed by blast in a single launching;
-    :type packet_size_buff: int;
-    :param tax_annot_res_dir_buff: path to ouput directory that contains taxonomic annotation;
-    :type tax_annot_res_dir_buff: str;
-    :param blast_algorithm_buff: blast algorithm to use;
-    :type blast_algorithm_buff: str;
-    :param use_index_buff: logic value indicationg whether to use indes;
-    :type use_index_buff: bool;
-    :param logfile_path_buff: path to log file;
-    :type logfile_path_buff: str;
     """
 
     global print_lock
-    print_lock = print_lock_buff
+    print_lock = mp.Lock()
 
     global packet_size
-    packet_size = packet_size_buff
+    packet_size = mp.Lock()
 
     global tax_annot_res_dir
-    tax_annot_res_dir = tax_annot_res_dir_buff
+    tax_annot_res_dir = mp.Lock()
 
     global blast_algorithm
-    blast_algorithm = blast_algorithm_buff
+    blast_algorithm = mp.Lock()
 
     global use_index
-    use_index = use_index_buff
+    use_index = mp.Lock()
 
     global logfile_path
-    logfile_path = logfile_path_buff
+    logfile_path = mp.Lock()
 # end def init_proc_many_files
 
 
@@ -159,10 +145,7 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
 
     print_lock = mp.Lock() # lock for printing
 
-    pool = mp.Pool(n_thr, initializer=init_process,
-        initargs=(print_lock, packet_size,
-        tax_annot_res_dir, blast_algorithm,
-        use_index, logfile_path))
+    pool = mp.Pool(n_thr, initializer=init_process)
 
     pool.starmap(process_paral, [ (fq_fa_sublist,) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
 

@@ -92,7 +92,8 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
 
     new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-    resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
+    resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
+        os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
 
     # Configure generator, write function and path to trash file
     if is_fastq(fq_fa_path):

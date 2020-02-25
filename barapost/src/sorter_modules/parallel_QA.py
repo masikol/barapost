@@ -8,6 +8,7 @@
 
 import os
 import sys
+import multiprocessing as mp
 
 from src.sorter_modules.sorter_spec import *
 
@@ -56,13 +57,16 @@ def write_fasta_record(sorted_fpath, fasta_record):
 # end def write_fasta_record
 
 
-def init_paral_sorting(print_lock_buff, write_lock_buff):
+def init_paral_sorting():
 
     global print_lock
-    print_lock = print_lock_buff
+    print_lock = mp.Lock()
     
     global write_lock
-    write_lock = write_lock_buff
+    write_lock = mp.Lock()
+
+    global tax_lock
+    tax_lock = mp.Lock()
 
 # end def init_paral_sorting
 
@@ -97,7 +101,10 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
 
         new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
         tsv_res_fpath = get_res_tsv_fpath(new_dpath)
-        resfile_lines = configure_resfile_lines(tsv_res_fpath, sens)
+        with tax_lock:
+            resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
+                os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
+        # end with
 
         # Configure path to trash file
         if is_fastq(fq_fa_path):

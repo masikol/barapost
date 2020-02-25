@@ -155,7 +155,7 @@ fast5_list = list() # list with input FAST5 files paths
 tax_annot_res_dir = "barapost_result" # path to directory with classification results
 indir_path = None # path to input directory
 outdir_path = "sorter_result_{}".format(now.replace(' ', '_')) # path to output directory
-sens = "genus" # sorting sensitivity
+sens = ("genus", 5) # sorting sensitivity
 min_qual = 10 # minimum mean read quality to keep
 min_qlen = None # minimum seqeunce length to keep
 min_pident = None # minimum alignment identity in percent
@@ -193,13 +193,22 @@ for opt, arg in opts:
         tax_annot_res_dir = arg # we'll check it's existance after this loop
 
     elif opt in ("-s", "--sorting-sensitivity"):
-        if arg not in ("0", "1"):
+        if arg not in ("0", "1", "2", "3", "4", "5", "6"):
             print(err_fmt("invalid value specified with '{}' option!".format(opt)))
-            print("Available values: 0 for species, 1 for genus. 1 is default.")
+            print("""Available values:
+ 0 for domain
+ 1 for phylum
+ 2 for class
+ 3 for order
+ 4 for family
+ 5 for genus
+ 6 for species""")
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end if
-        sens = ("species", "genus")[int(arg)]
+        ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+        sens = (ranks[int(arg)], int(arg))
+        del ranks # let it go
 
     elif opt in ("-q", "--min-qual"):
         try:
@@ -455,7 +464,7 @@ def get_checkstr(fast5_fpath):
 
     try:
         # I'll lower the 40-character barrier down to 30 just in case.
-        filename_payload = re_search(r"([a-zA-Z0-9]{30,}_[0-9]+_)", fast5_fpath).group(1)
+        filename_payload = re_search(r"([a-zA-Z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
     except AttributeError:
         return os.path.basename(fast5_fpath).replace(".fast5", "")
     else:
@@ -695,7 +704,8 @@ printl(logfile_path, '-' * 30)
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}';".format(logfile_path))
 printl(logfile_path, " - Sorting according to classification in directory '{}';".format(outdir_path))
-printl(logfile_path, " - Sorting sensitivity: {};".format(sens))
+
+printl(logfile_path, " - Sorting sensitivity: {};".format(sens[0]))
 printl(logfile_path, " - Threads: {};".format(n_thr))
 if untwist_fast5:
     printl(logfile_path, " - \"FAST5 untwisting\" is enabled;")
@@ -750,8 +760,7 @@ if untwist_fast5 and not use_old_index:
             printn(" Working...")
         # end for
     else:
-        pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw,
-            initargs=(mp.Lock(), mp.Lock(),))
+        pool = mp.Pool(n_thr, initializer=utw_module.init_paral_utw)
         pool.starmap(utw_module.map_f5reads_2_taxann,
             [(sublist, tsv_taxann_lst, tax_annot_res_dir, logfile_path,) for sublist in spread_files_equally(fast5_list, n_thr)])
         pool.close()
@@ -796,14 +805,15 @@ if len(fast5_list) != 0:
 
 # Sort FASTA and FASTQ files:
 if len(fq_fa_list) != 0:
-    if n_thr != 1: # in single thread
+    if n_thr != 1: # in parallel
         res_stats.extend(launch_parallel_sorting(fq_fa_list,
             QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens, n_thr,
             min_qual, min_qlen, min_pident, min_coverage, logfile_path))
-    else: # in parallel
+    else: # in single thread
         res_stats.extend(launch_single_thread_sorting(fq_fa_list,
             QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens,
             min_qual, min_qlen, min_pident, min_coverage, logfile_path))
+    # end if
 # end if
 
 printl(logfile_path, "\r{} - Sorting is completed.\n".format(getwt()))

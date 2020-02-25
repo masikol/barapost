@@ -12,7 +12,7 @@ from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from src.printlog import printl, err_fmt
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
-from src.barapost_modules.lineage import get_lineage
+from src.lineage import get_lineage
 
 
 def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
@@ -175,7 +175,7 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
             # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
             top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
-            lineages = list()
+            annotations = list()
             hit_accs = list()
 
             for hit in iter_hit:
@@ -191,7 +191,7 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
                 hit_accs.append( curr_acc )
 
                 # Get lineage of current hit
-                lineages.append(get_lineage(curr_acc, taxonomy_path))
+                annotations.append(get_lineage(curr_acc, taxonomy_path))
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
                 pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
@@ -202,38 +202,12 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
-            # User's "own" hits take precedense, so we'll find them:
-            own_seq_hits = list(filter(lambda h: h.strip().count(' ') != 0, lineages))
-
-            if len(own_seq_hits) == 0:
-                # If we have no own seqs -- find LCA in lineages:
-                lineages = list(map(lambda l: l.split(';'), lineages))
-                lineage = list()
-
-                for i in range(len(lineages[0])):
-                    if len(set(map(lambda t: t[i], lineages))) == 1:
-                        lineage.append(lineages[0][i])
-                    else:
-                        break
-                    # end if
-                # end for
-                lineage = ';'.join(lineage)
-            elif len(own_seq_hits) == 1:
-                # One own seq -- we've got it
-                lineage = own_seq_hits[0]
-            elif len(own_seq_hits) > 1:
-                # Several own seqs -- take them all divided by '&&'
-                lineage = '&&'.join(own_seq_hits)
-            # end if
+            # If there are multiple best hits -- divide their annotations woth '&&':
+            annotations = '&&'.join(annotations)
 
             # Append new tsv line containing recently collected information
-            if len(lineage) == 0:
-                result_tsv_lines.append('\t'.join( (query_name, "No significant similarity found", "-", query_len,
-                "-", "-", "-", "-", str(avg_quality), str(accuracy)) ))
-            else:
-                result_tsv_lines.append( '\t'.join( (query_name, lineage, '&&'.join(hit_accs), query_len,
-                    align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
-            # end if
+            result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
+                align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
         # end if
     # end for
 

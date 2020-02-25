@@ -90,6 +90,15 @@ def download_lineage(hit_acc, taxonomy_path):
         # end try
     # end if
 
+    # Fill in missing ranks with empty strings
+    for i in range(len(ranks)):
+        if len(lineage) < i+1: # for this (missing in the end): AC150248
+            lineage.append( (ranks[i], "") )
+        elif lineage[i][0] != ranks[i]: # for this (mising in the middle): MN908947
+            lineage.insert( i, (ranks[i], "") )
+        # end if
+    # end for
+
     # It will be a bit faster
     lineage = tuple(lineage)
 
@@ -100,35 +109,6 @@ def download_lineage(hit_acc, taxonomy_path):
 
     return get_str_to_print(lineage, hit_acc)
 # end def get_lineage
-
-
-def get_str_to_print(lineage, hit_acc):
-
-    str_to_return = ""
-
-    for rank, name in lineage:
-        if rank == "genus":
-            str_to_return = name + str_to_return
-        elif rank == "species":
-            str_to_return = str_to_return + " " + name
-        # end if
-    # end for
-
-    # Presence of species name and absence of genus name is nonsence
-    if str_to_return.startswith(' '):
-        print("Taxonomy parsing error 1456")
-        print("Please, contact the developer -- it is his fault.")
-        print("Tell him the erroneous accession: '{}'".format(hit_acc))
-        platf_depend_exit(1)
-    # end if
-
-    # If there are no genus and species, we'll return what we have
-    if str_to_return == "":
-        str_to_return = ';'.join(map(lambda x: x[1], lineage))
-    # end if
-
-    return str_to_return
-# end def get_str_to_print
 
 
 def find_lineage(hit_acc, taxonomy_path):
@@ -161,6 +141,48 @@ def find_lineage(hit_acc, taxonomy_path):
 # end def find_lineage
 
 
+def get_str_to_print(lineage, hit_acc):
+    """
+    Funciton forms taxonomy string meant to be printed to conslole
+      or written to classification file.
+    Format of taxonomy string: "<Genus> <species>".
+    Or if there are no genus and species ranks in taxonomy,
+      it will be all present taxonomic ranks divided by semicolon.
+
+    :param lineage: lineage object stored in taxonomy file;
+    :type lineage: tuple<tuple<str>>;
+    :param hit acc: accession of reference sequence;
+    :type hit acc: str;
+    """
+
+    str_to_return = ""
+
+    # Find genus and species names
+    for rank, name in lineage:
+        if rank == "genus":
+            str_to_return = name + str_to_return # append to the beginniung
+        elif rank == "species":
+            str_to_return = str_to_return + " " + name # append to the end
+        # end if
+    # end for
+
+    # Presence of species name and absence of genus name probably is nonsence
+    if str_to_return.startswith(' '):
+        print("Taxonomy parsing error 1456")
+        print("Please, contact the developer -- it is his fault.")
+        print("Tell him the erroneous accession: '{}'".format(hit_acc))
+        platf_depend_exit(1)
+    # end if
+
+    # If there are no genus and species, we'll return what we have
+    if str_to_return == "":
+        str_to_return = ';'.join(map(lambda x: x[1], lineage))
+    # end if
+
+    return str_to_return
+# end def get_str_to_print
+
+
 def get_lineage(hit_acc, taxonomy_path):
     """
     Function returnes lineage by given accession from 'taxonomy' DBM file.
@@ -171,6 +193,7 @@ def get_lineage(hit_acc, taxonomy_path):
     :type taxonomy_path: str;
     """
 
+    # Retrieve taxonomy from taxonomy file
     try:
         with shelve.open(taxonomy_path, 'r') as tax_file:
             if hit_acc in tax_file.keys():
@@ -186,10 +209,10 @@ def get_lineage(hit_acc, taxonomy_path):
         platf_depend_exit(1)
     # end try
 
-    # If we have beautiful formatted taxnonomy
+    # If we have beautiful formatted taxnonomy -- format it
     if isinstance(lineage, tuple):
         return get_str_to_print(lineage, hit_acc)
-    # If we have unformatted custom sequence
+    # If we have unformatted custom sequence -- merely return this string
     elif isinstance(lineage, str):
         return lineage
     else:
@@ -202,28 +225,55 @@ def get_lineage(hit_acc, taxonomy_path):
 
 
 def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
+    """
+    Function parses ID of user's reference sequence and forms a taxonomy tuple
+      if there is proper taxonomy string in ID line in fasta format.
+    "Proper" taxonomy string is following:
+      '[ANYTHING BEFORE] <Domain>;<Phylum>;<Class>;<Order>;<Family>;<Genus>;<species> [ANYTHING AFTER]'
+    Spaces are not allowed. Ranks can be omitted in manner like this
+      (order and species is missing):
+      '[ANYTHING BEFORE] <Domain>;<Phylum>;<Class>;;<Family>;<Genus>; [ANYTHING AFTER]'
+    If there is no taxonomy string in sequence ID, we'll merely save this ID to taxonomy file.
 
+    :param seq_name: ID of reference sequencs;
+    :type seq_name: str;
+    :param acc: accession of reference sequence;
+    :type acc: str;
+    :param taxonomy_path: path to taxonomy file;
+    :type taxonomy_path: str;
+    """
+
+    # Form complicated pattern to match taxonomy string
+
+    # Pattern for matching name of any rank except species:
     high_tax_name_patt = r"[A-Z][a-z\.]+"
+    # Pattern to match species name
     species_patt = r"[A-Za-z0-9\._]+"
-    proposed_fmt = r"((%s)?;){6}(%s)?" % (high_tax_name_patt, species_patt)
+    # Pattern for matching whole taxonomy string.
+    # 6 semisolons with probable absence of name ending with species name.
+    # All without spaces.
+    proposed_fmt = r"((%s)?;{6}(%s)?" % (high_tax_name_patt, species_patt)
 
+    # Find match
     proper_tax_match = re_search(proposed_fmt, seq_name)
 
-    if not proper_tax_match is None:
+    # If there is a match and it taxonomic names are not empty,
+    #   form taxonomic tuple:
+    if not proper_tax_match is None and proper_tax_match.group(0) != ";"*(len(ranks)-1):
 
-        tax_names = proper_tax_match.group(1).split(';')
+        tax_names = proper_tax_match.group(0).split(';')
         tax_names = tuple(map( str.strip, tax_names ))
 
         lineage = list()
         for i in range(len(ranks)):
-            if tax_names[i] != "":
-                lineage.append( (ranks[i], tax_names[i]) )
-            # end if
+            lineage.append( (ranks[i], tax_names[i]) )
         # end for
+    # Otherwise we will merely use this sequence ID
     else:
         lineage = seq_name.replace(' ', '_')
     # end if
 
+    # Save taxonomy
     with shelve.open(taxonomy_path, 'c') as tax_file:
         tax_file[acc] = lineage
     # end with

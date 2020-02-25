@@ -4,6 +4,7 @@
 
 import os
 import h5py
+import multiprocessing as mp
 
 from shelve import open as open_shelve
 
@@ -15,21 +16,16 @@ from src.printlog import printl, printn, getwt, err_fmt
 index_name = "fast5_to_tsvtaxann_idx"
 
 
-def init_paral_utw(write_lock_buff, print_lock_buff):
+def init_paral_utw():
     """
     Function initializes global locks for funciton 'map_f5reads_2_taxann'.
-
-    :param write_lock_buff: lock for writing to output file(s);
-    :type write_lock_buff: mp.Lock;
-    :param print_lock_buff: lock for printing to console;
-    :type print_lock_buff: mp.Lock;
     """
 
     global write_lock
-    write_lock = write_lock_buff
+    write_lock = mp.Lock()
 
     global print_lock
-    print_lock = print_lock_buff
+    print_lock = mp.Lock()
 # end def init_paral_sorting
 
 
