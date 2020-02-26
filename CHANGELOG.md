@@ -1,6 +1,14 @@
 # "Barapost" changelog
 
-## 2020-02-26 edition.
+## 2020-02-26 morinig edition.
+
+- barapost: -d option bug fixed;
+
+### Version changes:
+
+1. barapost: `3.11.a --> 3.11.b`;
+
+## 2020-02-26 night edition.
 
 - all: new taxonomy system embedded;
 - sorter: sorting sensitivity can now vary from domain to species;

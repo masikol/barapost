@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.11.a"
+__version__ = "3.11.b"
 # Year, month, day
 __last_update_date__ = "2020-02-26"
 
@@ -185,7 +185,7 @@ for opt, arg in opts:
         # end if
 
     elif opt in ("-d", "--indir"):
-        if not os.pathisdir(arg):
+        if not os.path.isdir(arg):
             print(err_fmt("directory '{}' does not exist!".format(arg)))
             platf_depend_exit(1)
         # end if
