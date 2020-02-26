@@ -2,7 +2,6 @@
 # This module defines functions, which download and format organisms' lineages.
 
 import os
-import shelve
 import urllib.request
 from time import sleep
 from re import search as re_search, findall as re_findall
@@ -14,7 +13,7 @@ from src.platform import platf_depend_exit
 ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
 
 
-def download_lineage(hit_acc, taxonomy_path):
+def download_lineage(hit_acc, hit_def, tax_file):
     """
     Function retrieves lineage of a hit from NCBI.
     Moreover, it saves this lineage in 'taxonomy' DBM file:
@@ -22,8 +21,10 @@ def download_lineage(hit_acc, taxonomy_path):
 
     :param hit_acc: hit accession;
     :type hit_acc: str;
-    :param taxonomy_path: path to DBM file with taxonomy;
-    :type taxonomy_path: str;
+    :param hit_def: definition of reference record;
+    :type hit_def: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
     """
 
     # Get TaxID of the organism from GenBank summary:
@@ -56,6 +57,14 @@ def download_lineage(hit_acc, taxonomy_path):
 
     # Remove redundant ranks:
     lineage = list(filter( lambda x: x[0].lower() in ranks_to_select, lineage ))
+
+    # E.g., this record have no appropriate ranks: CP034535
+    # Merely return it's definition
+    if len(lineage) == 0:
+        # Save taxonomy
+        tax_file[hit_acc] = hit_def
+        return hit_def
+    # end if
 
     # Check if species name is specified like other ranks:
     check_direct_species_patt = r"TITLE=\"(species)\"\>([A-Za-z0-9 \.]+)\</a\>"
@@ -103,38 +112,34 @@ def download_lineage(hit_acc, taxonomy_path):
     lineage = tuple(lineage)
 
     # Save taxonomy
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_file[hit_acc] = lineage
-    # end with
+    tax_file[hit_acc] = lineage
 
     return get_str_to_print(lineage, hit_acc)
 # end def get_lineage
 
 
-def find_lineage(hit_acc, taxonomy_path):
+def find_lineage(hit_acc, hit_def, tax_file):
     """
     Function returns lineage if it is already in taxonomy file
       and downloads it from NCBI Taxnomomy otherwise.
 
     :param hit_acc: hit accession;
     :type hit_acc: str;
-    :param taxonomy_path: path to DBM file with taxonomy;
-    :type taxonomy_path: str;
+    :param hit_def: definition of reference record;
+    :type hit_def: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
     """
 
     # Get all accessions in taxonomy file:
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_acc_exist = tuple(tax_file.keys())
-    # end with
+    tax_acc_exist = tuple(tax_file.keys())
 
     # If we've got a new accession -- download lineage
     if not hit_acc in tax_acc_exist:
-        lineage = download_lineage(hit_acc, taxonomy_path)
+        lineage = download_lineage(hit_acc, hit_def, tax_file)
     else:
         # If hit is not new -- simply retrieve it from taxonomy file
-        with shelve.open(taxonomy_path, 'r') as tax_file:
-            lineage = get_str_to_print(tax_file[str(hit_acc)], hit_acc)
-        # end with
+        lineage = get_str_to_print(tax_file[str(hit_acc)], hit_acc)
     # end if
 
     return lineage
@@ -183,23 +188,21 @@ def get_str_to_print(lineage, hit_acc):
 # end def get_str_to_print
 
 
-def get_lineage(hit_acc, taxonomy_path):
+def get_lineage(hit_acc, tax_file):
     """
     Function returnes lineage by given accession from 'taxonomy' DBM file.
 
     :param hit_acc: hit accession;
     :type hit_acc: str;
-    :param taxonomy_path: path to DBM file with taxonomy;
-    :type taxonomy_path: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
     """
 
     # Retrieve taxonomy from taxonomy file
     try:
-        with shelve.open(taxonomy_path, 'r') as tax_file:
-            if hit_acc in tax_file.keys():
-                lineage = tax_file[hit_acc]
-            # end if
-        # end with
+        if hit_acc in tax_file.keys():
+            lineage = tax_file[hit_acc]
+        # end if
     except KeyError:
         print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
         print("Please, contact the developer.")
@@ -224,7 +227,7 @@ def get_lineage(hit_acc, taxonomy_path):
 # end def get_lineage
 
 
-def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
+def save_own_seq_taxonomy(seq_name, acc, tax_file):
     """
     Function parses ID of user's reference sequence and forms a taxonomy tuple
       if there is proper taxonomy string in ID line in fasta format.
@@ -239,8 +242,8 @@ def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
     :type seq_name: str;
     :param acc: accession of reference sequence;
     :type acc: str;
-    :param taxonomy_path: path to taxonomy file;
-    :type taxonomy_path: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
     """
 
     # Form complicated pattern to match taxonomy string
@@ -275,7 +278,5 @@ def save_own_seq_taxonomy(seq_name, acc, taxonomy_path):
     # end if
 
     # Save taxonomy
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_file[acc] = lineage
-    # end with
+    tax_file[acc] = lineage
 # end def save_own_seq_taxonomy

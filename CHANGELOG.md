@@ -2,11 +2,13 @@
 
 ## 2020-02-26 morinig edition.
 
-- barapost: -d option bug fixed;
+- prober, barapost: "syntetic construct" fix;
+- prober, barapost: performance fix;
 
 ### Version changes:
 
-1. barapost: `3.11.a --> 3.11.b`;
+1. prober: `1.17.a --> 1.17.b`
+2. barapost: `3.11.b --> 3.11.c`;
 
 ## 2020-02-26 night edition.
 

@@ -3,6 +3,7 @@
 #   processing in "few-files" mode.
 
 import os
+import shelve
 import multiprocessing as mp
 from re import search as re_search
 
@@ -77,23 +78,26 @@ def process_part_of_file(data, tsv_res_path):
     queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
     local_fasta = os.path.join(tax_annot_res_dir, "local_database", "local_seq_set.fasta")
 
-    for packet in fasta_packets_from_str(data["fasta"], packet_size):
+    with shelve.open(taxonomy_path, 'r') as tax_file:
 
-        # Blast the packet
-        align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,
-            use_index, queries_tmp_dir, local_fasta)
+        for packet in fasta_packets_from_str(data["fasta"], packet_size):
 
-        # Get result tsv lines
-        result_tsv_lines = parse_align_results_xml(align_xml_text,
-            data["qual"], taxonomy_path)
-        # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
-        # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
+            # Blast the packet
+            align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,
+                use_index, queries_tmp_dir, local_fasta)
 
-        # Write the result to TSV file
-        with write_lock:
-            write_classification(result_tsv_lines, tsv_res_path)
-        # end with
-    # end for
+            # Get result tsv lines
+            result_tsv_lines = parse_align_results_xml(align_xml_text,
+                data["qual"], tax_file)
+            # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
+            # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
+
+            # Write the result to TSV file
+            with write_lock:
+                write_classification(result_tsv_lines, tsv_res_path)
+            # end with
+        # end for
+    # end with
 
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
 # end def process_part_of_file

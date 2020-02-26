@@ -3,6 +3,7 @@
 
 import os
 import sys
+import shelve
 from glob import glob
 from re import search as re_search
 
@@ -116,7 +117,7 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
 # end def launch_blastn
 
 
-def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
+def parse_align_results_xml(xml_text, qual_dict, tax_file):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -134,8 +135,8 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
     :type xml_text: str;
     :param qual_dict: dict, which maps sequence IDs to their quality;
     :type qual_dict: dict<str: float>;
-    :param taxonomy_path: path to DBM file with taxonomy;
-    :type taxonomy_path: str;
+    :param tax_file: taxonomy file instance;
+    :type tax_file: shelve.DbfilenameShelf;
 
     Returns list<str>.
     """
@@ -191,7 +192,7 @@ def parse_align_results_xml(xml_text, qual_dict, taxonomy_path):
                 hit_accs.append( curr_acc )
 
                 # Get lineage of current hit
-                annotations.append(get_lineage(curr_acc, taxonomy_path))
+                annotations.append( get_lineage(curr_acc, tax_file) )
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
                 pident = hsp.find("Hsp_identity").text # get number of matched nucleotides

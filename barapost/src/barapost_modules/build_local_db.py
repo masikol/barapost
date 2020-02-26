@@ -369,13 +369,15 @@ Enter 'r' to remove all files in this directory and build the database from the 
         gi_list = get_gi_by_acc(acc_dict, logfile_path)
 
         printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
-        for i, acc in enumerate(acc_dict.keys()):
-            printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
-            if not acc in tax_exist_accs:
-                download_lineage(acc, taxonomy_path)
-            # end if
-            # Accessions can be of different length
-        # end for
+        with shelve.open(taxonomy_path, 'c') as tax_file:
+            for i, acc in enumerate(acc_dict.keys()):
+                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
+                if not acc in tax_exist_accs:
+                    download_lineage(acc, acc_dict[acc][1], tax_file)
+                # end if
+                # Accessions can be of different length
+            # end for
+        # end with
         printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
 
@@ -400,7 +402,6 @@ Enter 'r' to remove all files in this directory and build the database from the 
     # end with
     os.unlink(local_fasta)
     os.rename(corrected_path, local_fasta)
-    sleep(3)
     println(logfile_path, "\r{} - Formatting accessions... ok".format(getwt()))
 
     # Add 'your own' fasta files to database
@@ -470,61 +471,59 @@ Enter 'r' to remove all files in this directory and build the database from the 
                 # end if
 
                 # Add assembled sequences to database
-                fasta_db = open(local_fasta, 'a')
-                for assm_path in assm_lst:
-                    println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
+                with open (local_fasta, 'a') as fasta_db, shelve.open(taxonomy_path, 'c') as tax_file:
+                    for assm_path in assm_lst:
+                        println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
 
-                    how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
-                    fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
-                    with how_to_open(assm_path) as fasta_file:
-                        for line in fasta_file:
-                            line = fmt_func(line)
-                            # You can find comments to "OWN_SEQ..." below.
-                            # Paths will be written to seq IDs in following way:
-                            #   (_/some/happy/path.fastq_)
-                            # in order to retrieve them securely with regex later.
-                            if line.startswith('>'):
-                                own_seq_counter += 1
-                                own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                                own_def = "(_{}_)_".format(assm_path) + line[1:]
-                                with shelve.open(taxonomy_path, 'c') as tax_file:
+                        how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
+                        fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
+                        with how_to_open(assm_path) as fasta_file:
+                            for line in fasta_file:
+                                line = fmt_func(line)
+                                # You can find comments to "OWN_SEQ..." below.
+                                # Paths will be written to seq IDs in following way:
+                                #   (_/some/happy/path.fastq_)
+                                # in order to retrieve them securely with regex later.
+                                if line.startswith('>'):
+                                    own_seq_counter += 1
+                                    own_acc = "OWN_SEQ_{}".format(own_seq_counter)
+                                    own_def = "(_{}_)_".format(assm_path) + line[1:]
                                     tax_file[own_acc] = own_def
-                                # end with
-                                line = ">" + "{} {}".format(own_acc, own_def)
-                            # end if
-                            fasta_db.write(line + '\n')
-                        # end for
-                    # end with
-                # end for
-                fasta_db.close()
+                                    line = ">" + "{} {}".format(own_acc, own_def)
+                                # end if
+                                fasta_db.write(line + '\n')
+                            # end for
+                        # end with
+                    # end for
+                # end with
             # end if
         # end for
 
         # No 'with open' here in order not to indent too much.
-        fasta_db = open(local_fasta, 'a')
-        for own_fasta_path in your_own_fasta_lst:
-            println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
+        with open(local_fasta, 'a') as fasta_db, shelve.open(taxonomy_path, 'c') as tax_file:
+            for own_fasta_path in your_own_fasta_lst:
+                println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
 
-            how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
-            fmt_func = FORMATTING_FUNCS[ is_gzipped(own_fasta_path) ]
-            with how_to_open(own_fasta_path) as fasta_file:
-                for line in fasta_file:
-                    line = fmt_func(line)
-                    # 'makeblastdb' considers first word (sep. is space) as sequence ID
-                    #   and throws an error if there are duplicated IDs.
-                    # In order not to allow this duplication we'll create our own sequence IDs:
-                    #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
-                    if line.startswith('>'):
-                        own_seq_counter += 1
-                        own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                        save_own_seq_taxonomy(line[1:], own_acc, taxonomy_path)
-                        line = ">" + own_acc + ' ' + line[1:]
-                    # end if
-                    fasta_db.write(line + '\n')
-                # end for
-            # end with
-        # end for
-        fasta_db.close()
+                how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
+                fmt_func = FORMATTING_FUNCS[ is_gzipped(own_fasta_path) ]
+                with how_to_open(own_fasta_path) as fasta_file:
+                    for line in fasta_file:
+                        line = fmt_func(line)
+                        # 'makeblastdb' considers first word (sep. is space) as sequence ID
+                        #   and throws an error if there are duplicated IDs.
+                        # In order not to allow this duplication we'll create our own sequence IDs:
+                        #   'OWN_SEQ_<NUMBER>' and write it in the beginning of FASTA record name.
+                        if line.startswith('>'):
+                            own_seq_counter += 1
+                            own_acc = "OWN_SEQ_{}".format(own_seq_counter)
+                            save_own_seq_taxonomy(line[1:], own_acc, tax_file)
+                            line = ">" + own_acc + ' ' + line[1:]
+                        # end if
+                        fasta_db.write(line + '\n')
+                    # end for
+                # end with
+            # end for
+        # end with
     # end if
 
     # Configure command line

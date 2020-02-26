@@ -3,6 +3,7 @@
 
 import os
 import sys
+import shelve
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from re import search as re_search
 
@@ -299,92 +300,95 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
 
     root = ElementTree.fromstring(xml_text) # get tree instance
 
-    # Iterate through "Iteration" and "Iteration_hits" nodes
-    for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
-        # "Iteration" node contains query name information
-        query_name = sys.intern(iter_elem.find("Iteration_query-def").text)
-        query_len = iter_elem.find("Iteration_query-len").text
+    with shelve.open(taxonomy_path, 'c') as tax_file:
 
-        avg_quality = qual_dict[query_name]
-        if avg_quality != '-':
-            miscall_prop = round(10**(avg_quality/-10), 3)
-            accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
-            qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(avg_quality,
-                accuracy)
-        else:
-            # If FASTA file is processing, print dashed in quality columns
-            avg_quality = "-"
-            accuracy = "-" # expected percent of correctly called bases
-            qual_info_to_print = ""
-        # end if
+        # Iterate through "Iteration" and "Iteration_hits" nodes
+        for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
+            # "Iteration" node contains query name information
+            query_name = sys.intern(iter_elem.find("Iteration_query-def").text)
+            query_len = iter_elem.find("Iteration_query-len").text
 
-        # Check if there are any hits
-        chck_h = iter_hit.find("Hit")
+            avg_quality = qual_dict[query_name]
+            if avg_quality != '-':
+                miscall_prop = round(10**(avg_quality/-10), 3)
+                accuracy = round( 100*(1 - miscall_prop), 2 ) # expected percent of correctly called bases
+                qual_info_to_print = "    Average quality of this read is {}, i.e. accuracy is {}%;\n".format(avg_quality,
+                    accuracy)
+            else:
+                # If FASTA file is processing, print dashed in quality columns
+                avg_quality = "-"
+                accuracy = "-" # expected percent of correctly called bases
+                qual_info_to_print = ""
+            # end if
 
-        if chck_h is None:
-            # If there is no hit for current sequence
-            printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
-            result_tsv_lines.append('\t'.join( (query_name, "No significant similarity found", "-", query_len,
-                "-", "-", "-", "-", str(avg_quality), str(accuracy)) ))
-        else:
-            # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
-            # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
-            top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
+            # Check if there are any hits
+            chck_h = iter_hit.find("Hit")
 
-            annotations = list()
-            hit_accs = list()
+            if chck_h is None:
+                # If there is no hit for current sequence
+                printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+                result_tsv_lines.append('\t'.join( (query_name, "No significant similarity found", "-", query_len,
+                    "-", "-", "-", "-", str(avg_quality), str(accuracy)) ))
+            else:
+                # If there are any hits, node "Iteration_hits" contains at least one "Hit" child
+                # Get first-best bitscore and iterato over hits that have the save (i.e. the highest bitscore):
+                top_bitscore = next(chck_h.find("Hit_hsps").iter("Hsp")).find("Hsp_bit-score").text
 
-            for hit in iter_hit:
+                annotations = list()
+                hit_accs = list()
 
-                # Find the first HSP
-                hsp = next(hit.find("Hit_hsps").iter("Hsp"))
+                for hit in iter_hit:
 
-                if hsp.find("Hsp_bit-score").text != top_bitscore:
-                    break
-                # end if
+                    # Find the first HSP
+                    hsp = next(hit.find("Hit_hsps").iter("Hsp"))
 
-                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                hit_def = hit.find("Hit_def").text
+                    if hsp.find("Hsp_bit-score").text != top_bitscore:
+                        break
+                    # end if
 
-                curr_acc = sys.intern(hit.find("Hit_accession").text)
-                hit_accs.append( curr_acc ) # get hit accession
-                gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
-                hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
+                    # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
+                    hit_def = hit.find("Hit_def").text
 
-                # Get annotation
-                annotations.append( find_lineage(hit_gi, taxonomy_path) )
+                    curr_acc = sys.intern(hit.find("Hit_accession").text)
+                    hit_accs.append( curr_acc ) # get hit accession
+                    gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
+                    hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
-                # Update accession dictionary
-                try:
-                    acc_dict[curr_acc][2] += 1
-                except KeyError:
-                    acc_dict[curr_acc] = [hit_gi, hit_def, 1]
-                # end try
+                    # Get annotation
+                    annotations.append( find_lineage(curr_acc, hit_def, tax_file) )
 
-                align_len = hsp.find("Hsp_align-len").text.strip()
-                pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
-                gaps = hsp.find("Hsp_gaps").text # get number of gaps
+                    # Update accession dictionary
+                    try:
+                        acc_dict[curr_acc][2] += 1
+                    except KeyError:
+                        acc_dict[curr_acc] = [hit_gi, hit_def, 1]
+                    # end try
 
-                evalue = hsp.find("Hsp_evalue").text # get e-value
-                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
-            # end for
+                    align_len = hsp.find("Hsp_align-len").text.strip()
+                    pident = hsp.find("Hsp_identity").text # get number of matched nucleotides
+                    gaps = hsp.find("Hsp_gaps").text # get number of gaps
 
-            # Divide deduplicated taxonomic names with '&&'
-            annotations = '&&'.join(set(annotations))
+                    evalue = hsp.find("Hsp_evalue").text # get e-value
+                    pident_ratio = round( float(pident) / int(align_len) * 100, 2)
+                    gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
+                # end for
 
-            printl(logfile_path, """\n{} - {}
-Query length - {} nt;
-Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, annotations,
-                query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
+                # Divide deduplicated taxonomic names with '&&'
+                annotations = '&&'.join(set(annotations))
 
-            # Append new tsv line containing recently collected information
-            result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
-                align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
+                printl(logfile_path, """\n{} - {}
+    Query length - {} nt;
+    Identity - {}/{} ({}%); Gaps - {}/{} ({}%);""".format(query_name, annotations,
+                    query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
-        # end if
-        println(logfile_path, qual_info_to_print)
-    # end for
+                # Append new tsv line containing recently collected information
+                result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
+                    align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
+
+            # end if
+            println(logfile_path, qual_info_to_print)
+        # end for
+    # end with
 
     return result_tsv_lines
 # end def parse_align_results_xml

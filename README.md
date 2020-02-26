@@ -18,7 +18,7 @@ Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git
 
 Way 2: download ZIP archive (green button at the top right of this page "Clone or download" -> "Download ZIP").
 
-After that, you can find executable Python files in directory `barapost/barapost` and add this directory to your PATH variable (or just their paths to run them with in a manner like this: `/some/dir/barapost/barapost/prober.py`).
+After that, you can find executable Python files in directory `barapost/barapost` and add this directory to your PATH variable (or just use their paths to run them with in a manner like this: `/some/dir/barapost/barapost/prober.py`).
 
 ## The workflow and what Barapost does
 
