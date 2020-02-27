@@ -374,8 +374,9 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                     gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
                 # end for
 
-                # Divide deduplicated taxonomic names with '&&'
-                annotations = '&&'.join(set(annotations))
+                # Divide annotations and accessions with '&&'
+                annotations = '&&'.join(annotations)
+                hit_accs = '&&'.join(hit_accs)
 
                 printl(logfile_path, """\n{} - {}
     Query length - {} nt;
@@ -383,7 +384,7 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                     query_len, pident, align_len, pident_ratio, gaps, align_len, gaps_ratio))
 
                 # Append new tsv line containing recently collected information
-                result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
+                result_tsv_lines.append( '\t'.join( (query_name, annotations, hit_accs, query_len,
                     align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
 
             # end if

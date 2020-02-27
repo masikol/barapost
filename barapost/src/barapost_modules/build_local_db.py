@@ -256,7 +256,7 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
             printl(logfile_path, "\n{} - Downloading reference sequences to be included in the database...".format(getwt()))
             urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
         except Exception as err:
-            printl(logfile_path, err_fmt("error while downloading FASTA files"))
+            printl(logfile_path, err_fmt("error while downloading fasta file"))
             printl(logfile_path,  str(err) )
             printl(logfile_path, "'barapost.py' will try again in 30 seconds")
             if os.path.exists(local_fasta):

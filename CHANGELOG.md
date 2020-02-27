@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-02-28 night edition.
+
+- barapost: blastn optimization options added;
+- all: bug leading to improper naming of sorted files fixed;
+
+### Version changes:
+
+1. prober: `1.17.c --> 1.17.d`
+2. barapost: `3.11.d --> 3.11.e`;
+3. sorter: `4.5.a --> 4.5.b`;
+
 ## 2020-02-27 edition.
 
 - prober, barapost: network errors handling (sleep 30 sec);

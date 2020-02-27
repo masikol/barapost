@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.a"
+__version__ = "4.5.b"
 # Year, month, day
-__last_update_date__ = "2020-02-26"
+__last_update_date__ = "2020-02-27"
 
 # |===== Check python interpreter version =====|
 
@@ -707,7 +707,7 @@ except ImportError as imperr:
 printl(logfile_path, '-' * 30)
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}';".format(logfile_path))
-printl(logfile_path, " - Sorting according to classification in directory '{}';".format(outdir_path))
+printl(logfile_path, " - Sorting according to classification in directory '{}';".format(tax_annot_res_dir))
 
 printl(logfile_path, " - Sorting sensitivity: {};".format(sens[0]))
 printl(logfile_path, " - Threads: {};".format(n_thr))

@@ -22,12 +22,11 @@ After that, you can find executable Python files in directory `barapost/barapost
 
 ## The workflow and what Barapost does
 
-1. **prober.py** -- this script sends several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxonomic units are "present" in data set. "prober.py" saves information about the best hit(s) of each sequence from probing batch.
-Processing all sequences in this way takes too much time, what leads us to "barapost.py".
+1. **prober.py** -- this script sends several sequences (i.e.m only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "prober.py" saves accession of best hit(s) of each sequence from probing batch. Processing all sequences in this way takes too much time, what leads us to "barapost.py".
 
-2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the rest of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
+2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the major part of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
 
-3. **fastQA5-sorter.py** -- this script sorts (dividing into separate files) nucleotide sequences according to results of "prober.py" and "barapost.py"
+3. **fastQA5-sorter.py** -- this script sorts (divides into separate files) nucleotide sequences according to results of "prober.py" and "barapost.py"
 
 ![](imgs/Barapost-wokflow.png)
 

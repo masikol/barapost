@@ -101,7 +101,7 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
     # end with
 
     # Configure command line
-    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -use_index {}".format(query_path,
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 10 -max_hsps 1 -use_index {}".format(query_path,
         local_fasta, blast_algorithm, use_index)
 
     pipe = sp_Popen(blast_cmd, shell=True, stdout=sp_PIPE, stderr=sp_PIPE)
@@ -205,11 +205,12 @@ def parse_align_results_xml(xml_text, qual_dict, tax_file, logfile_path):
                 gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
-            # If there are multiple best hits -- divide their deduplicated annotations woth '&&':
-            annotations = '&&'.join(set(annotations))
+            # Divide annotations and accessions with '&&'
+            annotations = '&&'.join(annotations)
+            hit_accs = '&&'.join(hit_accs)
 
             # Append new tsv line containing recently collected information
-            result_tsv_lines.append( '\t'.join( (query_name, annotations, '&&'.join(hit_accs), query_len,
+            result_tsv_lines.append( '\t'.join( (query_name, annotations, hit_accs, query_len,
                 align_len, pident, gaps, evalue, str(avg_quality), str(accuracy)) ))
         # end if
     # end for
