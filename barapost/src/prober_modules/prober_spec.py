@@ -355,7 +355,8 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                     hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
                     # Get annotation
-                    annotations.append( find_lineage(curr_acc, hit_def, tax_file) )
+                    annotations.append( find_lineage(curr_acc, hit_def, tax_file,
+                        logfile_path) )
 
                     # Update accession dictionary
                     try:

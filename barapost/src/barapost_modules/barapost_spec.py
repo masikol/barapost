@@ -117,7 +117,7 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
 # end def launch_blastn
 
 
-def parse_align_results_xml(xml_text, qual_dict, tax_file):
+def parse_align_results_xml(xml_text, qual_dict, tax_file, logfile_path):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -137,6 +137,8 @@ def parse_align_results_xml(xml_text, qual_dict, tax_file):
     :type qual_dict: dict<str: float>;
     :param tax_file: taxonomy file instance;
     :type tax_file: shelve.DbfilenameShelf;
+    :param logfile_path: path to logfile;
+    :type logfile_path: str;
 
     Returns list<str>.
     """
@@ -192,7 +194,7 @@ def parse_align_results_xml(xml_text, qual_dict, tax_file):
                 hit_accs.append( curr_acc )
 
                 # Get lineage of current hit
-                annotations.append( get_lineage(curr_acc, tax_file) )
+                annotations.append( get_lineage(curr_acc, tax_file, logfile_path) )
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
                 pident = hsp.find("Hsp_identity").text # get number of matched nucleotides

@@ -3,13 +3,13 @@
 
 import os
 import shelve
-from glob import glob
 from time import sleep
+from glob import glob
 from threading import Thread, Event
 from re import search as re_search
 
 import urllib.request
-from urllib.error import HTTPError
+from src.lingering_https_get_request import lingering_https_get_request
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
@@ -34,7 +34,7 @@ if not gzip_util_found:
 # end if
 
 
-def search_for_related_replicons(acc, acc_dict):
+def search_for_related_replicons(acc, acc_dict, logfile_path):
     """
     Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
       which are related to Genbank record "discovered" by prober.py.
@@ -43,38 +43,50 @@ def search_for_related_replicons(acc, acc_dict):
     :type acc: str;
     :param acc_dict: dictionary {<ACCESSION>: (<GI_NUMBER>, <HIT_DEFINITION>)};
     :type acc_dict: dict<str: tuple<str>>;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
 
     Yields tuples of a following structure:
         (<ACCESSION>, <GI_NUMBER>, <RECORD_DEFINITION>)
     """
 
-    # Get the smallest web page that contains BioSample:
+    # Get the smallest web page that contains BioSample -- GenBank summary:
     summary_url = "https://www.ncbi.nlm.nih.gov/nuccore/{}?report=docsum&log$=seqview".format(acc)
-    summary_html = urllib.request.urlopen(summary_url).read().decode("utf-8")
+
+    summary_html = lingering_https_get_request("www.ncbi.nlm.nih.gov",
+        "/nuccore/{}?report=docsum&log$=seqview".format(acc),
+        logfile_path, "Genbank summary", acc)
+
     # Get reference to BioSample web page:
     biosample_regex = r"href=\"/(biosample\?LinkName=nuccore_biosample&amp;from_uid=[0-9]+)"
 
     biosample_match = re_search(biosample_regex, summary_html)
     if not biosample_match is None:
-        biosample_ref = "https://www.ncbi.nlm.nih.gov/" + biosample_match.group(1)
+        biosample_url = '/' + biosample_match.group(1)
     else:
+        printl(logfile_path, """Cannot check replicons for '{}':
+  there is no BioSample page for this record.""".format(acc))
         return
     del summary_html # let it go
 
     # Get BioSample web page:
-    biosample_html = urllib.request.urlopen(biosample_ref).read().decode("utf-8")
+    biosample_html = lingering_https_get_request("www.ncbi.nlm.nih.gov", biosample_url,
+        logfile_path, "BioSample", acc)
     # Get reference to list nucleotide links:
     nucl_regex = r"href=\"/(nuccore\?LinkName=biosample_nuccore&amp;from_uid=[0-9]+)"
     nucl_match = re_search(nucl_regex, biosample_html)
     if not nucl_match is None:
-        nucl_ref = "https://www.ncbi.nlm.nih.gov/" + nucl_match.group(1)
+        nucl_ref = "/" + nucl_match.group(1)
     else:
+        printl(logfile_path, """Cannot check replicons for '{}':
+  there are no Nucleotide links from BioSample page.""".format(acc))
         return
     # end if
     del biosample_html # let it go
 
     # Get list nucleotide links:
-    nucl_html = urllib.request.urlopen(nucl_ref).read().decode("utf-8")
+    nucl_html = lingering_https_get_request("www.ncbi.nlm.nih.gov", nucl_ref,
+        logfile_path, "Nucleotide links", acc)
 
     num_links = 0 # number of nucleotide links of on this page
 
@@ -110,7 +122,6 @@ def search_for_related_replicons(acc, acc_dict):
             yield rel_acc, rel_gi, definition
         # end if
     # end for
-
 # end def search_for_related_replicons
 
 
@@ -120,7 +131,7 @@ def get_gi_by_acc(acc_dict, logfile_path):
 
     :param acc_dict: dictionary comntaining accession data of hits;
     :type acc_dict: dict<str: tuple<str, str, int>>;
-    :param logfile_path: path to logfile;
+    :param logfile_path: path to log file;
     :type logfile_path: str;
     """
 
@@ -144,7 +155,7 @@ def get_gi_by_acc(acc_dict, logfile_path):
 
         # Search for related replicons:
         try:
-            related_repls = search_for_related_replicons(acc, acc_dict)
+            related_repls = search_for_related_replicons(acc, acc_dict, logfile_path)
         except AttributeError:
             print("\nParsing error: cannot find replicons related to {}.".format(acc))
             print("Please, contact the developer")
@@ -373,7 +384,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
             for i, acc in enumerate(acc_dict.keys()):
                 printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
                 if not acc in tax_exist_accs:
-                    download_lineage(acc, acc_dict[acc][1], tax_file)
+                    download_lineage(acc, acc_dict[acc][1], tax_file, logfile_path)
                 # end if
                 # Accessions can be of different length
             # end for

@@ -88,7 +88,7 @@ def process_part_of_file(data, tsv_res_path):
 
             # Get result tsv lines
             result_tsv_lines = parse_align_results_xml(align_xml_text,
-                data["qual"], tax_file)
+                data["qual"], tax_file, logfile_path)
             # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
             # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
 

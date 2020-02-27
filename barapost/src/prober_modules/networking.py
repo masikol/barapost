@@ -5,11 +5,11 @@ import os
 from time import sleep
 from re import search as re_search
 
-import socket
 import http.client
 import urllib.parse
 import urllib.request
-from urllib.error import HTTPError
+
+from src.lingering_https_get_request import lingering_https_get_request
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, println, err_fmt, getwt, printn
@@ -37,8 +37,10 @@ def verify_taxids(taxid_list, logfile_path):
             println(logfile_path, "   {} - ".format(taxid))
             tax_url = "https://ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid)
             try:
-                tax_resp = urllib.request.urlopen(tax_url)
-                tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp.read().decode("utf-8")).group(1)
+                tax_resp = lingering_https_get_request("www.ncbi.nlm.nih.gov",
+                    "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid),
+                    "taxonomy")
+                tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp).group(1)
             except AttributeError:
                 printl(logfile_path, "\aError: TaxID not found")
                 print("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
@@ -57,58 +59,6 @@ def verify_taxids(taxid_list, logfile_path):
     # end if
     return organisms
 # end def verify taxids
-
-
-def lingering_https_get_request(server, url, logfile_path):
-    """
-    Function performs a "lingering" HTTPS request.
-    It means that the function tries to get the response
-        again and again if the request fails.
-
-    :param server: server address;
-    :type server: str;
-    :param url: the rest of url;
-    :type url: str;
-    :param logfile_path: path to logfile;
-    :type logfile_path: str;
-
-    Returns obtained response coded in UTF-8 ('str').
-    """
-
-    error = True
-    while error:
-        try:
-            conn = http.client.HTTPSConnection(server) # create connection
-            conn.request("GET", url) # ask for if there areresults
-            response = conn.getresponse() # get the resonse
-            resp_content = str(response.read(), "utf-8") # get response text
-            conn.close()
-        except OSError as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except http.client.RemoteDisconnected as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except socket.gaierror as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        except http.client.CannotSendRequest as err:
-            printl(logfile_path, "\n{} - Unable to connect to the NCBI server. Let's try to connect in 30 seconds.".format(getwt()))
-            printl(logfile_path, "  " + str(err))
-            error = True
-            sleep(30)
-        else:
-            error = False # if no exception ocured
-        # end try
-    # end while
-    return resp_content
-# end def lingering_https_get_request
 
 
 def configure_request(packet, blast_algorithm, organisms, user_email):
@@ -253,7 +203,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
 
     while True:
-        resp_content = lingering_https_get_request(server, wait_url, logfile_path)
+        resp_content = lingering_https_get_request(server, wait_url, logfile_path, "BLAST response")
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
@@ -286,7 +236,8 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
 
                 # Retrieve human-readable text and put it into result directory
                 retrieve_text_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=Text&DESCRIPTIONS=1&ALIGNMENTS=1&RID=" + rid
-                txt_align_res = lingering_https_get_request(server, retrieve_text_url, logfile_path)
+                txt_align_res = lingering_https_get_request(server, retrieve_text_url, logfile_path,
+                    "text version of BLAST response")
 
                 txt_hpath = os.path.join(os.path.dirname(logfile_path), "prober_blast_response_{}.txt".format(pack_to_send))
                 # Write text result for a human to read
@@ -306,7 +257,8 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
 
     # Retrieve XML result
     retrieve_xml_url = "/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&ALIGNMENTS=1&RID=" + rid
-    xml_text = lingering_https_get_request(server, retrieve_xml_url, logfile_path)
+    xml_text = lingering_https_get_request(server, retrieve_xml_url, logfile_path,
+        "XML BLAST response")
 
     if "Bad Gateway" in xml_text:
         printl(logfile_path, getwt() + " - ERROR! Bad Gateway! Data from last packet has been lost.")

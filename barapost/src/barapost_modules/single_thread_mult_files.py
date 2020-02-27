@@ -90,7 +90,7 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
 
                 # Get result tsv lines
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["qual"], tax_file)
+                    packet["qual"], tax_file, logfile_path)
 
                 # Write the result to tsv
                 write_classification(result_tsv_lines, tsv_res_path)

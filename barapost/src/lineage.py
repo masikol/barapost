@@ -2,9 +2,10 @@
 # This module defines functions, which download and format organisms' lineages.
 
 import os
-import urllib.request
 from time import sleep
 from re import search as re_search, findall as re_findall
+
+from src.lingering_https_get_request import lingering_https_get_request
 
 from src.printlog import err_fmt
 from src.platform import platf_depend_exit
@@ -13,7 +14,44 @@ from src.platform import platf_depend_exit
 ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
 
 
-def download_lineage(hit_acc, hit_def, tax_file):
+def remove_odd_info(some_name):
+    """
+    Function removes odd information from string meant to contain
+      name of taxon higher than species.
+    "Odd indormation" referrs to, e.g., word "Candidatus" for this P. ziziphi: CP025121.
+    Fucntion makes an assumption that odd info is always writted at the beginning of string.
+
+    :param some_name: string to be processed;
+    :type some_name: str;
+    """
+
+    # If there are only one word in our name -- there are no odd info
+    if some_name.count(' ') == 0:
+        return some_name # return name itself
+    # end if
+
+    # Split into words
+    names = some_name.split(' ')
+
+    # Pattern matching taxon name higher than genus
+    high_level_name_patt = r"^[A-Z][a-z]+$"
+    # Function returns True if a word passed to it looks like high-level taxon name
+    is_high_level_name = lambda w: not re_search(high_level_name_patt, w) is None
+
+    # Get all high-level names in some_str
+    high_level_names = tuple( filter(is_high_level_name, names) )
+
+    if len(high_level_names) != 0:
+        # Return the last one: all before it probably is odd
+        return high_level_names[-1]
+    else:
+        # Well, we'll better merely return source string in this case
+        return some_name
+    # end if
+# end def remove_odd_info
+
+
+def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     """
     Function retrieves lineage of a hit from NCBI.
     Moreover, it saves this lineage in 'taxonomy' DBM file:
@@ -25,19 +63,22 @@ def download_lineage(hit_acc, hit_def, tax_file):
     :type hit_def: str;
     :param tax_file: taxonomy file instance;
     :type tax_file: shelve.DbfilenameShelf;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     # Get TaxID of the organism from GenBank summary:
-    gb_summary_url = "https://www.ncbi.nlm.nih.gov/nuccore/{}".format(hit_acc)
-    gb_summary = urllib.request.urlopen(gb_summary_url).read().decode("utf-8")
+    gb_summary = lingering_https_get_request("www.ncbi.nlm.nih.gov",
+        "/nuccore/{}".format(hit_acc), logfile_path, "GenBank summary", hit_acc)
     taxid = re_search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
 
     # Get taxonomy page of the organism
-    taxonomy_url = "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
-    taxonomy_text = urllib.request.urlopen(taxonomy_url).read().decode("utf-8")
+    taxonomy_url = "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
+    taxonomy_text = lingering_https_get_request("www.ncbi.nlm.nih.gov",
+        taxonomy_url, logfile_path, "taxonomy", hit_acc)
 
     # This pattern will match taxonomic names along with their ranks
-    tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z][a-z]+)\</a\>"
+    tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z].+?)\</a\>"
 
     # Get all taxonomic names of the organism
     lineage = re_findall(tax_rank_pattern, taxonomy_text)
@@ -45,18 +86,24 @@ def download_lineage(hit_acc, hit_def, tax_file):
     # We will convert ranks to lowercase just in case.
     # Firstly convert tuples to lists in order to change them:
     lineage = list(map(lambda x: list(x), lineage))
-    for rank in lineage:
-        rank[0] = rank[0].lower()
+
+
+    # Remove odd information from beginnig of names:
+    for i in range(len(lineage)):
+        lineage[i][0] = lineage[i][0].lower() # just in case
+        # Remove auxiliary odd data
+        lineage[i][1] = remove_odd_info(lineage[i][1])
     # end for
-    # Convert bck to tuples:
-    lineage = list(map(lambda x: tuple(x), lineage))
 
     # We will leave only following taxonomic ranks.
     # Species name need special handling, it will be added later.
     ranks_to_select = ranks[:-1]
 
     # Remove redundant ranks:
-    lineage = list(filter( lambda x: x[0].lower() in ranks_to_select, lineage ))
+    lineage = filter( lambda x: x[0].lower() in ranks_to_select, lineage )
+
+    # Convert back to tuples:
+    lineage = list(map(lambda x: tuple(x), lineage))
 
     # E.g., this record have no appropriate ranks: CP034535
     # Merely return it's definition
@@ -76,6 +123,11 @@ def download_lineage(hit_acc, hit_def, tax_file):
     else:
         # Otherwise we need to parse species name from title
         title = re_search(r"\<title\>Taxonomy browser \((.+)\)\</title\>", taxonomy_text).group(1)
+        # Remove auxiliary odd data:
+        genus_name = remove_odd_info(title)
+        title = title.partition(genus_name)[1] + title.partition(genus_name)[2]
+
+        # Get words
         title = title.split(' ')
 
         # These words at second (with index 1) indicate that
@@ -115,10 +167,10 @@ def download_lineage(hit_acc, hit_def, tax_file):
     tax_file[hit_acc] = lineage
 
     return get_str_to_print(lineage, hit_acc)
-# end def get_lineage
+# end def download_lineage
 
 
-def find_lineage(hit_acc, hit_def, tax_file):
+def find_lineage(hit_acc, hit_def, tax_file, logfile_path):
     """
     Function returns lineage if it is already in taxonomy file
       and downloads it from NCBI Taxnomomy otherwise.
@@ -129,6 +181,8 @@ def find_lineage(hit_acc, hit_def, tax_file):
     :type hit_def: str;
     :param tax_file: taxonomy file instance;
     :type tax_file: shelve.DbfilenameShelf;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     # Get all accessions in taxonomy file:
@@ -136,7 +190,7 @@ def find_lineage(hit_acc, hit_def, tax_file):
 
     # If we've got a new accession -- download lineage
     if not hit_acc in tax_acc_exist:
-        lineage = download_lineage(hit_acc, hit_def, tax_file)
+        lineage = download_lineage(hit_acc, hit_def, tax_file, logfile_path)
     else:
         # If hit is not new -- simply retrieve it from taxonomy file
         lineage = get_str_to_print(tax_file[str(hit_acc)], hit_acc)
@@ -160,35 +214,44 @@ def get_str_to_print(lineage, hit_acc):
     :type hit acc: str;
     """
 
-    str_to_return = ""
+    if isinstance(lineage, tuple):
+        str_to_return = ""
 
-    # Find genus and species names
-    for rank, name in lineage:
-        if rank == "genus":
-            str_to_return = name + str_to_return # append to the beginniung
-        elif rank == "species":
-            str_to_return = str_to_return + " " + name # append to the end
+        # Find genus and species names
+        for rank, name in lineage:
+            if rank == "genus":
+                str_to_return = name + str_to_return # append to the beginniung
+            elif rank == "species":
+                str_to_return = str_to_return + " " + name # append to the end
+            # end if
+        # end for
+
+        # Presence of species name and absence of genus name probably is nonsence
+        if str_to_return.startswith(' '):
+            print("Taxonomy parsing error 1456")
+            print("Please, contact the developer -- it is his fault.")
+            print("Tell him the erroneous accession: '{}'".format(hit_acc))
+            platf_depend_exit(1)
         # end if
-    # end for
 
-    # Presence of species name and absence of genus name probably is nonsence
-    if str_to_return.startswith(' '):
-        print("Taxonomy parsing error 1456")
-        print("Please, contact the developer -- it is his fault.")
-        print("Tell him the erroneous accession: '{}'".format(hit_acc))
+        # If there are no genus and species, we'll return what we have
+        if str_to_return == "":
+            str_to_return = ';'.join(map(lambda x: x[1], lineage))
+        # end if
+
+        return str_to_return
+    elif isinstance(lineage, str):
+        return lineage
+    else:
+    # Execution must not reach here
+        printl(logfile_path, "\nFatal error 8755.")
+        printl(logfile_path, "Please, contact the developer -- it is his fault.")
         platf_depend_exit(1)
     # end if
-
-    # If there are no genus and species, we'll return what we have
-    if str_to_return == "":
-        str_to_return = ';'.join(map(lambda x: x[1], lineage))
-    # end if
-
-    return str_to_return
 # end def get_str_to_print
 
 
-def get_lineage(hit_acc, tax_file):
+def get_lineage(hit_acc, tax_file, logfile_path):
     """
     Function returnes lineage by given accession from 'taxonomy' DBM file.
 
@@ -196,6 +259,8 @@ def get_lineage(hit_acc, tax_file):
     :type hit_acc: str;
     :param tax_file: taxonomy file instance;
     :type tax_file: shelve.DbfilenameShelf;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     # Retrieve taxonomy from taxonomy file
@@ -204,11 +269,11 @@ def get_lineage(hit_acc, tax_file):
             lineage = tax_file[hit_acc]
         # end if
     except KeyError:
-        print(err_fmt("{} is not in taxonomy file!".format(hit_acc)))
-        print("Please, contact the developer.")
+        printl(logfile_path, err_fmt("{} is not in taxonomy file!".format(hit_acc)))
+        printl(logfile_path, "Please, contact the developer.")
         platf_depend_exit(1)
     except OSError as oserr:
-        print(err_fmt(str(oserr)))
+        printl(logfile_path, err_fmt(str(oserr)))
         platf_depend_exit(1)
     # end try
 
@@ -220,8 +285,8 @@ def get_lineage(hit_acc, tax_file):
         return lineage
     else:
     # Execution must not reach here
-        print("\nFatal error 8753.")
-        print("Please, contact the developer -- it is his fault.")
+        printl(logfile_path, "\nFatal error 8753.")
+        printl(logfile_path, "Please, contact the developer -- it is his fault.")
         platf_depend_exit(1)
     # end if
 # end def get_lineage

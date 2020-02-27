@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2020-02-27 edition.
+
+- prober, barapost: network errors handling (sleep 30 sec);
+- prober, barapost: genus name parsing fixed;
+
+### Version changes:
+
+1. prober: `1.17.b --> 1.17.c`
+2. barapost: `3.11.c --> 3.11.d`;
+
 ## 2020-02-26 evening edition.
 
 - prober, barapost: "syntetic construct" fix;

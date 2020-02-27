@@ -124,7 +124,7 @@ def process_paral(fq_fa_list):
 
                 # Cnfigure result TSV lines
                 result_tsv_lines = parse_align_results_xml(align_xml_text,
-                    packet["qual"], tax_file)
+                    packet["qual"], tax_file, logfile_path)
 
                 # Write the result to tsv
                 write_classification(result_tsv_lines, tsv_res_path)
