@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.b"
+__version__ = "4.5.c"
 # Year, month, day
 __last_update_date__ = "2020-02-27"
 

@@ -93,9 +93,13 @@ def find_rank_for_filename(sens, taxonomy):
     else:
         # Otherwise -- recursively go up to the root of taxonomy tree
         new_sens = (ranks[rank_num-1], rank_num-1)
-        return find_rank_for_filename( new_sens, taxonomy ) + ";no_{}".format(rank_name)
+        return find_rank_for_filename( new_sens, taxonomy ) + "_no-{}".format(rank_name)
     # end if
 # end def find_rank_for_filename
+
+
+# Characters not allowes in filenames
+chars_excl_from_filename = ("/", "\\", ":", "*", "+", "?", "\"", "<", ">", "(", ")", "|", " ", ";")
 
 
 def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
@@ -214,6 +218,11 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
             print("Please, contact the developer -- it is his fault.")
             platf_depend_exit(1)
         # end if
+    # end for
+
+    # Replace symbols not useful in filenames with underscores
+    for char in chars_excl_from_filename:
+        best_hit_annots = map(lambda ann: ann.replace(char, '_'), best_hit_annots)
     # end for
 
     # Return deduplicated names

@@ -13,6 +13,9 @@ from src.platform import platf_depend_exit
 
 ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
 
+# These words at second (with index 1) position of title indicate that
+#   actual species name are specified after it.
+second_words_not_species = ("species", "sp.", "strain", "str.", "bacterium")
 
 def remove_odd_info(some_name):
     """
@@ -130,9 +133,6 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
         # Get words
         title = title.split(' ')
 
-        # These words at second (with index 1) indicate that
-        #   actual species name are specified after it.
-        second_words_not_species = ("species", "sp.", "strain", "str.")
 
         # We will take all this words as species name.
         # 
@@ -226,16 +226,8 @@ def get_str_to_print(lineage, hit_acc):
             # end if
         # end for
 
-        # Presence of species name and absence of genus name probably is nonsence
-        if str_to_return.startswith(' '):
-            print("Taxonomy parsing error 1456")
-            print("Please, contact the developer -- it is his fault.")
-            print("Tell him the erroneous accession: '{}'".format(hit_acc))
-            platf_depend_exit(1)
-        # end if
-
         # If there are no genus and species, we'll return what we have
-        if str_to_return == "":
+        if str_to_return == "" or str_to_return.startswith(' '):
             str_to_return = ';'.join(map(lambda x: x[1], lineage))
         # end if
 

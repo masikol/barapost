@@ -1,5 +1,17 @@
 # "Barapost" changelog
 
+## 2020-02-28 afternoon edition.
+
+- all: taxonomy parsing improved, absence of genus name allowed;
+- barapost, prober: GET requests durability bug fixed;
+- sorter excludes characters casuing gzip errors from names of result files;
+
+### Version changes:
+
+1. prober: `1.17.d --> 1.17.e`
+2. barapost: `3.11.e --> 3.11.f`;
+3. sorter: `4.5.b --> 4.5.c`;
+
 ## 2020-02-28 night edition.
 
 - barapost: blastn optimization options added;
