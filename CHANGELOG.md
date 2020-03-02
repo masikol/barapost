@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-01-02 edition.
+
+- barapost, prober: GET requests durability "sleep"-bug fixed;
+
+### Version changes:
+
+1. prober: `1.17.e --> 1.17.f`
+2. barapost: `3.11.f --> 3.11.g`;
+
 ## 2020-02-28 afternoon edition.
 
 - all: taxonomy parsing improved, absence of genus name allowed;

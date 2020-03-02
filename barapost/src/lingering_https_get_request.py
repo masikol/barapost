@@ -2,6 +2,7 @@
 
 import socket
 import http.client
+from time import sleep
 
 from src.printlog import printl
 
