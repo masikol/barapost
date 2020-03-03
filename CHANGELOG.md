@@ -1,6 +1,16 @@
 # "Barapost" changelog
 
-## 2020-01-02 edition.
+## 2020-03-03 edition.
+
+- all: restriction on duplicated basenames of input files added;
+
+### Version changes:
+
+1. prober: `1.17.f --> 1.17.g`
+2. barapost: `3.11.g --> 3.11.h`;
+3. sorter: `4.5.c --> 4.5.d`;
+
+## 2020-03-02 edition.
 
 - barapost, prober: GET requests durability "sleep"-bug fixed;
 

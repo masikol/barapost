@@ -12,13 +12,29 @@ It is awful to sit in front of the computer for hours sending all these sequence
 
 ## Getting started
 
-Since current version is too raw to make a release, you can get "barapost" in the following ways:
+You can get "barapost" in the following ways:
 
 Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git`
 
-Way 2: download ZIP archive (green button at the top right of this page "Clone or download" -> "Download ZIP").
+Way 2: download ZIP archive (green button at the top right of that [page](https://github.com/masikol/barapost). Then "Clone or download" -> "Download ZIP").
 
-After that, you can find executable Python files in directory `barapost/barapost` and add this directory to your PATH variable (or merely run scripts in place).
+After that, you can find executable Python scripts in directory `barapost/barapost`. Scripts can be run in place.
+
+Or you can add this directory to your PATH variable so that you won't need to enter full script's path to run it -- just it's name, for example:
+
+```
+prober.py some_reads.fastq
+```
+instead of
+```
+/home/user/some/more/long/useless/path/barapost/barapost/prober.py some_reads.fastq
+```
+
+If you are not sure how to do this, following links can help you:
+
+- [Editing PATH on Linux](https://opensource.com/article/17/6/set-path-linux)
+- [Editing PATH on Windows](https://www.computerhope.com/issues/ch000549.htm)
+- [Editing PATH on MacOS](https://coolestguidesontheplanet.com/add-shell-path-osx)
 
 ## The workflow and what Barapost does
 

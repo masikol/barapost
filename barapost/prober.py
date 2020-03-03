@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.17.f"
+__version__ = "1.17.g"
 # Year, month, day
-__last_update_date__ = "2020-03-02"
+__last_update_date__ = "2020-03-03"
 
 # |===== Check python interpreter version =====|
 
@@ -307,6 +307,22 @@ if len(fq_fa_list) == 0:
         # end if
     # end if
 # end if
+
+# Check if there are duplicated basenames in input files:
+for path in fq_fa_list:
+    bname = os.path.basename(path)
+    same_bnames = tuple(filter(lambda f: os.path.basename(f) == bname, fq_fa_list))
+    if len(same_bnames) != 1:
+        print(err_fmt("input files must have different names"))
+        print("List of files having same name:")
+        for path in same_bnames:
+            print("'{}'".format(path))
+        # end for
+        platf_depend_exit(1)
+    # end if
+# end for
+del bname, same_bnames
+
 
 # Sort list of files that will be processed -- process them in alphabetical order.
 fq_fa_list.sort()

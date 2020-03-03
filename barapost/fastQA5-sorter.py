@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.c"
+__version__ = "4.5.d"
 # Year, month, day
-__last_update_date__ = "2020-02-27"
+__last_update_date__ = "2020-03-03"
 
 # |===== Check python interpreter version =====|
 
@@ -392,7 +392,26 @@ if num_files == 0:
     # end if
 # end if
 
-# Check it here once and not further inimported  modules
+
+# Check if there are duplicated basenames in input files:
+for lst in (fq_fa_list, fast5_list):
+    for path in lst:
+        bname = os.path.basename(path)
+        same_bnames = tuple(filter(lambda f: os.path.basename(f) == bname, lst))
+        if len(same_bnames) != 1:
+            print(err_fmt("input files must have different names"))
+            print("List of files having same name:")
+            for path in same_bnames:
+                print("'{}'".format(path))
+            # end for
+            platf_depend_exit(1)
+        # end if
+    # end for
+# end for
+del bname, same_bnames, lst
+
+
+# Check it here once and not further in imported modules
 if len(fast5_list) != 0:
     printn("Importing h5py...")
     try:
