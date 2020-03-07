@@ -105,7 +105,7 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
 # end def configure_request
 
 
-def send_request(request, pack_to_send, filename, tmp_fpath, logfile_path):
+def send_request(request, pack_to_send, packet_size, filename, tmp_fpath, logfile_path):
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
         and then waits for satisfaction of the request and retrieves response text.
@@ -114,6 +114,10 @@ def send_request(request, pack_to_send, filename, tmp_fpath, logfile_path):
     :param request: dict<dict>;
     :param pack_to_send: current number (like id) of packet meant to be sent now.
     :type pack_to_send: int;
+    :param pack_to_send: ordinal number of packet;
+    :type pack_to_send: int;
+    :param packet_size: numner of sequences in the packet;
+    :type packet_size: int;
     :param logfile_path: path to logfile;
     :type logfile_path: str;
 
@@ -160,8 +164,8 @@ def send_request(request, pack_to_send, filename, tmp_fpath, logfile_path):
 
     # Save temporary data
     with open(tmp_fpath, 'w') as tmpfile:
-        tmpfile.write("sent_packet_num: {}\n".format(pack_to_send))
-        tmpfile.write("Request_ID: {}".format(rid))
+        tmpfile.write("Request_ID: {}\n".format(rid))
+        tmpfile.write("Packet_size: {}".format(packet_size))
     # end with
 
     # Wait for results of alignment

@@ -40,7 +40,7 @@ def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
 # end def pass_processed_seqs
 
 
-def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
+def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max_seq_len=None):
     """
     Generator yields fasta-formattedpackets of records from fasta file.
     This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
@@ -54,6 +54,9 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
     :type reads_at_all: int;
     :param num_done_seqs: number of sequnces in current file that have been already processed;
     :type num_doce_reads: int;
+    :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
+      It will be None, if no tmp file was in classification directory;
+    :type saved_packet_size: int;
     :param max_seq_len: maximum length of a sequence proessed;
     :type max_seq_len: int (None if pruning is disabled);
     """
@@ -93,11 +96,18 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
         qual_dict = dict() # {<seq_id>: '-'}, as soon as fasta file is being processed
         eof = False
 
+        # Here goes check for saved packet size:
+        if not saved_packet_size is None:
+            tmp_pack_size = saved_packet_size
+        else:
+            tmp_pack_size = packet_size
+        # end if
+
         while not eof: # till the end of file
 
             i = 0 # variable for counting sequences within packet
 
-            while i < packet_size:
+            while i < tmp_pack_size:
 
                 line = get_next_line()
                 if line.startswith('>'):
@@ -133,7 +143,9 @@ def fasta_packets(fasta, packet_size, num_done_seqs, max_seq_len=None):
 
             if packet != "":
                 yield {"fasta": packet, "qual": qual_dict}
-                # Reset packet
+                # Reset packet and switch back to standart packet size
+                # As Vorotos said, repeated assignment is the best check:
+                tmp_pack_size = packet_size
                 qual_dict = dict()
                 if not next_id_line is None:
                     packet = next_id_line+'\n'

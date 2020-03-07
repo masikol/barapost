@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-03-07 edition.
+
+- prober: missing sequences on resumption and changing packet size fixed;
+
+### Version changes:
+
+1. prober: `1.17.g --> 1.18.a`
+
 ## 2020-03-03 edition.
 
 - all: restriction on duplicated basenames of input files added;

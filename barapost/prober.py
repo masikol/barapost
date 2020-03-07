@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.17.g"
+__version__ = "1.18.a"
 # Year, month, day
-__last_update_date__ = "2020-03-03"
+__last_update_date__ = "2020-03-07"
 
 # |===== Check python interpreter version =====|
 
@@ -475,11 +475,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath,
             infile_hname), blast_algorithm) # form path to temporary file
         saved_RID = None
+        saved_packet_size = None
     else: # if there is data from previous run
         num_done_seqs = previous_data["n_done_reads"] # get number of successfully processed sequences
         tsv_res_path = previous_data["tsv_respath"] # result tsv file should be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file should be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request without resending
+        saved_packet_size = previous_data["packet_size_save"]
         # Let's assume that a user won't modify his/her brobing_batch size between erroneous runs:
         #   subtract num_done_reads if probing_batch_size > num_done_reads.
         probing_batch_size -= previous_data["decr_pb"]
@@ -504,7 +506,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
 
     # Iterate over packets in current file
-    for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, max_seq_len):
+    for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, saved_packet_size, max_seq_len):
 
         # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True
@@ -546,7 +548,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
                 # Send the request and get BLAST XML response.
                 # 'align_xml_text' will be None if an error occurs.
-                align_xml_text = send_request(request, pack_to_send,
+                align_xml_text = send_request(request, pack_to_send, packet_size,
                     os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --

@@ -109,11 +109,11 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
         resume = ask_for_resumption(logfile_path)
     # end if
 
-    if not resume:
+    if resume == False:
         rename_file_verbosely(tsv_res_fpath, logfile_path)
         rename_file_verbosely(tmp_fpath, logfile_path)
         rename_file_verbosely(acc_fpath, logfile_path)
-    else:
+    elif resume == True:
         printl(logfile_path, "Let's try to continue...")
 
         # Collect information from result file
@@ -236,13 +236,15 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                 temp_lines = tmp_file.readlines()
             # end with
 
-            RID_save = re_search(r"Request_ID: (.+)", temp_lines[1]).group(1).strip()
+            RID_save = re_search(r"Request_ID: (.+)", temp_lines[0]).group(1).strip()
+            packet_size_save = int(re_search(r"Packet_size: ([0-9]*)", temp_lines[1]).group(1).strip())
 
         except (AttributeError, OSError):
 
             # There is no need to disturb a user, merely proceed.
             return {
                 "RID": None,
+                "packet_size_save": None,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,
@@ -255,12 +257,14 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             # Return data from previous run
             return {
                 "RID": RID_save,
+                "packet_size_save": packet_size_save,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,
                 "decr_pb": decr_pb
             }
         # end try
+    # end if
 
     return None
 # end def look_around

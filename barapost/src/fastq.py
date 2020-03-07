@@ -35,7 +35,51 @@ def get_read_avg_qual(qual_str):
 # end def get_read_avg_qual
 
 
-def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
+def form_packet(fastq_file, packet_size, fmt_func, max_seq_len):
+    """
+    Function reads lines from 'fastq_file' and composes a packet of 'packet_size' sequences.
+
+    :param fastq_file: file instance from which to read;
+    :type fastq_file: _io.TextIOWrapper or gzip.File;
+    :param packet_size: number of sequences to retrive from file;
+    :type packet_size: int;
+    :param fmt_func: formating functio nfrom FORMMATING_FUNCS tuple;
+    :param max_seq_len: maximum length of a sequence proessed;
+    :type max_seq_len: int (None if pruning is disabled);
+    """
+
+    packet = ""
+    qual_dict = dict() # {<seq_id>: <read_quality>}
+    eof = False
+
+    for i in range(packet_size):
+
+        read_id = fmt_func(fastq_file.readline())
+
+        if read_id == "": # if eof is reached, leave now
+            eof = True
+            break
+        # end if
+
+        read_id = fmt_read_id(read_id)
+        seq = fmt_func(fastq_file.readline())
+        fastq_file.readline() # pass comment
+        avg_qual = get_read_avg_qual( fmt_func(fastq_file.readline()) )
+
+        packet += read_id + '\n' + seq + '\n'
+        qual_dict[read_id[1:]] = avg_qual
+    # end for
+
+    if not max_seq_len is None: # prune sequences
+        packet = prune_seqs(packet, 'l', max_seq_len)
+    # end if
+
+    return {"fasta": packet, "qual": qual_dict}, eof
+
+# end def form_packet
+
+
+def fastq_packets(fastq, packet_size, num_done_seqs, saved_packet_size=None, max_seq_len=None):
     """
     Generator yields fasta-formattedpackets of records from fastq file.
     This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
@@ -49,6 +93,9 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
     :type reads_at_all: int;
     :param num_done_seqs: number of sequnces in current file that have been already processed;
     :type num_doce_reads: int;
+    :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
+      It will be None, if no tmp file was in classification directory;
+    :type saved_packet_size: int;
     :param max_seq_len: maximum length of a sequence proessed;
     :type max_seq_len: int (None if pruning is disabled);
     """
@@ -60,43 +107,34 @@ def fastq_packets(fastq, packet_size, num_done_seqs, max_seq_len=None):
 
         # Pass reads, which have been already processed:
         for _ in range(int(num_done_seqs * FASTQ_LINES_PER_READ)):
-            fastq_file.readline()
+            print(fastq_file.readline())
         # end for
 
-        packet = ""
-        qual_dict = dict() # {<seq_id>: <read_quality>}
+        # End of file
         eof = False
 
-        while not eof: # till the end of file
+        # Here goes check for saved packet size:
+        if not saved_packet_size is None:
+            tmp_pack_size = saved_packet_size
+        else:
+            tmp_pack_size = packet_size
+        # end if
 
-            for i in range(packet_size):
+        # Process all remaining sequences with standart packet size:
+        while not eof:
+            packet, eof = form_packet(fastq_file, tmp_pack_size, fmt_func, max_seq_len)
 
-                read_id = fmt_func(fastq_file.readline())
-
-                if read_id == "": # if eof is reached, leave now
-                    eof = True
-                    break
-                # end if
-
-                read_id = fmt_read_id(read_id)
-                seq = fmt_func(fastq_file.readline())
-                fastq_file.readline() # pass comment
-                avg_qual = get_read_avg_qual( fmt_func(fastq_file.readline()) )
-
-                packet += read_id + '\n' + seq + '\n'
-                qual_dict[read_id[1:]] = avg_qual
-            # end for
-
-            if not max_seq_len is None: # prune sequences
-                packet = prune_seqs(packet, 'l', max_seq_len)
+            if packet["fasta"] == "":
+                return
             # end if
 
-            if packet != "":
-                yield {"fasta": packet, "qual": qual_dict}
-                # Reset packet
-                packet = ""
-                qual_dict = dict()
-            else:
+            yield packet
+
+            # Switch back to standart packet size
+            # As Vorotos said, repeated assignment is the best check:
+            tmp_pack_size = packet_size
+
+            if eof:
                 return
             # end if
         # end while
