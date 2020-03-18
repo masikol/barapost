@@ -107,7 +107,7 @@ def fastq_packets(fastq, packet_size, num_done_seqs, saved_packet_size=None, max
 
         # Pass reads, which have been already processed:
         for _ in range(int(num_done_seqs * FASTQ_LINES_PER_READ)):
-            print(fastq_file.readline())
+            fastq_file.readline()
         # end for
 
         # End of file

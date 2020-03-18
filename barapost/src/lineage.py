@@ -17,42 +17,6 @@ ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species
 #   actual species name are specified after it.
 second_words_not_species = ("species", "sp.", "strain", "str.", "bacterium")
 
-def remove_odd_info(some_name):
-    """
-    Function removes odd information from string meant to contain
-      name of taxon higher than species.
-    "Odd indormation" referrs to, e.g., word "Candidatus" for this P. ziziphi: CP025121.
-    Fucntion makes an assumption that odd info is always writted at the beginning of string.
-
-    :param some_name: string to be processed;
-    :type some_name: str;
-    """
-
-    # If there are only one word in our name -- there are no odd info
-    if some_name.count(' ') == 0:
-        return some_name # return name itself
-    # end if
-
-    # Split into words
-    names = some_name.split(' ')
-
-    # Pattern matching taxon name higher than genus
-    high_level_name_patt = r"^[A-Z][a-z]+$"
-    # Function returns True if a word passed to it looks like high-level taxon name
-    is_high_level_name = lambda w: not re_search(high_level_name_patt, w) is None
-
-    # Get all high-level names in some_str
-    high_level_names = tuple( filter(is_high_level_name, names) )
-
-    if len(high_level_names) != 0:
-        # Return the last one: all before it probably is odd
-        return high_level_names[-1]
-    else:
-        # Well, we'll better merely return source string in this case
-        return some_name
-    # end if
-# end def remove_odd_info
-
 
 def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     """
@@ -94,8 +58,6 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     # Remove odd information from beginnig of names:
     for i in range(len(lineage)):
         lineage[i][0] = lineage[i][0].lower() # just in case
-        # Remove auxiliary odd data
-        lineage[i][1] = remove_odd_info(lineage[i][1])
     # end for
 
     # We will leave only following taxonomic ranks.
@@ -126,13 +88,9 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     else:
         # Otherwise we need to parse species name from title
         title = re_search(r"\<title\>Taxonomy browser \((.+)\)\</title\>", taxonomy_text).group(1)
-        # Remove auxiliary odd data:
-        genus_name = remove_odd_info(title)
-        title = title.partition(genus_name)[1] + title.partition(genus_name)[2]
 
         # Get words
         title = title.split(' ')
-
 
         # We will take all this words as species name.
         # 

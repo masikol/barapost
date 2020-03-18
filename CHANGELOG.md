@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2020-03-18 edition.
+
+- prober: taxonomy parsing fixed;
+- prober, barapost: bug fixed -- resuming processing fastq file(s) works fine now;
+
+### Version changes:
+
+1. prober: `1.18.a --> 1.18.b`
+2. barpost: `3.11.h -> 3.11.i`;
+
 ## 2020-03-07 edition.
 
 - prober: missing sequences on resumption and changing packet size fixed;
