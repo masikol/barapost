@@ -351,16 +351,17 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
                     # end if
 
                     # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                    hit_def = hit.find("Hit_def").text
+                    hit_def = hit.find("Hit_def").text.replace(' ', '_')
+                    annotations.append(hit_def)
 
                     curr_acc = sys.intern(hit.find("Hit_accession").text)
                     hit_accs.append( curr_acc ) # get hit accession
                     gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
                     hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
-                    # Get annotation
-                    annotations.append( find_lineage(curr_acc, hit_def, tax_file,
-                        logfile_path) )
+                    # Get taxonomy
+                    find_lineage(curr_acc, hit_def, tax_file,
+                        logfile_path)
 
                     # Update accession dictionary
                     try:

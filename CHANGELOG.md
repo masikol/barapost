@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-04-06 edition.
+
+- prober, barapost: value of HIT_NAME' field in `classification.tsv` is changed: full definition of GenBank record is now specified in the file instead of `<Genus> <species>`;
+
+### Version changes:
+
+1. prober: `1.18.b --> 1.18.c`
+2. barpost: `3.11.i -> 3.11.j`;
+
 ## 2020-03-18 edition.
 
 - prober: taxonomy parsing fixed;

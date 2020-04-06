@@ -13,7 +13,6 @@ from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from src.printlog import printl, err_fmt
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
-from src.lineage import get_lineage
 
 
 def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
@@ -193,8 +192,9 @@ def parse_align_results_xml(xml_text, qual_dict, tax_file, logfile_path):
                 curr_acc = sys.intern(hit.find("Hit_accession").text) # get hit accession
                 hit_accs.append( curr_acc )
 
-                # Get lineage of current hit
-                annotations.append( get_lineage(curr_acc, tax_file, logfile_path) )
+                # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
+                hit_def = hit.find("Hit_def").text.replace(' ', '_')
+                annotations.append(hit_def)
 
                 align_len = hsp.find("Hsp_align-len").text.strip()
                 pident = hsp.find("Hsp_identity").text # get number of matched nucleotides

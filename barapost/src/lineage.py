@@ -37,7 +37,16 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     # Get TaxID of the organism from GenBank summary:
     gb_summary = lingering_https_get_request("www.ncbi.nlm.nih.gov",
         "/nuccore/{}".format(hit_acc), logfile_path, "GenBank summary", hit_acc)
-    taxid = re_search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
+
+    try:
+        taxid = re_search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
+    except AttributeError:
+        print(hit_acc, hit_def)
+        with open("tmp.gbk", 'w') as wf:
+            wf.write(gb_summary)
+        # end with
+        exit(0)
+    # end try
 
     # Get taxonomy page of the organism
     taxonomy_url = "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
@@ -199,47 +208,6 @@ def get_str_to_print(lineage, hit_acc):
         platf_depend_exit(1)
     # end if
 # end def get_str_to_print
-
-
-def get_lineage(hit_acc, tax_file, logfile_path):
-    """
-    Function returnes lineage by given accession from 'taxonomy' DBM file.
-
-    :param hit_acc: hit accession;
-    :type hit_acc: str;
-    :param tax_file: taxonomy file instance;
-    :type tax_file: shelve.DbfilenameShelf;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
-
-    # Retrieve taxonomy from taxonomy file
-    try:
-        if hit_acc in tax_file.keys():
-            lineage = tax_file[hit_acc]
-        # end if
-    except KeyError:
-        printl(logfile_path, err_fmt("{} is not in taxonomy file!".format(hit_acc)))
-        printl(logfile_path, "Please, contact the developer.")
-        platf_depend_exit(1)
-    except OSError as oserr:
-        printl(logfile_path, err_fmt(str(oserr)))
-        platf_depend_exit(1)
-    # end try
-
-    # If we have beautiful formatted taxnonomy -- format it
-    if isinstance(lineage, tuple):
-        return get_str_to_print(lineage, hit_acc)
-    # If we have unformatted custom sequence -- merely return this string
-    elif isinstance(lineage, str):
-        return lineage
-    else:
-    # Execution must not reach here
-        printl(logfile_path, "\nFatal error 8753.")
-        printl(logfile_path, "Please, contact the developer -- it is his fault.")
-        platf_depend_exit(1)
-    # end if
-# end def get_lineage
 
 
 def save_own_seq_taxonomy(seq_name, acc, tax_file):
