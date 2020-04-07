@@ -2,11 +2,13 @@
 # This module defines functions, which are necessary for databse creating.
 
 import os
+import re
 import shelve
 from time import sleep
 from glob import glob
-from threading import Thread, Event
+from xml.etree import ElementTree
 from re import search as re_search
+from threading import Thread, Event
 
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
@@ -34,6 +36,63 @@ if not gzip_util_found:
 # end if
 
 
+def get_record_title_acc(gi, logfile_path):
+    """
+    Function retrieves title (aka definition) and accession
+      of a GenBank record by given GI.
+
+    :param gi: GI number of the record;
+    :type gi: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
+
+    Returns tuple of two elements:
+      (<RECORD_TITLE>, <RECORD_ACCESSION>)
+    """
+
+    # We'll use E-utilities to communicate with GenBank
+
+    eutils_server = "eutils.ncbi.nlm.nih.gov"
+    esummary = "esummary.fcgi" # utility name
+
+    # Configure URL
+    url = "/entrez/eutils/{}?db=nuccore&id={}".format(esummary, gi)
+
+    # Send the request and get the response
+    summary = lingering_https_get_request(eutils_server, url, logfile_path,
+        "e-summary of nuccore record with GI {}".format(gi))
+
+    # Parse XML that we've got
+    root = ElementTree.fromstring(summary)
+
+    # Elements of our insterest are all named "Item",
+    #   but they have different tags.
+    # They are children of element "DocSum", which is
+    #   the first child of root
+    docsum = next(iter(root.getchildren()))
+
+    record_title = None
+    record_acc = None
+
+    # Search for title and accession
+    for item in docsum.iter("Item"):
+        if item.attrib["Name"] == "Title":
+            record_title = item.text
+        elif item.attrib["Name"] == "AccessionVersion":
+            # Remove version just in case
+            record_acc = re.search(r"(.*)\.[0-9]+", item.text).group(1)
+        # end if
+    # end for
+
+    if record_title is None or record_acc is None:
+        printl(logfile_path, "Error 8989: can't access e-summary for '{}'".format(acc))
+        platf_depend_exit(1)
+    # end if
+
+    return record_title, record_acc
+# end get_record_title_acc
+
+
 def search_for_related_replicons(acc, acc_dict, logfile_path):
     """
     Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
@@ -50,76 +109,73 @@ def search_for_related_replicons(acc, acc_dict, logfile_path):
         (<ACCESSION>, <GI_NUMBER>, <RECORD_DEFINITION>)
     """
 
-    # Get the smallest web page that contains BioSample -- GenBank summary:
-    summary_url = "https://www.ncbi.nlm.nih.gov/nuccore/{}?report=docsum&log$=seqview".format(acc)
+    # We will save all titles in order not to duplicate records in our database
+    hit_defs = [get_record_title_acc(acc_dict[acc][0], logfile_path)[0]]
 
-    summary_html = lingering_https_get_request("www.ncbi.nlm.nih.gov",
-        "/nuccore/{}?report=docsum&log$=seqview".format(acc),
-        logfile_path, "Genbank summary", acc)
+    # Elink utility returns links in DB_1, that are connected to given ID in DB_2
+    eutils_server = "eutils.ncbi.nlm.nih.gov"
+    elink = "elink.fcgi"
 
-    # Get reference to BioSample web page:
-    biosample_regex = r"href=\"/(biosample\?LinkName=nuccore_biosample&amp;from_uid=[0-9]+)"
 
-    biosample_match = re_search(biosample_regex, summary_html)
-    if not biosample_match is None:
-        biosample_url = '/' + biosample_match.group(1)
-    else:
+    # = Find BioSample ID =
+
+    # Configure URL
+    nuc2biosmp_url = "/entrez/eutils/{}?dbfrom=nuccore&db=biosample&id={}".format(elink, acc_dict[acc][0])
+
+    # Get XML with our links
+    text_link_to_bsmp = lingering_https_get_request(eutils_server, nuc2biosmp_url,
+        logfile_path, "BioSample page", acc)
+
+    # Parse this XML
+    root = ElementTree.fromstring(text_link_to_bsmp)
+    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+
+    # XML should contain element "LinkSetDb"
+    if linkset is None:
         printl(logfile_path, """Cannot check replicons for '{}':
   there is no BioSample page for this record.""".format(acc))
         return
-    del summary_html # let it go
+    # end if
 
-    # Get BioSample web page:
-    biosample_html = lingering_https_get_request("www.ncbi.nlm.nih.gov", biosample_url,
-        logfile_path, "BioSample", acc)
-    # Get reference to list nucleotide links:
-    nucl_regex = r"href=\"/(nuccore\?LinkName=biosample_nuccore&amp;from_uid=[0-9]+)"
-    nucl_match = re_search(nucl_regex, biosample_html)
-    if not nucl_match is None:
-        nucl_ref = "/" + nucl_match.group(1)
-    else:
+    # Here we have BioSample ID
+    biosmp_id = linkset.find("Link").find("Id").text
+
+
+    # = Find GIs in nuccore assotiated with this BioSample ID =
+
+    # Configure URL
+    biosmp2nuc_url = "/entrez/eutils/{}?dbfrom=biosample&db=nuccore&id={}".format(elink, biosmp_id)
+
+    # Get XML with our links
+    text_link_to_nuc = lingering_https_get_request(eutils_server, biosmp2nuc_url,
+        logfile_path, "Nucleotide links assotiated with BioSample ID {}".format(biosmp_id))
+
+    # Parse this XML
+    root = ElementTree.fromstring(text_link_to_nuc)
+    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+
+    # XML should contain element "LinkSetDb"
+    if linkset is None:
         printl(logfile_path, """Cannot check replicons for '{}':
-  there are no Nucleotide links from BioSample page.""".format(acc))
+  there is no BioSample page for this record.""".format(acc))
         return
     # end if
-    del biosample_html # let it go
 
-    # Get list nucleotide links:
-    nucl_html = lingering_https_get_request("www.ncbi.nlm.nih.gov", nucl_ref,
-        logfile_path, "Nucleotide links", acc)
+    # Collect links
+    for elem in linkset.iter():
 
-    num_links = 0 # number of nucleotide links of on this page
+        if elem.tag == "Id": # element "Id" contains our GI
 
-    # Count these links:
-    while 'ordinalpos={}">'.format(num_links+1) in nucl_html:
-        num_links += 1
-    # end while
+            # Get GI, title and accession:
+            rel_gi = elem.text
+            rel_def, rel_acc = get_record_title_acc(rel_gi, logfile_path)
 
-    # Duplicated records (e.g. from RefSeq) should not be allowed.
-    # This is the list of already encountered record definitions
-    #   (e.g. "Erwinia amylovora strain E-2 plasmid pEa-E-2, complete sequence"):
-    def_list = [ acc_dict[acc][1] ] # "discovered" one is already here
-
-    for ordinalpos in range(1, num_links+1):
-
-        # Get text containing record definition, accession and GI number:
-        payload_regex = r"(ordinalpos={}\"\>.*?GI: \</dt\>\<dd\>[0-9]+)".format(ordinalpos)
-        text = re_search(payload_regex, nucl_html).group(1)
-
-        # Get definition of a record
-        definition = re_search(r"ordinalpos={}\"\>(.+)\</a\>".format(ordinalpos), text).group(1)
-
-        if not definition in def_list:
-
-            def_list.append(definition)
-
-            # Get accession and GI number:
-            rel_acc = re_search(r"Accession: \</dt\>\<dd>(.*?)\.", text).group(1)
-            rel_gi = re_search(r"GI: \</dt\>\<dd\>([0-9]+)", text).group(1)
-
-            acc_dict[rel_acc] = (rel_gi, definition) # update acc_dict
-
-            yield rel_acc, rel_gi, definition
+            # If title is new -- add this record to acc_dict and yield result
+            if not rel_def in hit_defs:
+                hit_defs.append(rel_def)
+                acc_dict[rel_acc] = (rel_gi, rel_def) # update acc_dict
+                yield (rel_acc, rel_gi, rel_def)
+            # end if
         # end if
     # end for
 # end def search_for_related_replicons
@@ -159,6 +215,7 @@ def get_gi_by_acc(acc_dict, logfile_path):
         except AttributeError:
             print("\nParsing error: cannot find replicons related to {}.".format(acc))
             print("Please, contact the developer")
+            platf_depend_exit(1)
         else:
             found_new = False
             for rel_acc, rel_gi, definition in related_repls:
