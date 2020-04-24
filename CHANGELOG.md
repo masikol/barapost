@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-04-24 edition.
+
+- prober: minor fixes. Network error handling and saving BLAST results in .txt files are modified;
+
+### Version changes:
+
+1. prober: `1.18.c -> 1.18.d`;
+
 ## 2020-04-07 edition.
 
 - barapost: searching for related replicons modified. Restriction to 20 first links on page removed;

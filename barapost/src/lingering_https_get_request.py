@@ -44,9 +44,10 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
                 # end if
                 comment_str += '.'
             # end if
+            print()
             printl(logfile_path, "Can't connect to '{}'{}".format(server + url, comment_str))
             printl(logfile_path, str(err) )
-            printl(logfile_path,"""barapost will sleep for 30 seconds and try to connect again.""")
+            printl(logfile_path,"""the program will sleep for 30 seconds and try to connect again.""")
             sleep(30)
         else:
             error = False # if no exception ocured, get out of the loop

@@ -243,10 +243,16 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
                 txt_align_res = lingering_https_get_request(server, retrieve_text_url, logfile_path,
                     "text version of BLAST response")
 
-                txt_hpath = os.path.join(os.path.dirname(logfile_path), "prober_blast_response_{}.txt".format(pack_to_send))
+                # Count already existing plain text files in outdir:
+                is_txt_response = lambda f: False if re_search(r"prober_blast_response_[0-9]+\.txt", f) is None else True
+                outdir_path = os.path.dirname(logfile_path)
+                response_num = len(tuple(filter(is_txt_response, os.listdir(outdir_path))))
+
+                # Curent txt response file will have number 'response_num+1'
+                txt_hpath = os.path.join(outdir_path, "prober_blast_response_{}.txt".format(response_num + 1))
                 # Write text result for a human to read
                 with open(txt_hpath, 'w') as txt_file:
-                    txt_file.write(txt_align_res + '\n')
+                    txt_file.write(txt_align_res)
                 # end with
             # if there are no hits
             else:
