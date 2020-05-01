@@ -5,6 +5,7 @@ import http.client
 from time import sleep
 
 from src.printlog import printl
+from src.platform import platf_depend_exit
 
 
 def lingering_https_get_request(server, url, logfile_path, request_for=None, acc=None):
@@ -33,6 +34,12 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
             conn = http.client.HTTPSConnection(server, timeout=10) # create connection
             conn.request("GET", url) # ask for if there areresults
             response = conn.getresponse() # get the resonse
+
+            if response.code != 200:
+                printl(logfile_path, "Request failed with status code {}: {}".format(response.code, response.reason))
+                platf_depend_exit(1)
+            # end if
+
             resp_content = str(response.read(), "utf-8") # get response text
             conn.close()
         except (OSError, http.client.RemoteDisconnected, socket.gaierror, http.client.CannotSendRequest) as err:

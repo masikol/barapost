@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.d"
+__version__ = "4.5.e"
 # Year, month, day
-__last_update_date__ = "2020-03-03"
+__last_update_date__ = "2020-05-01"
 
 # |===== Check python interpreter version =====|
 
@@ -848,30 +848,32 @@ QL_seqs_fail = sum(map(lambda x: x[1], res_stats))
 align_seqs_fail = sum(map(lambda x: x[2], res_stats))
 
 
-# For printing pretty large numbers
-from src.get_undr_sep_number import get_undr_sep_number
-
 # Print som statistics
-printl(logfile_path, "{} sequences have been processed.".format(get_undr_sep_number(seqs_pass + QL_seqs_fail + align_seqs_fail)))
+space_sep_num = "{:,}".format(seqs_pass + QL_seqs_fail + align_seqs_fail).replace(',', ' ')
+printl(logfile_path, "{} sequences have been processed.".format(space_sep_num))
 if QL_seqs_fail > 0:
     len_str = "" if min_qlen is None else " or are shorter than {} b.p".format(min_qlen)
-    printl(logfile_path, "{} of them have quality < Q{}{}.".format(get_undr_sep_number(QL_seqs_fail),
+    space_sep_num = "{:,}".format(QL_seqs_fail).replace(',', ' ')
+    printl(logfile_path, "{} of them have quality < Q{}{}.".format(space_sep_num,
         round(min_qual, 2), len_str))
 # end if
 if align_seqs_fail > 0:
+    space_sep_num = "{:,}".format(align_seqs_fail).replace(',', ' ')
     if not min_pident is None and not min_coverage is None:
         printl(logfile_path, """{} of them had aligned to their best hit with identity < {}%
-  or with coverage < {}%""".format(get_undr_sep_number(align_seqs_fail),
+  or with coverage < {}%""".format(space_sep_num,
             round(min_pident * 100, 2), round(min_coverage * 100, 2)))
     elif not min_pident is None and min_coverage is None:
-        printl(logfile_path, "{} of them had aligned to their best hit with identity < {}%".format(get_undr_sep_number(align_seqs_fail),
+        printl(logfile_path, "{} of them had aligned to their best hit with identity < {}%".format(space_sep_num,
                 round(min_pident * 100, 2)))
     elif min_pident is None and not min_coverage is None:
-        printl(logfile_path, "{} of them had aligned to their best hit with coverage < {}%".format(get_undr_sep_number(align_seqs_fail),
+        printl(logfile_path, "{} of them had aligned to their best hit with coverage < {}%".format(space_sep_num,
                 round(min_coverage * 100, 2)))
     # end if
 # end if
-printl(logfile_path, "{} sequences have passed filters.".format(get_undr_sep_number(seqs_pass)))
+
+space_sep_num = "{:,}".format(seqs_pass).replace(',', ' ')
+printl(logfile_path, "{} sequences have passed filters.".format(space_sep_num))
 
 fastqa_res_files = tuple(filter(is_fastqa, glob(os.path.join(outdir_path, '*'))))
 

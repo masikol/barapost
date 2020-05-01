@@ -1,5 +1,17 @@
 # "Barapost" changelog
 
+## 2020-05-01 edition.
+
+- prober, barapost: got rid of GI numbers in `hits_to_download.tsv`. Backward compatibility with old version of such files is keeped.
+- barapost: a possibility to directly specify accessions of GenBank records meant to be downloaded and included in database added (`-s` option).
+- all: minor performance fixes;
+
+### Version changes:
+
+1. prober: `1.18.d -> 1.18.e`;
+2. barapost: `3.12.a --> 3.13.a`;
+3. sorter: `4.5.d --> 4.5.e`;
+
 ## 2020-04-24 edition.
 
 - prober: minor fixes. Network error handling and saving BLAST results in .txt files are modified;
@@ -356,3 +368,5 @@ Parallel FAST5 sorting is not embedded and perhaps won't be -- it gives no perfo
 2. barapsot: `3.5.j --> 3.6.a`;
 3. sorter: `3.3.d --> 3.4.a`;
 4. summarizer: `1.0.d --> 1.1.a`;
+
+## Unfortunately, I hadn't been recording the changelog before 2019-11-17 :(

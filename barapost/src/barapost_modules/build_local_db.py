@@ -2,6 +2,7 @@
 # This module defines functions, which are necessary for databse creating.
 
 import os
+import sys
 import re
 import shelve
 from time import sleep
@@ -12,6 +13,8 @@ from threading import Thread, Event
 
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
+
+from src.barapost_modules.barapost_spec import configure_acc_dict
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
@@ -36,13 +39,13 @@ if not gzip_util_found:
 # end if
 
 
-def get_record_title_acc(gi, logfile_path):
+def get_record_title(record_id, logfile_path):
     """
     Function retrieves title (aka definition) and accession
-      of a GenBank record by given GI.
+      of a GenBank record by given accession or GI number.
 
-    :param gi: GI number of the record;
-    :type gi: str;
+    :param record_id: accession of GI number of the record;
+    :type record_idi: str;
     :param logfile_path: path to log file;
     :type logfile_path: str;
 
@@ -56,11 +59,11 @@ def get_record_title_acc(gi, logfile_path):
     esummary = "esummary.fcgi" # utility name
 
     # Configure URL
-    url = "/entrez/eutils/{}?db=nuccore&id={}".format(esummary, gi)
+    url = "/entrez/eutils/{}?db=nuccore&id={}".format(esummary, record_id)
 
     # Send the request and get the response
     summary = lingering_https_get_request(eutils_server, url, logfile_path,
-        "e-summary of nuccore record with GI {}".format(gi))
+        "e-summary of nuccore record {}".format(record_id))
 
     # Parse XML that we've got
     root = ElementTree.fromstring(summary)
@@ -85,32 +88,32 @@ def get_record_title_acc(gi, logfile_path):
     # end for
 
     if record_title is None or record_acc is None:
-        printl(logfile_path, "Error 8989: can't access e-summary for '{}'".format(acc))
+        printl(logfile_path, "Error 8989: can't access e-summary for '{}'".format(record_acc))
         platf_depend_exit(1)
     # end if
 
     return record_title, record_acc
-# end get_record_title_acc
+# end get_record_title
 
 
-def search_for_related_replicons(acc, acc_dict, logfile_path):
+def get_related_replicons(acc, acc_dict, logfile_path):
     """
     Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
       which are related to Genbank record "discovered" by prober.py.
 
     :param acc: accession of a record "discovered" by prober.py;
     :type acc: str;
-    :param acc_dict: dictionary {<ACCESSION>: (<GI_NUMBER>, <HIT_DEFINITION>)};
+    :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
     :type acc_dict: dict<str: tuple<str>>;
     :param logfile_path: path to log file;
     :type logfile_path: str;
 
     Yields tuples of a following structure:
-        (<ACCESSION>, <GI_NUMBER>, <RECORD_DEFINITION>)
+        (<ACCESSION>, <RECORD_DEFINITION>)
     """
 
     # We will save all titles in order not to duplicate records in our database
-    hit_defs = [get_record_title_acc(acc_dict[acc][0], logfile_path)[0]]
+    hit_defs = [get_record_title(acc, logfile_path)[0]]
 
     # Elink utility returns links in DB_1, that are connected to given ID in DB_2
     eutils_server = "eutils.ncbi.nlm.nih.gov"
@@ -120,7 +123,7 @@ def search_for_related_replicons(acc, acc_dict, logfile_path):
     # = Find BioSample ID =
 
     # Configure URL
-    nuc2biosmp_url = "/entrez/eutils/{}?dbfrom=nuccore&db=biosample&id={}".format(elink, acc_dict[acc][0])
+    nuc2biosmp_url = "/entrez/eutils/{}?dbfrom=nuccore&db=biosample&id={}".format(elink, acc)
 
     # Get XML with our links
     text_link_to_bsmp = lingering_https_get_request(eutils_server, nuc2biosmp_url,
@@ -132,8 +135,8 @@ def search_for_related_replicons(acc, acc_dict, logfile_path):
 
     # XML should contain element "LinkSetDb"
     if linkset is None:
-        printl(logfile_path, """Cannot check replicons for '{}':
-  there is no BioSample page for this record.""".format(acc))
+        printl(logfile_path, "\nCannot check replicons for '{}': \
+there is no BioSample page for this record.".format(acc))
         return
     # end if
 
@@ -168,22 +171,23 @@ def search_for_related_replicons(acc, acc_dict, logfile_path):
 
             # Get GI, title and accession:
             rel_gi = elem.text
-            rel_def, rel_acc = get_record_title_acc(rel_gi, logfile_path)
+            rel_def, rel_acc = get_record_title(rel_gi, logfile_path)
 
             # If title is new -- add this record to acc_dict and yield result
             if not rel_def in hit_defs:
                 hit_defs.append(rel_def)
-                acc_dict[rel_acc] = (rel_gi, rel_def) # update acc_dict
-                yield (rel_acc, rel_gi, rel_def)
+                # acc_dict[rel_acc] = rel_def # update acc_dict
+                yield (rel_acc, rel_def)
             # end if
         # end if
     # end for
-# end def search_for_related_replicons
+# end def get_related_replicons
 
 
-def get_gi_by_acc(acc_dict, logfile_path):
+def search_for_related_replicons(acc_dict, logfile_path):
     """
-    Function returns GI number that corresponds to accession passed to it.
+    Function searches for replicons related to those in 'hits_to_download.tsv'
+      of specified with '-s' option.
 
     :param acc_dict: dictionary comntaining accession data of hits;
     :type acc_dict: dict<str: tuple<str, str, int>>;
@@ -193,38 +197,27 @@ def get_gi_by_acc(acc_dict, logfile_path):
 
     printl(logfile_path, "\n{} - Searching for related replicons...".format(getwt()))
 
-    gi_list = list() # list for GI numbers
     start_accs = tuple(acc_dict.keys()) # accessions, which were "discoveted" by prober
 
     for i, acc in enumerate(start_accs):
 
-        println(logfile_path, "\r  {}:".format(acc, i+1, len(start_accs)) + ' '*5)
-
-        if not acc_dict[acc][0] in gi_list:
-            try:
-                gi_list.append(acc_dict[acc][0]) # fill the GI list
-            except KeyError:
-                printl(logfile_path, err_fmt("GI number error. Please, contact the developer"))
-                platf_depend_exit(1)
-            # end try
-        # end if
+        println(logfile_path, "\r  {}:".format(acc, i+1, len(start_accs)) + ' '*10 + '\b'*10)
 
         # Search for related replicons:
         try:
-            related_repls = search_for_related_replicons(acc, acc_dict, logfile_path)
+            related_repls = get_related_replicons(acc, acc_dict, logfile_path)
         except AttributeError:
             print("\nParsing error: cannot find replicons related to {}.".format(acc))
             print("Please, contact the developer")
             platf_depend_exit(1)
         else:
             found_new = False
-            for rel_acc, rel_gi, definition in related_repls:
-                # Fill GI list with GI numbers of related replicons
-                if not rel_gi in gi_list:
+            for rel_acc, definition in related_repls:
+                # Fill acc_dict with accessions and names of related replicons
+                if not rel_acc in acc_dict.keys():
+                    acc_dict[rel_acc] = definition
                     found_new = True
-                    gi_list.append(rel_gi)
                     println(logfile_path, "\n{} - {}".format(rel_acc, definition))
-                    # print(gi_list)
                 # end if
             # end for
             if found_new:
@@ -240,17 +233,16 @@ def get_gi_by_acc(acc_dict, logfile_path):
         printl(logfile_path, "\r{} - No related replicons found.".format(getwt()))
     # end if
 
-    return gi_list
-# end def get_gi_by_acc
+# end def search_for_related_replicons
 
 
-def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
+def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
     """
-    Function downloads set of records from Genbank according to list of GIs passed to it.
+    Function downloads set of records from Genbank according to accessions passed to it.
     Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
 
-    :param gi_list: list of GI numbers of sequences meant to be downloaded;
-    :type gi_list: list<str>;
+    :param acc_dict: dictionary comntaining accession data of hits;
+    :type acc_dict: dict<str: tuple<str, str, int>>;
     :param db_dir: path to directory in which downloaded FASTA file will be placed;
     :type db_dir: str;
     :param logfile_path: path to log file;
@@ -260,13 +252,15 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
     """
 
     local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
-    if len(gi_list) == 0: # just in case
+
+    acc_tuple = tuple(acc_dict.keys())
+    if len(acc_tuple) == 0: # just in case
         return local_fasta
     # end if
 
-    gis_del_comma = ','.join(gi_list) # GI numbers must be separated by comma in url
-    # E-utilities provide a possibility to download records from Genbank by GI numbers.
-    retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(gis_del_comma)
+    accs_del_comma = ','.join(acc_tuple) # GI numbers must be separated by comma in url
+    # E-utilities provide a possibility to download records from Genbank by accessions.
+    retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
     
     stop_wait = Event() # a flag variable that will signal waiter-function to stop executing
 
@@ -331,23 +325,63 @@ def retrieve_fastas_by_gi(gi_list, db_dir, logfile_path):
     println(logfile_path, "{} - Downloading is completed".format(getwt()))
 
     return local_fasta
-# end def retrieve_fastas_by_gi
+# end def retrieve_fastas_by_acc
 
 
-def build_local_db(acc_dict, tax_annot_res_dir, acc_fpath, your_own_fasta_lst, logfile_path):
+def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
+    """
+    Function checks existance of GenBank records that correspond to accessions
+      specified with '-s' option. After checking the function fulills 'acc_fict'.
+
+    :param accs_to_download: list of accessions from command line ('-s');
+    :type accs_to_download: list<str>;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
+    :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
+    :type acc_dict: dict<str: tuple<str>>;
+    """
+
+    check_connection("https://www.ncbi.nlm.nih.gov/")
+
+    printl(logfile_path, "{} - Verifying '-s' accessions...".format(getwt()))
+    sys.stdout.write("0/{}".format(len(accs_to_download)))
+
+    for i, acc in enumerate(accs_to_download):
+
+        server = "eutils.ncbi.nlm.nih.gov"
+        url = "/entrez/eutils/esummary.fcgi?db=nuccore&id={}".format(acc)
+        text = lingering_https_get_request(server, url, logfile_path, "record's name", acc)
+
+        name = re_search(r"\<Item Name=\"Title\" Type=\"String\"\>(.+)\</Item\>", text)
+
+        if name is None:
+            printl(logfile_path, "Cannot find GenBank record with accession '{}'".format(acc))
+            platf_depend_exit(1)
+        else:
+            name = name.group(1)
+        # end if
+
+        acc_dict[acc] = name
+        sys.stdout.write("\r{}/{}".format(i+1, len(accs_to_download)))
+    # end for
+    println(logfile_path, "\n{} - OK.".format(getwt()))
+
+# end def verify_cl_accessions
+
+
+def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path):
     """
     Function creates a database with utilities from 'blast+' toolkit
         according to acc_dict and your_own_fasta_lst.
 
-    :param acc_dict: a dictionary of accessions and record names
-        Accession are keys, record names are values;
-    :type acc_dict: dict<str, str>;
     :param tax_annot_res_dir: path to current result directory (each processed file has it's own result directory);
     :type tax_annot_res_dir: str;
     :param acc_fpath: path to file "hits_to_download.tsv";
     :type acc_fpath: str;
     :param your_own_fasta_lst: list of user's fasta files to be included in database;
     :type your_own_fasta_lst: list<str>;
+    :param accs_to_download: list of accessions from command line ('-s');
+    :type accs_to_download: list<str>;
     :param logfile_path: path to logfile;
     :type logfile_path: str;
 
@@ -370,8 +404,8 @@ def build_local_db(acc_dict, tax_annot_res_dir, acc_fpath, your_own_fasta_lst, l
             else:
                 printl(logfile_path, "\nDatabase exists in following directory:")
                 printl(logfile_path, "  '{}'".format(os.path.abspath(db_dir)))
-                reply = input("""\nPress ENTER to continue aligning using this database.
-Enter 'r' to remove all files in this directory and build the database from the beginning:>>""")
+                reply = input("""\nPress ENTER to use existing database.
+Enter 'r' to remove all files in this directory and create the database from the beginning:>>""")
 
                 if reply == "":
                     # Do not build a database, just return path to it.
@@ -414,6 +448,13 @@ Enter 'r' to remove all files in this directory and build the database from the 
         # end while
     # end try
 
+    # It is a dictionary of accessions and record names.
+    # Accessions are keys, record names are values.
+    acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path)
+
+    if len(accs_to_download) != 0:
+        verify_cl_accessions(accs_to_download, logfile_path, acc_dict)
+    # end if
 
     # Retrieve already existing taxonomy data from taxonomy file
     with shelve.open(taxonomy_path, 'c') as tax_file:
@@ -422,24 +463,23 @@ Enter 'r' to remove all files in this directory and build the database from the 
 
     # If accession file does not exist and execution has reached here -- everything is OK --
     #    we are building a database from user's files only.
-    if not acc_fpath is None:
+    if len(acc_dict) != 0:
         print()
-        check_connection("https://www.ncbi.nlm.nih.gov/")
 
         printl(logfile_path, """\nFollowing sequences (and all replicons related to them)
   will be downloaded from Genbank for further taxonomic classification
   on your local machine:\n""")
         for i, acc in enumerate(acc_dict.keys()):
-            printl(logfile_path, " {}. {} - '{}'".format(i+1, acc, acc_dict[acc][1]))
+            printl(logfile_path, " {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
         # end for
 
         # Get list of GI numbers.
-        gi_list = get_gi_by_acc(acc_dict, logfile_path)
+        search_for_related_replicons(acc_dict, logfile_path)
 
         printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
         with shelve.open(taxonomy_path, 'c') as tax_file:
             for i, acc in enumerate(acc_dict.keys()):
-                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*5)
+                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
                 if not acc in tax_exist_accs:
                     download_lineage(acc, acc_dict[acc][1], tax_file, logfile_path)
                 # end if
@@ -449,7 +489,7 @@ Enter 'r' to remove all files in this directory and build the database from the 
         printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
 
-    local_fasta = retrieve_fastas_by_gi(gi_list, db_dir, logfile_path) # download fasta file
+    local_fasta = retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path) # download fasta file
 
     # 'lcl|ACCESSION...' entries can be given with '.1'
     #   (or '.2', whatever) terminus by blastn.

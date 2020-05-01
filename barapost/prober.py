@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.18.d"
+__version__ = "1.18.e"
 # Year, month, day
-__last_update_date__ = "2020-04-24"
+__last_update_date__ = "2020-05-01"
 
 # |===== Check python interpreter version =====|
 
@@ -422,7 +422,7 @@ printl(logfile_path, '-'*30)
 
 
 # Dictionary of accessions and record names.
-# Accessions are keys, values are tuples: (GI_number, record_name, number_of_hits).
+# Accessions are keys, values are tuples: (record_name, number_of_hits).
 acc_dict = dict()
 
 # Counter of sequences processed during current run
@@ -566,7 +566,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Write classification to TSV file
         write_classification(result_tsv_lines, tsv_res_path)
-        # Write accessions and GI numbers of hits to TSV file 'hits_to_download.tsv'
+        # Write accessions and names of hits to TSV file 'hits_to_download.tsv'
         write_hits_to_download(acc_dict, acc_fpath)
 
         seqs_processed += len( packet["qual"] )
@@ -585,15 +585,13 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 #            |===== End of the kernel loop =====|
 
 
-# We want to show large number with underscores
-from src.get_undr_sep_number import get_undr_sep_number
-
 # Print some summary:
 glob_seqs_processed += seqs_processed
 str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
 
 printl(logfile_path, '-'*20+'\n')
-printl(logfile_path, " {} sequences have been processed{}\n".format(get_undr_sep_number(glob_seqs_processed),
+space_sep_num = "{:,}".format(glob_seqs_processed).replace(',', ' ')
+printl(logfile_path, " {} sequences have been processed{}\n".format(space_sep_num,
     str_about_prev_runs))
 
 printl(logfile_path, "Here are Genbank records that can be used for further sorting by 'barapost.py'.")
@@ -602,14 +600,15 @@ printl(logfile_path, "They are sorted by their occurence in probing batch:")
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
 #   [2] -- get 3-rd element (occurence)
-for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
-    s_letter = "s" if other_info[2] > 1 else ""
-    printl(logfile_path, " {} hit{} - {}, '{}'".format(get_undr_sep_number(other_info[2]),
+for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
+    s_letter = "s" if other_info[1] > 1 else ""
+    space_sep_num = "{:,}".format(other_info[1]).replace(',', ' ')
+    printl(logfile_path, " {} hit{} - {}, '{}'".format(space_sep_num,
         s_letter, acc, other_info[1]))
 # end for
 
 # Print number of unkmown sequences, if there are any:
-unkn_num = glob_seqs_processed - sum( map(lambda x: x[2], acc_dict.values()) )
+unkn_num = glob_seqs_processed - sum( map(lambda x: x[1], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
     printl(logfile_path, " {} sequence{} - No significant similarity found".format(unkn_num, s_letter))

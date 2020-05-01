@@ -181,7 +181,13 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                     for line in local_files_filtered:
                         vals = line.split('\t')
                         acc = sys.intern(vals[0].strip())
-                        acc_dict[acc] = [ vals[1].strip(), vals[2].strip(), int(vals[3].strip()) ]
+                        if len(vals) == 3:
+                            acc_dict[acc] = [ vals[1].strip(), int(vals[2].strip()) ]
+                        elif len(vals) == 4: # backward compatibility
+                            acc_dict[acc] = [ vals[2].strip(), int(vals[3].strip()) ]
+                        else:
+                            raise IndexError
+                        # end if
                     # end for
                 # end with
 
@@ -220,9 +226,9 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                 # end while
             else:
                 printl(logfile_path, "\nHere are Genbank records encountered during previous run:")
-                for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
-                    s_letter = "s" if other_info[2] > 1 else ""
-                    printl(logfile_path, " {} hit{} - {}, '{}'".format(other_info[2], s_letter, acc, other_info[1]))
+                for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
+                    s_letter = "s" if other_info[1] > 1 else ""
+                    printl(logfile_path, " {} hit{} - {}, '{}'".format(other_info[1], s_letter, acc, other_info[0]))
                 # end for
                 print('-'*20)
             # end try
@@ -356,8 +362,6 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
 
                     curr_acc = sys.intern(hit.find("Hit_accession").text)
                     hit_accs.append( curr_acc ) # get hit accession
-                    gi_patt = r"gi\|([0-9]+)" # pattern for GI number finding
-                    hit_gi = re_search(gi_patt, hit.find("Hit_id").text).group(1)
 
                     # Get taxonomy
                     find_lineage(curr_acc, hit_def, tax_file,
@@ -365,9 +369,9 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
 
                     # Update accession dictionary
                     try:
-                        acc_dict[curr_acc][2] += 1
+                        acc_dict[curr_acc][1] += 1
                     except KeyError:
-                        acc_dict[curr_acc] = [hit_gi, hit_def, 1]
+                        acc_dict[curr_acc] = [hit_def, 1]
                     # end try
 
                     align_len = hsp.find("Hsp_align-len").text.strip()
@@ -415,18 +419,18 @@ def write_hits_to_download(acc_dict, acc_file_path):
 
     # Rewrite head:
     with open(acc_file_path, 'w') as acc_file:
-        acc_file.write("# Here are accessions, GI numbers and descriptions of Genbank records that can be used for sorting by 'barapost.py'\n")
+        acc_file.write("# Here are accessions and names of Genbank records that can be used for sorting by 'barapost.py'\n")
         acc_file.write("# Values in this file are delimited by tabs.\n")
         acc_file.write("# You are welcome to edit this file by adding,\n")
         acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")
         acc_file.write("# Lines muted with '#' won't be noticed by 'barapost.py'.\n")
         acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
         acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
-        acc_file.write('\t'.join( ["ACCESSION", "GI_NUMBER", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
+        acc_file.write('\t'.join( ["ACCESSION", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
 
         # Append updated information:
-        for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][2]):
-            acc_file.write('\t'.join( (acc, other_info[0], other_info[1], str(other_info[2]))) + '\n')
+        for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
+            acc_file.write('\t'.join( (acc, other_info[0], str(other_info[1]))) + '\n')
         # end for
     # end with
 # end def write_hits_to_download

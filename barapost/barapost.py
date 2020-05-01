@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.12.a"
+__version__ = "3.13.a"
 # Year, month, day
-__last_update_date__ = "2020-04-07"
+__last_update_date__ = "2020-05-01"
 
 # |===== Check python interpreter version =====|
 
@@ -68,8 +68,10 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-a (--algorithm) --- BLASTn algorithm to use for aligning.
    Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
    Default is 0 (megaBlast);\n""")
-    print("""-l (--local-fasta-to-db) --- your own FASTA file that will be included in
+    print("""-l (--local-fasta-to-db) --- your own (local) FASTA file that will be included in
    downloaded database, which "barapost.py" creates;\n""")
+    print("""-s (--accession) --- accession(s) of GenBank record to download and
+   include in database. Multiple accession should be separated by comma without whitespaces;""")
     print("-t (--threads) --- number of CPU threads to use;")
 
     if "--help" in sys.argv[1:]:
@@ -111,9 +113,9 @@ from src.printlog import getwt, get_full_time, printn, printl, println, err_fmt
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:p:a:r:l:t:",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:p:a:r:l:t:s:",
         ["help", "version", "indir=", "packet-size=", "algorithm=", "taxannot-resdir=",
-        "local-fasta-to-bd=", "threads="])
+        "local-fasta-to-bd=", "threads=", "accession="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -128,6 +130,7 @@ packet_size = 100
 blast_algorithm = "megaBlast"
 tax_annot_res_dir = "barapost_result" # directory with taxonomic annotation results
 your_own_fasta_lst = list() # list os user's fasta files to be included in database
+accs_to_download = list() # list of accessions of GenBank records to download
 n_thr = 1 # number of threads
 
 # Add positional arguments to fq_fa_list
@@ -214,6 +217,12 @@ for opt, arg in opts:
         # end if
 
         your_own_fasta_lst.append(os.path.abspath(arg))
+
+    elif opt in ("-s", "--accession"):
+
+        for acc in arg.split(','):
+            accs_to_download.append(acc.partition(".")[0])
+        # end for
 
     elif opt in ("-a", "--algorithm"):
         if not arg in ("0", "1", "2"):
@@ -326,6 +335,10 @@ for utility in ("blastn"+exe_ext, "makeblastdb"+exe_ext, "makembindex"+exe_ext):
 acc_fpath = os.path.join(tax_annot_res_dir, "hits_to_download.tsv")
 acc_file_exists = os.path.exists(acc_fpath)
 
+if not acc_file_exists:
+    acc_fpath = None
+# end if
+
 db_exists = os.path.exists( os.path.join(tax_annot_res_dir, "local_database") )
 if db_exists:
     db_exists = db_exists and len(os.listdir(os.path.join(tax_annot_res_dir, "local_database"))) != 0
@@ -344,7 +357,7 @@ if not os.path.exists(tax_annot_res_dir):
 # end if
 
 # Check if there is a way to create a databse (or to use old one):
-if not acc_file_exists and not db_exists and len(your_own_fasta_lst) == 0:
+if not acc_file_exists and not db_exists and len(your_own_fasta_lst) == 0 and len(accs_to_download) == 0:
 
     print(err_fmt("no way to create a database:"))
     print("1. Database in directory '{}' does not exist.".format(os.path.join(tax_annot_res_dir,
@@ -393,11 +406,18 @@ with open(logfile_path, 'a') as logfile: # write paths to all input files to log
     # end for
 # end with
 
+if len(accs_to_download) != 0:
+    print("""\nFollowing GenBank records were specified in command line
+  and will be downloaded and included in database:""")
+    for i, acc in enumerate(accs_to_download):
+        print("  {}. {}".format(i+1, acc))
+# end if
+
 if not len(your_own_fasta_lst) == 0:
     preposition = " besides downloaded ones" if not acc_fpath is None else ""
-    printl(logfile_path, "\n Following FASTA files will be included in database{}:".format(preposition))
+    printl(logfile_path, "\nFollowing FASTA files will be included in database{}:".format(preposition))
     for i, path in enumerate(your_own_fasta_lst):
-        printl(logfile_path, "   {}. '{}'".format(i+1, path))
+        printl(logfile_path, "  {}. '{}'".format(i+1, path))
     # end for
 # end if
 
@@ -419,19 +439,14 @@ else:
     use_index = "false"
 # end if
 
-from src.barapost_modules.barapost_spec import configure_acc_dict
-
-# It is a dictionary of accessions and record names.
-# Accessions are keys, tuples of GI numbers and record names are values.
-acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path)
 
 from src.barapost_modules.build_local_db import build_local_db
 
 # Build a database
-local_fasta = build_local_db(acc_dict,
-    tax_annot_res_dir,
+local_fasta = build_local_db(tax_annot_res_dir,
     acc_fpath,
     your_own_fasta_lst,
+    accs_to_download,
     logfile_path)
 
 if not os.path.exists(local_fasta):

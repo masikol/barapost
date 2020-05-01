@@ -7,7 +7,6 @@ from re import search as re_search
 
 import http.client
 import urllib.parse
-import urllib.request
 
 from src.lingering_https_get_request import lingering_https_get_request
 
