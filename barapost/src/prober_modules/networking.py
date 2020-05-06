@@ -137,7 +137,7 @@ def send_request(request, pack_to_send, packet_size, filename, tmp_fpath, logfil
             response_text = str(response.read(), "utf-8") # get response text
         except OSError as oserr:
             printl(logfile_path, "{} - 'https://blast.ncbi.nlm.nih.gov' is not available.".format(getwt()))
-            printl(logfile_path,  str(err) )
+            printl(logfile_path,  str(oserr) )
             printl(logfile_path, "barapost will try to connect again in 30 seconds...\n")
             sleep(30)
 

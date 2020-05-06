@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-05-06 edition.
+
+- prober: behaviour `-x` is modified: prober now prunes sequences from both ends instead of cutting off 3'-end and leaving 5'-end;
+- prober: minor durability fix;
+
+### Version changes:
+
+1. prober: `1.18.e -> 1.10.a`;
+
 ## 2020-05-01 edition.
 
 - prober, barapost: got rid of GI numbers in `hits_to_download.tsv`. Backward compatibility with old version of such files is keeped.

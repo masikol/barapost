@@ -165,7 +165,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                     # end if
                 # end while
             else:
-                printl(logfile_path, "Last submitted sequence: " + last_seq_id)
+                printl(logfile_path, "Last classified sequence: " + last_seq_id)
                 printl(logfile_path, "{} sequences have been already processed".format(num_done_seqs))
             # end try
         # end if
