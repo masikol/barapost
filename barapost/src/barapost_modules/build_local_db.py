@@ -5,6 +5,7 @@ import os
 import sys
 import re
 import shelve
+from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from time import sleep
 from glob import glob
 from xml.etree import ElementTree
@@ -261,68 +262,94 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
     accs_del_comma = ','.join(acc_tuple) # GI numbers must be separated by comma in url
     # E-utilities provide a possibility to download records from Genbank by accessions.
     retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
-    
-    stop_wait = Event() # a flag variable that will signal waiter-function to stop executing
 
-    def download_waiter(stop_wait):
-        """
-        Function waits untill 'local_fasta' file is downloaded.
-        It prints size of downloaded data to console during downloading.
-        This function just waits -- it won't bring you the menu :).
-        """
-        # Wait untill downloading starts
-        while not os.path.exists(local_fasta):
-            if not stop_wait.is_set():
-                return
-            # end if
-            sleep(1)
-        # end while
+    # GNU wget utility is safer, but there can be presence of absence of it :)
+    wget_util = "wget"
+    util_found = False
+    for directory in os.environ["PATH"].split(os.pathsep):
+        if os.path.isdir(directory) and wget_util in os.listdir(directory):
+            util_found = True
+            break
+        # end if
+    # end for
 
-        MB_size = 1024**2 # we will divide by it to get megabytes
+    printl(logfile_path, "\n{} - Downloading reference sequences to be included in the database...".format(getwt()))
 
-        while stop_wait.is_set():
-            # Get size of downloaded data
-            fsize = round(os.path.getsize(local_fasta) / MB_size, 1) # get megabytes
-            printn("\r{} - {} MB downloaded ".format(getwt(), fsize))
-            sleep(1) # instant updates are not necessary
-        # end while
+    if util_found:
+        # If we have wget -- just use it
+
+        wget_cmd = 'wget "{}" -O {}'.format(retrieve_url, local_fasta)
+        pipe = sp_Popen(wget_cmd, shell=True)
+        pipe.communicate()
+        if pipe.returncode != 0:
+            printl(logfile_path, err_fmt("error while downloading reference sequences"))
+            platf_depend_exit(pipe.returncode)
+        # end if
+
+    else:
+        # If there are no wget -- we will download sequences with Python disposal
         
-        # Print total size of downloaded file (it can be deleted by this time)
-        try:
-            fsize = round(os.path.getsize(local_fasta) / MB_size, 1)
-        except OSError:
-            # We can pass this ecxeption -- we do delete this file if downloading crushes
-            # And this function just waits :)
-            pass
-        # end try
-        printl(logfile_path, "\r{} - {} MB downloaded ".format(getwt(), fsize))
-    # end def download_waiter
+        stop_wait = Event() # a flag variable that will signal waiter-function to stop executing
 
-    error = True
-    while error:
-        try:
-            waiter = Thread(target=download_waiter, args=(stop_wait,)) # create thread
-            stop_wait.set() # raise the flag
-            waiter.start() # start waiting
-            printl(logfile_path, "\n{} - Downloading reference sequences to be included in the database...".format(getwt()))
-            urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
-        except Exception as err:
-            printl(logfile_path, err_fmt("error while downloading fasta file"))
-            printl(logfile_path,  str(err) )
-            printl(logfile_path, "'barapost.py' will try again in 30 seconds")
-            if os.path.exists(local_fasta):
-                os.unlink(local_fasta)
-            # end if
-            sleep(30)
-        else:
-            error = False
-        finally:
-            stop_wait.clear() # lower the flag
-            waiter.join() # main thread will wait until waiter function ends it's work
-        # end try
-    # end while
+        def download_waiter(stop_wait):
+            """
+            Function waits untill 'local_fasta' file is downloaded.
+            It prints size of downloaded data to console during downloading.
+            This function just waits -- it won't bring you the menu :).
+            """
+            # Wait untill downloading starts
+            while not os.path.exists(local_fasta):
+                if not stop_wait.is_set():
+                    return
+                # end if
+                sleep(1)
+            # end while
 
-    println(logfile_path, "{} - Downloading is completed".format(getwt()))
+            MB_size = 1024**2 # we will divide by it to get megabytes
+
+            while stop_wait.is_set():
+                # Get size of downloaded data
+                fsize = round(os.path.getsize(local_fasta) / MB_size, 1) # get megabytes
+                printn("\r{} - {} MB downloaded ".format(getwt(), fsize))
+                sleep(1) # instant updates are not necessary
+            # end while
+            
+            # Print total size of downloaded file (it can be deleted by this time)
+            try:
+                fsize = round(os.path.getsize(local_fasta) / MB_size, 1)
+            except OSError:
+                # We can pass this ecxeption -- we do delete this file if downloading crushes
+                # And this function just waits :)
+                pass
+            # end try
+            printl(logfile_path, "\r{} - {} MB downloaded ".format(getwt(), fsize))
+        # end def download_waiter
+
+        error = True
+        while error:
+            try:
+                waiter = Thread(target=download_waiter, args=(stop_wait,)) # create thread
+                stop_wait.set() # raise the flag
+                waiter.start() # start waiting
+                urllib.request.urlretrieve(retrieve_url, local_fasta) # retrieve FASTA file
+            except Exception as err:
+                printl(logfile_path, err_fmt("error while downloading fasta file"))
+                printl(logfile_path,  str(err) )
+                printl(logfile_path, "'barapost.py' will try again in 30 seconds")
+                if os.path.exists(local_fasta):
+                    os.unlink(local_fasta)
+                # end if
+                sleep(30)
+            else:
+                error = False
+            finally:
+                stop_wait.clear() # lower the flag
+                waiter.join() # main thread will wait until waiter function ends it's work
+            # end try
+        # end while
+    # end if
+
+    printl(logfile_path, "{} - Downloading is completed".format(getwt()))
 
     return local_fasta
 # end def retrieve_fastas_by_acc
@@ -466,7 +493,7 @@ Enter 'r' to remove all files in this directory and create the database from the
     if len(acc_dict) != 0:
         print()
 
-        printl(logfile_path, """\nFollowing sequences (and all replicons related to them)
+        printl(logfile_path, """Following sequences (and all replicons related to them)
   will be downloaded from Genbank for further taxonomic classification
   on your local machine:\n""")
         for i, acc in enumerate(acc_dict.keys()):
@@ -495,7 +522,7 @@ Enter 'r' to remove all files in this directory and create the database from the
     #   (or '.2', whatever) terminus by blastn.
     # There is no '.1' terminus in taxonomy file.
     # Therefore we will prune accessions in advance.
-    println(logfile_path, "\n\n{} - Formatting accessions...".format(getwt()))
+    println(logfile_path, "{} - Formatting accessions...".format(getwt()))
     corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
     with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
         for line in source_file:
@@ -642,7 +669,7 @@ Enter 'r' to remove all files in this directory and create the database from the
         platf_depend_exit(exit_code)
     # end if
     
-    printl(logfile_path, """{} - Database is successfully created:
+    printl(logfile_path, """\033[1A{} - Database is successfully created:
   '{}'\n""".format(getwt(), local_fasta))
 
     printl(logfile_path, "{} - Database index creating started".format(getwt()))

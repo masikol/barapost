@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-05-10
+
+- barapost now firstly tries to download reference sequences with GNU wget, and if there are no wget, downloads them with standart Python tools;
+- prober: minor durability fix;
+
+## Version changes:
+
+1. prober: `1.19.a -> 1.19.b`;
+2. barapost: `3.13.a -> 3.13.b`;
+
+
 ## 2020-05-06 edition.
 
 - prober: behaviour `-x` is modified: prober now prunes sequences from both ends instead of cutting off 3'-end and leaving 5'-end;
@@ -7,7 +18,7 @@
 
 ### Version changes:
 
-1. prober: `1.18.e -> 1.10.a`;
+1. prober: `1.18.e -> 1.19.a`;
 
 ## 2020-05-01 edition.
 

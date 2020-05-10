@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.19.a"
+__version__ = "1.19.b"
 # Year, month, day
-__last_update_date__ = "2020-05-06"
+__last_update_date__ = "2020-05-10"
 
 # |===== Check python interpreter version =====|
 
@@ -604,7 +604,7 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
     s_letter = "s" if other_info[1] > 1 else ""
     space_sep_num = "{:,}".format(other_info[1]).replace(',', ' ')
     printl(logfile_path, " {} hit{} - {}, '{}'".format(space_sep_num,
-        s_letter, acc, other_info[1]))
+        s_letter, acc, other_info[0]))
 # end for
 
 # Print number of unkmown sequences, if there are any:
