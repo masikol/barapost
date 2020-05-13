@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.13.b"
+__version__ = "3.14.a"
 # Year, month, day
-__last_update_date__ = "2020-05-10"
+__last_update_date__ = "2020-05-13"
 
 # |===== Check python interpreter version =====|
 
@@ -521,17 +521,14 @@ else:
 
     from src.barapost_modules.parallel_single_file import process
 
-    for fq_fa_path in fq_fa_list:
-        process(fq_fa_path,
-            n_thr,
-            packet_size,
-            tax_annot_res_dir,
-            blast_algorithm,
-            use_index,
-            logfile_path)
-    # end for
+    process(fq_fa_list,
+        n_thr,
+        packet_size,
+        tax_annot_res_dir,
+        blast_algorithm,
+        use_index,
+        logfile_path)
 # end if
-printl(logfile_path, '\r' + " " * len("  Working..."))
 
 # Remove everything in 'queries_tmp_dir'
 try:
@@ -546,5 +543,6 @@ except OSError as oserr:
     printl(logfile_path, "   the only thing that some temporary files are left in the directory mentioned above.\n")
 # end try
 
-printl(logfile_path, get_full_time() + "- Task is completed!\n")
+print("\r{}".format(' ' * len("Working...")))
+printl(logfile_path, "{} - Task is completed!".format(get_full_time()))
 platf_depend_exit(0)

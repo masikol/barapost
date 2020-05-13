@@ -5,7 +5,7 @@ import os
 import shelve
 from re import search as re_search
 
-from src.printlog import getwt, printl, printn
+from src.printlog import getwt, printl, printn, println
 from src.write_classification import write_classification
 from src.filesystem import get_curr_res_dpath, create_result_directory
 from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS, FORMATTING_FUNCS
@@ -37,6 +37,8 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
     queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
     local_fasta = os.path.join(tax_annot_res_dir, "local_database", "local_seq_set.fasta")
+
+    nfiles = len(fq_fa_list)
 
     with shelve.open(taxonomy_path, 'r') as tax_file:
 
@@ -76,9 +78,8 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
             # end if
 
             if num_seqs == num_done_seqs:
-                printl(logfile_path, "\rFile '{}' has been already completely processed.".format(fq_fa_path))
-                printl(logfile_path, "Omitting it.")
-                printn("  Working...")
+                printl(logfile_path, "\r{} - File #{}/{} ('{}') has been already completely processed.".format(getwt(), i+1, nfiles, fq_fa_path))
+                println(logfile_path, "Omitting it.\nWorking...")
                 continue
             # end if
 
@@ -96,9 +97,7 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
                 write_classification(result_tsv_lines, tsv_res_path)
             # end for
 
-            printl(logfile_path, "\r{} - File '{}' is processed.".format(getwt(), os.path.basename(fq_fa_path)))
-            printn("Working...")
-
+            println(logfile_path, "\r{} - File #{}/{} ({}) is processed.\nWorking...".format(getwt(), i+1, nfiles, os.path.basename(fq_fa_path)))
         # end for
     # end with
 

@@ -10,7 +10,7 @@ from re import search as re_search
 from src.fasta import fasta_packets
 from src.fastq import fastq_packets
 
-from src.printlog import getwt, printl, printn
+from src.printlog import getwt, printl, printn, println
 from src.write_classification import write_classification
 from src.spread_files_equally import spread_files_equally
 from src.filesystem import get_curr_res_dpath, create_result_directory
@@ -19,52 +19,49 @@ from src.filesystem import remove_tmp_files, is_fastq, OPEN_FUNCS, FORMATTING_FU
 from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
-def init_process(print_lock_buff, packet_size_buff, tax_annot_res_dir_buff,
-    blast_algorithm_buff, use_index_buff, logfile_path_buff):
+def init_process(print_lock_buff, conter_lock_buff, file_counter_buff):
     """
     Function initializes global variables that all processes shoud have access to.
     This function is meant to be passed as 'initializer' argument to 'multiprocessing.Pool' function.
 
     :param print_lock_buff: lock that synchronizes printing to the console;
     :type print_lock_buff: multiprocessing.Lock;
-    :param packet_size_buff: number of sequences processed by blast in a single launching;
-    :type packet_size_buff: int;
-    :param tax_annot_res_dir_buff: path to ouput directory that contains taxonomic annotation;
-    :type tax_annot_res_dir_buff: str;
-    :param blast_algorithm_buff: blast algorithm to use;
-    :type blast_algorithm_buff: str;
-    :param use_index_buff: logic value indicationg whether to use indes;
-    :type use_index_buff: bool;
-    :param logfile_path_buff: path to log file;
-    :type logfile_path_buff: str;
+    :param counter_lock_buff: lock that synchronizes incrementing 'file_counter';
+    :type counter_lock_buff: multiprocessing.Lock;
+    :param file_counter: variable for counting processed files;
+    :type file_cunter: mp.Value('i');
     """
 
     global print_lock
     print_lock = print_lock_buff
 
-    global packet_size
-    packet_size = packet_size_buff
+    global counter_lock
+    counter_lock = conter_lock_buff
 
-    global tax_annot_res_dir
-    tax_annot_res_dir = tax_annot_res_dir_buff
-
-    global blast_algorithm
-    blast_algorithm = blast_algorithm_buff
-
-    global use_index
-    use_index = use_index_buff
-
-    global logfile_path
-    logfile_path = logfile_path_buff
+    global file_counter
+    file_counter = file_counter_buff
 # end def init_proc_many_files
 
 
-def process_paral(fq_fa_list):
+def process_paral(fq_fa_list, packet_size, tax_annot_res_dir,
+    blast_algorithm, use_index, nfiles, logfile_path):
     """
     Function performs 'many_files'-parallel mode of barapost.py.
 
     :param fq_fa_list: list of paths to FASTA and FASTQ files meant to be processed;
     :type fq_fa_list: list<str>;
+    :param packet_size: number of sequences processed by blast in a single launching;
+    :type packet_size: int;
+    :param tax_annot_res_dir: path to ouput directory that contains taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param blast_algorithm: blast algorithm to use;
+    :type blast_algorithm: str;
+    :param use_index: logic value indicationg whether to use indes;
+    :type use_index: bool;
+    :param nfiles: total number of files;
+    :type nfiles: int;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
@@ -108,10 +105,14 @@ def process_paral(fq_fa_list):
             # end if
 
             if num_seqs == num_done_seqs:
+                with counter_lock:
+                    file_counter.value += 1
+                    i = file_counter.value # save to local var and release lock
+                # end with
                 with print_lock:
-                    printl(logfile_path, "\rFile '{}' has been already completely processed.".format(fq_fa_path))
-                    printl(logfile_path, "Omitting it.")
-                    printn("  Working...")
+                    printl(logfile_path, "\r{} - File #{}/{} ('{}') has been already completely processed.".format(getwt(),
+                        i, nfiles, fq_fa_path))
+                    println(logfile_path, "Omitting it.\nWorking...")
                 # end with
                 continue
             # end if
@@ -130,9 +131,13 @@ def process_paral(fq_fa_list):
                 write_classification(result_tsv_lines, tsv_res_path)
             # end for
 
+            with counter_lock:
+                file_counter.value += 1
+                i = file_counter.value # save to local var and release lock
+            # end with
             with print_lock:
-                printl(logfile_path, "\r{} - File '{}' is processed.".format(getwt(), os.path.basename(fq_fa_path)))
-                printn("Working...")
+                println(logfile_path, "\r{} - File #{}/{} ({}) is processed.\nWorking...".format(getwt(),
+                    i, nfiles, os.path.basename(fq_fa_path)))
             # end with
         # end for
     # end with
@@ -162,10 +167,15 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
     """
 
     pool = mp.Pool(n_thr, initializer=init_process,
-        initargs=(mp.Lock(), packet_size, tax_annot_res_dir,
-    blast_algorithm, use_index, logfile_path,))
+        initargs=(mp.Lock(), mp.Lock(), mp.Value('i', 0),))
 
-    pool.starmap(process_paral, [ (fq_fa_sublist,) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
+    pool.starmap(process_paral, [ (fq_fa_sublist,
+        packet_size,
+        tax_annot_res_dir,
+        blast_algorithm,
+        use_index,
+        len(fq_fa_list),
+        logfile_path) for fq_fa_sublist in spread_files_equally(fq_fa_list, n_thr) ])
 
     # Reaping zombies
     pool.close()

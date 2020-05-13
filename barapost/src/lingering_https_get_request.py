@@ -35,13 +35,18 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
             conn.request("GET", url) # ask for if there areresults
             response = conn.getresponse() # get the resonse
 
+            # 
+            if response.code == 301 and request_for.startswith("link to identical genbank sequence"):
+                return lingering_https_get_request(server, response.getheader("Location")+"?report=accnlist&log$=seqview&format=text",
+                    logfile_path, request_for, acc)
+            # end if
+
             if response.code != 200:
                 printl(logfile_path, "Request failed with status code {}: {}".format(response.code, response.reason))
                 platf_depend_exit(1)
             # end if
 
             resp_content = str(response.read(), "utf-8") # get response text
-            conn.close()
         except (OSError, http.client.RemoteDisconnected, socket.gaierror, http.client.CannotSendRequest) as err:
             comment_str = ""
             if not request_for is None:
@@ -58,6 +63,8 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
             sleep(30)
         else:
             error = False # if no exception ocured, get out of the loop
+        finally:
+            conn.close()
         # end try
     # end while
     return resp_content

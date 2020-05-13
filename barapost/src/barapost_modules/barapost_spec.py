@@ -263,7 +263,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
                             else:
                                 raise IndexError
                             # end if
-                            acc = sys.intern(line_splt[0])
+                            acc = sys.intern(line_splt[0].partition('.')[0])
                             # gi = line_splt[1]
                             acc_dict[acc] = name
 

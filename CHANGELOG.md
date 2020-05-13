@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-05-13
+
+- barapost: searching for related replicons fixed. barapost no longer downloads identical sequences from GenBank and RefSeq;
+- barapost now prints amount of processed files whilst wokring;
+
+## Version changes:
+
+1. barapost: `3.13.b -> 3.14.a`;
+
 ## 2020-05-10
 
 - barapost now firstly tries to download reference sequences with GNU wget, and if there are no wget, downloads them with standart Python tools;
@@ -9,7 +18,6 @@
 
 1. prober: `1.19.a -> 1.19.b`;
 2. barapost: `3.13.a -> 3.13.b`;
-
 
 ## 2020-05-06 edition.
 

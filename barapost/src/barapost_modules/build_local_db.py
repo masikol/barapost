@@ -8,14 +8,13 @@ import shelve
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from time import sleep
 from glob import glob
-from xml.etree import ElementTree
-from re import search as re_search
 from threading import Thread, Event
 
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
 
 from src.barapost_modules.barapost_spec import configure_acc_dict
+from src.barapost_modules.related_replicons import search_for_related_replicons
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
@@ -40,203 +39,6 @@ if not gzip_util_found:
 # end if
 
 
-def get_record_title(record_id, logfile_path):
-    """
-    Function retrieves title (aka definition) and accession
-      of a GenBank record by given accession or GI number.
-
-    :param record_id: accession of GI number of the record;
-    :type record_idi: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-
-    Returns tuple of two elements:
-      (<RECORD_TITLE>, <RECORD_ACCESSION>)
-    """
-
-    # We'll use E-utilities to communicate with GenBank
-
-    eutils_server = "eutils.ncbi.nlm.nih.gov"
-    esummary = "esummary.fcgi" # utility name
-
-    # Configure URL
-    url = "/entrez/eutils/{}?db=nuccore&id={}".format(esummary, record_id)
-
-    # Send the request and get the response
-    summary = lingering_https_get_request(eutils_server, url, logfile_path,
-        "e-summary of nuccore record {}".format(record_id))
-
-    # Parse XML that we've got
-    root = ElementTree.fromstring(summary)
-
-    # Elements of our insterest are all named "Item",
-    #   but they have different tags.
-    # They are children of element "DocSum", which is
-    #   the first child of root
-    docsum = next(iter(root.getchildren()))
-
-    record_title = None
-    record_acc = None
-
-    # Search for title and accession
-    for item in docsum.iter("Item"):
-        if item.attrib["Name"] == "Title":
-            record_title = item.text
-        elif item.attrib["Name"] == "AccessionVersion":
-            # Remove version just in case
-            record_acc = re.search(r"(.*)\.[0-9]+", item.text).group(1)
-        # end if
-    # end for
-
-    if record_title is None or record_acc is None:
-        printl(logfile_path, "Error 8989: can't access e-summary for '{}'".format(record_acc))
-        platf_depend_exit(1)
-    # end if
-
-    return record_title, record_acc
-# end get_record_title
-
-
-def get_related_replicons(acc, acc_dict, logfile_path):
-    """
-    Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
-      which are related to Genbank record "discovered" by prober.py.
-
-    :param acc: accession of a record "discovered" by prober.py;
-    :type acc: str;
-    :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
-    :type acc_dict: dict<str: tuple<str>>;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-
-    Yields tuples of a following structure:
-        (<ACCESSION>, <RECORD_DEFINITION>)
-    """
-
-    # We will save all titles in order not to duplicate records in our database
-    hit_defs = [get_record_title(acc, logfile_path)[0]]
-
-    # Elink utility returns links in DB_1, that are connected to given ID in DB_2
-    eutils_server = "eutils.ncbi.nlm.nih.gov"
-    elink = "elink.fcgi"
-
-
-    # = Find BioSample ID =
-
-    # Configure URL
-    nuc2biosmp_url = "/entrez/eutils/{}?dbfrom=nuccore&db=biosample&id={}".format(elink, acc)
-
-    # Get XML with our links
-    text_link_to_bsmp = lingering_https_get_request(eutils_server, nuc2biosmp_url,
-        logfile_path, "BioSample page", acc)
-
-    # Parse this XML
-    root = ElementTree.fromstring(text_link_to_bsmp)
-    linkset = next(iter(root.getchildren())).find("LinkSetDb")
-
-    # XML should contain element "LinkSetDb"
-    if linkset is None:
-        printl(logfile_path, "\nCannot check replicons for '{}': \
-there is no BioSample page for this record.".format(acc))
-        return
-    # end if
-
-    # Here we have BioSample ID
-    biosmp_id = linkset.find("Link").find("Id").text
-
-
-    # = Find GIs in nuccore assotiated with this BioSample ID =
-
-    # Configure URL
-    biosmp2nuc_url = "/entrez/eutils/{}?dbfrom=biosample&db=nuccore&id={}".format(elink, biosmp_id)
-
-    # Get XML with our links
-    text_link_to_nuc = lingering_https_get_request(eutils_server, biosmp2nuc_url,
-        logfile_path, "Nucleotide links assotiated with BioSample ID {}".format(biosmp_id))
-
-    # Parse this XML
-    root = ElementTree.fromstring(text_link_to_nuc)
-    linkset = next(iter(root.getchildren())).find("LinkSetDb")
-
-    # XML should contain element "LinkSetDb"
-    if linkset is None:
-        printl(logfile_path, """Cannot check replicons for '{}':
-  there is no BioSample page for this record.""".format(acc))
-        return
-    # end if
-
-    # Collect links
-    for elem in linkset.iter():
-
-        if elem.tag == "Id": # element "Id" contains our GI
-
-            # Get GI, title and accession:
-            rel_gi = elem.text
-            rel_def, rel_acc = get_record_title(rel_gi, logfile_path)
-
-            # If title is new -- add this record to acc_dict and yield result
-            if not rel_def in hit_defs:
-                hit_defs.append(rel_def)
-                # acc_dict[rel_acc] = rel_def # update acc_dict
-                yield (rel_acc, rel_def)
-            # end if
-        # end if
-    # end for
-# end def get_related_replicons
-
-
-def search_for_related_replicons(acc_dict, logfile_path):
-    """
-    Function searches for replicons related to those in 'hits_to_download.tsv'
-      of specified with '-s' option.
-
-    :param acc_dict: dictionary comntaining accession data of hits;
-    :type acc_dict: dict<str: tuple<str, str, int>>;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
-
-    printl(logfile_path, "\n{} - Searching for related replicons...".format(getwt()))
-
-    start_accs = tuple(acc_dict.keys()) # accessions, which were "discoveted" by prober
-
-    for i, acc in enumerate(start_accs):
-
-        println(logfile_path, "\r  {}:".format(acc, i+1, len(start_accs)) + ' '*10 + '\b'*10)
-
-        # Search for related replicons:
-        try:
-            related_repls = get_related_replicons(acc, acc_dict, logfile_path)
-        except AttributeError:
-            print("\nParsing error: cannot find replicons related to {}.".format(acc))
-            print("Please, contact the developer")
-            platf_depend_exit(1)
-        else:
-            found_new = False
-            for rel_acc, definition in related_repls:
-                # Fill acc_dict with accessions and names of related replicons
-                if not rel_acc in acc_dict.keys():
-                    acc_dict[rel_acc] = definition
-                    found_new = True
-                    println(logfile_path, "\n{} - {}".format(rel_acc, definition))
-                # end if
-            # end for
-            if found_new:
-                print() # print new line for next accession
-            # end if
-        # end try
-    # end for
-
-    if len(start_accs) != len(acc_dict): # there are some new replicons
-        printl(logfile_path, "\r{} - {} related replicons have been found.".format(getwt(),
-            len(acc_dict) - len(start_accs)))
-    else:
-        printl(logfile_path, "\r{} - No related replicons found.".format(getwt()))
-    # end if
-
-# end def search_for_related_replicons
-
-
 def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
     """
     Function downloads set of records from Genbank according to accessions passed to it.
@@ -259,7 +61,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
         return local_fasta
     # end if
 
-    accs_del_comma = ','.join(acc_tuple) # GI numbers must be separated by comma in url
+    accs_del_comma = ','.join(set(acc_tuple)) # GI numbers must be separated by comma in url
     # E-utilities provide a possibility to download records from Genbank by accessions.
     retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
 
@@ -273,7 +75,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
         # end if
     # end for
 
-    printl(logfile_path, "\n{} - Downloading reference sequences to be included in the database...".format(getwt()))
+    printl(logfile_path, "\n{} - Downloading {} reference sequences...".format(getwt(), len(acc_tuple)))
 
     if util_found:
         # If we have wget -- just use it
@@ -379,7 +181,7 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
         url = "/entrez/eutils/esummary.fcgi?db=nuccore&id={}".format(acc)
         text = lingering_https_get_request(server, url, logfile_path, "record's name", acc)
 
-        name = re_search(r"\<Item Name=\"Title\" Type=\"String\"\>(.+)\</Item\>", text)
+        name = re.search(r"\<Item Name=\"Title\" Type=\"String\"\>(.+)\</Item\>", text)
 
         if name is None:
             printl(logfile_path, "Cannot find GenBank record with accession '{}'".format(acc))
@@ -392,7 +194,6 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
         sys.stdout.write("\r{}/{}".format(i+1, len(accs_to_download)))
     # end for
     println(logfile_path, "\n{} - OK.".format(getwt()))
-
 # end def verify_cl_accessions
 
 
@@ -564,14 +365,14 @@ Enter 'r' to remove all files in this directory and create the database from the
             # end with
 
             # if we've got SPAdes assembly
-            if not re_search(spades_patt, first_seq_id) is None:
+            if not re.search(spades_patt, first_seq_id) is None:
                 spades_counter += 1
                 spades_assms.append(own_fasta_path)
                 continue
             # end if
             
             # if we've got a5 assembly
-            if not re_search(a5_patt, first_seq_id) is None:
+            if not re.search(a5_patt, first_seq_id) is None:
                 a5_counter += 1
                 a5_assms.append(own_fasta_path)
                 continue
