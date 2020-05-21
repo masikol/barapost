@@ -61,12 +61,13 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
     Returns None if there is no result from previous run.
     If there are results from previous run, returns a dict of the following structure:
     {
-        "pack_size": packet_size (int),
-        "sv_npck": saved_number_of_sent_packet (int),
-        "RID": saved_RID (str),
-        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-        "tmp_fpath": path_to_pemporary_file (str)
+        "RID": saved_RID <str>,
+        "packet_size_save": saved packet size <int>,
+        "packet_size_mode": saved packet mode <int>,
+        "tsv_respath": path_to_tsv_file_from_previous_run <str>,
+        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file <int>,
+        "tmp_fpath": path_to_pemporary_file <str>,
+        "decr_pb": valuse decreasing size of probing batch (see below, where this variable is defined) <int>
     }
     
     :param outdir_path: path to output directory;
@@ -244,6 +245,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
 
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[0]).group(1).strip()
             packet_size_save = int(re_search(r"Packet_size: ([0-9]*)", temp_lines[1]).group(1).strip())
+            packet_mode_save = int(re_search(r"Packet mode: ([0-9]{1})", temp_lines[2]).group(1).strip())
 
         except (AttributeError, OSError):
 
@@ -251,6 +253,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             return {
                 "RID": None,
                 "packet_size_save": None,
+                "packet_mode_save": None,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,
@@ -264,6 +267,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             return {
                 "RID": RID_save,
                 "packet_size_save": packet_size_save,
+                "packet_mode_save": packet_mode_save,
                 "tsv_respath": tsv_res_fpath,
                 "n_done_reads": num_done_seqs,
                 "tmp_fpath": tmp_fpath,

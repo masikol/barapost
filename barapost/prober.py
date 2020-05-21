@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.19.b"
+__version__ = "1.20.a"
 # Year, month, day
-__last_update_date__ = "2020-05-10"
+__last_update_date__ = "2020-05-21"
 
 # |===== Check python interpreter version =====|
 
@@ -127,8 +127,8 @@ from src.printlog import getwt, get_full_time, printl, err_fmt
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:o:p:a:g:b:e:x:",
-        ["help", "version", "indir=", "outdir=", "packet-size=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:o:p:c:a:g:b:e:x:",
+        ["help", "version", "indir=", "outdir=", "packet-size=", "packet-mode=",
         "algorithm=", "organisms=", "probing-batch-size=", "email=",
         "max-seq-len="])
 except getopt.GetoptError as gerr:
@@ -148,7 +148,8 @@ send_all = False # it will be True if '-b all' is specified
 blast_algorithm = "megaBlast"
 taxid_list = list() # list of TaxIDs to perform database slices
 user_email = ""
-max_seq_len = None # maximum length of a sequence sent to NCBI
+max_seq_len = float("inf") # maximum length of a sequence sent to NCBI
+packet_mode = 0 # mode of packet forming. 'numseqs' is default
 
 # Add positional arguments to fq_fa_list
 for arg in args:
@@ -177,10 +178,24 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("packet_size (-p option) must be integer number > 1"))
+            print(err_fmt("packet size (-p option) must be integer number > 1"))
             print("Your value: '{}'".format(arg))
             platf_depend_exit(1)
         # end try
+
+    elif opt in ("-c", "--packet-mode"):
+        if arg == "0":
+            packet_mode = 0
+        elif arg == "1":
+            packet_mode = 1
+            if not "-p" in sys.argv[1:] and not "--packet-size" in sys.argv[1:]:
+                packet_size = 20000 # default for mode 1
+            # end if
+        else:
+            print(err_fmt("packet forming mode (-c option) must be 0 or 1."))
+            print("Your value: '{}'".format(arg))
+            platf_depend_exit(1)
+        # end if
 
     elif opt in ("-g", "--organisms"):
 
@@ -345,7 +360,7 @@ if any(filter(is_fasta, fq_fa_list)):
 # end if
 
 # Make packet size consistent with probing batch size
-packet_size = min(packet_size, probing_batch_size)
+# packet_size = min(packet_size, probing_batch_size)
 
 # Create output directory
 if not os.path.isdir(outdir_path):
@@ -397,8 +412,17 @@ if user_email != "":
     printl(logfile_path, " - Your email: {}".format(user_email))
 # end if
 printl(logfile_path, " - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
-printl(logfile_path, " - Packet size: {} sequences;".format(packet_size))
-if not max_seq_len is None:
+printl(logfile_path, " - Packet forming mode: {};".format(packet_mode))
+
+if packet_mode == 0:
+    tmp_str = "sequences"
+else:
+    tmp_str = "base pairs"
+# end if
+printl(logfile_path, " - Packet size: {} {};".format(packet_size, tmp_str))
+del tmp_str
+
+if max_seq_len < float("inf"):
     printl(logfile_path, " - Maximum length of a sequence to submit: {} bp;".format(max_seq_len))
 # end if
 printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
@@ -435,14 +459,15 @@ stop = False
 
 # Further:
 # 1. 'previous_data' is a dict of the following structure:
-#    {
-#        "RID": saved_RID (str),
-#        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-#        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-#        "tmp_fpath": path_to_pemporary_file (str),
-#        "decr_pb": value to subtract from probing_batch_size
-#                  in order to resume correctly (int)
-#    }
+# {
+#     "RID": saved_RID <str>,
+#     "packet_size_save": saved packet size <int>,
+#     "packet_size_mode": saved packet mode <int>,
+#     "tsv_respath": path_to_tsv_file_from_previous_run <str>,
+#     "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file <int>,
+#     "tmp_fpath": path_to_pemporary_file <str>,
+#     "decr_pb": valuse decreasing size of probing batch (see below, where this variable is used) <int>
+# }
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. 'packet' is a dict of the following structure:
 #    {
@@ -476,12 +501,14 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             infile_hname), blast_algorithm) # form path to temporary file
         saved_RID = None
         saved_packet_size = None
+        saved_packet_mode = None
     else: # if there is data from previous run
         num_done_seqs = previous_data["n_done_reads"] # get number of successfully processed sequences
         tsv_res_path = previous_data["tsv_respath"] # result tsv file should be the same as during previous run
         tmp_fpath = previous_data["tmp_fpath"] # temporary file should be the same as during previous run
         saved_RID = previous_data["RID"] # having this RID we can try to get response for last request without resending
         saved_packet_size = previous_data["packet_size_save"]
+        saved_packet_mode = previous_data["packet_mode_save"]
         # Let's assume that a user won't modify his/her brobing_batch size between erroneous runs:
         #   subtract num_done_reads if probing_batch_size > num_done_reads.
         probing_batch_size -= previous_data["decr_pb"]
@@ -490,23 +517,29 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     # Take previous run into account
     glob_seqs_processed += num_done_seqs
 
-    # Calculate total number of packets meant to be sent from current FASTA file
-    packs_at_all = probing_batch_size // packet_size
+    if send_all or packet_mode == 1:
+        out_of_n = ""
+    else:
+        # Calculate total number of packets meant to be sent from current FASTA file
+        packs_at_all = probing_batch_size // packet_size
 
-    if probing_batch_size % packet_size > 0: # and this is ceiling
-        packs_at_all += 1
-    # end if
+        if probing_batch_size % packet_size > 0: # and this is ceiling
+            packs_at_all += 1
+        # end if
+
+        # Pretty string to print "Request 3 out of 7" if not 'send_all'
+        out_of_n = " out of {}".format(packs_at_all)
+    # enf if
 
     # Ordinal number of packet meant to be sent (will incrementing after every successful submission)
     pack_to_send = 1
-    # Pretty string to print "Request 3 out of 7" if not 'send_all'
-    out_of_n = "" if send_all else " out of {}".format(packs_at_all)
 
     # Choose appropriate record generator:
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
 
     # Iterate over packets in current file
-    for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, saved_packet_size, max_seq_len):
+    for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, packet_mode,
+        saved_packet_size, saved_packet_mode, max_seq_len):
 
         # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True
@@ -539,8 +572,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
             s_letter = 's' if len(packet["qual"]) != 1 else ''
             printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
-            printl(logfile_path, "Request number {}{}. Sending {} sequence{}.".format(pack_to_send,
-                out_of_n, len(packet["qual"]), s_letter))
+            lines = filter(lambda x: not x.startswith('>'), packet["fasta"].splitlines())
+            totalbp = len(''.join(map(lambda x: x.strip(), lines)))
+            del lines
+            printl(logfile_path, "Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send,
+                out_of_n, len(packet["qual"]), s_letter, totalbp))
 
             while align_xml_text is None: # until successfull attempt
 
@@ -548,7 +584,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
                 # Send the request and get BLAST XML response.
                 # 'align_xml_text' will be None if an error occurs.
-                align_xml_text = send_request(request, pack_to_send, packet_size,
+                align_xml_text = send_request(request, pack_to_send, packet_size, packet_mode,
                     os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
 
                 # If NCBI BLAST server rejects the request due to too large amount of data in it --

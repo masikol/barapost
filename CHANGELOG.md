@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-05-21
+
+- prober: `-c` option added, enabling better performance if input sequences are sorted by length within input file;
+- prober: "no-hits" error fixed;
+
+## Version changes:
+
+1. prober: `1.19.b -> 1.20.a`;
+
 ## 2020-05-13
 
 - barapost: searching for related replicons fixed. barapost no longer downloads identical sequences from GenBank and RefSeq;

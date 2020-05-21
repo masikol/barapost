@@ -104,7 +104,7 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
 # end def configure_request
 
 
-def send_request(request, pack_to_send, packet_size, filename, tmp_fpath, logfile_path):
+def send_request(request, pack_to_send, packet_size, packet_mode, filename, tmp_fpath, logfile_path):
     """
     Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
         and then waits for satisfaction of the request and retrieves response text.
@@ -164,7 +164,8 @@ def send_request(request, pack_to_send, packet_size, filename, tmp_fpath, logfil
     # Save temporary data
     with open(tmp_fpath, 'w') as tmpfile:
         tmpfile.write("Request_ID: {}\n".format(rid))
-        tmpfile.write("Packet_size: {}".format(packet_size))
+        tmpfile.write("Packet_size: {}\n".format(packet_size))
+        tmpfile.write("Packet mode: {}".format(packet_mode))
     # end with
 
     # Wait for results of alignment
@@ -222,8 +223,8 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
             printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
             printl(logfile_path, "Resending this packet.")
             return None
-        # if job expired
         elif "Status=UNKNOWN" in resp_content:
+            # if job expired
             printl(logfile_path, '\n' + getwt() + " - Job expired\a\n")
             printl(logfile_path, "Resending this packet.")
             return None
@@ -253,9 +254,14 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
                 with open(txt_hpath, 'w') as txt_file:
                     txt_file.write(txt_align_res)
                 # end with
-            # if there are no hits
-            else:
+            elif "ThereAreHits=no" in resp_content:
+                # if there are no hits
                 printl(logfile_path, getwt() + " - There are no hits. It happens.\n")
+            else:
+                # probably, job is failed if execution reaches here
+                printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
+                printl(logfile_path, "Resending this packet.")
+                return None
             # end if
             break
         # end if

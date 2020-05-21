@@ -40,7 +40,8 @@ def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
 # end def pass_processed_seqs
 
 
-def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max_seq_len=None):
+def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
+    saved_packet_size=None, saved_packet_mode=None, max_seq_len=float("inf")):
     """
     Generator yields fasta-formattedpackets of records from fasta file.
     This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
@@ -50,15 +51,18 @@ def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max
     :type fasta: str;
     :param packet_size: number of sequences to align in one request ('blastn' launching);
     :type packet_size: int;
-    :param reads_at_all: number of sequences in current file;
-    :type reads_at_all: int;
     :param num_done_seqs: number of sequnces in current file that have been already processed;
-    :type num_doce_reads: int;
+    :type num_done_seqs: int;
+    :param packet_mode: packet mode (see -c option);
+    :type packet_mode: int;
     :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
       It will be None, if no tmp file was in classification directory;
     :type saved_packet_size: int;
+    :param saved_packet_mode: mode used whilst formig the last sent packet from tmp file.
+      Necessary for resumption. It will be None, if no tmp file was in classification directory;
+    :type saved_packet_mode: int;
     :param max_seq_len: maximum length of a sequence proessed;
-    :type max_seq_len: int (None if pruning is disabled);
+    :type max_seq_len: int (float("inf") if pruning is disabled);
     """
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
@@ -96,28 +100,45 @@ def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max
         qual_dict = dict() # {<seq_id>: '-'}, as soon as fasta file is being processed
         eof = False
 
-        # Here goes check for saved packet size:
+        # Here goes check for saved packet size and mode:
         if not saved_packet_size is None:
             tmp_pack_size = saved_packet_size
         else:
             tmp_pack_size = packet_size
         # end if
 
+        if not saved_packet_mode is None:
+            tmp_pack_mode = saved_packet_mode
+        else:
+            tmp_pack_mode = packet_mode
+        # end if
+
         while not eof: # till the end of file
 
-            i = 0 # variable for counting sequences within packet
+            counter = 0 # variable for counting sequences within packet
+            seqlen = 0
 
-            while i < tmp_pack_size:
+            while counter < tmp_pack_size:
 
                 line = get_next_line()
                 if line.startswith('>'):
                     line = fmt_read_id(line)
-                    i += 1
+                    if packet_mode == 0:
+                        counter += 1
+                    else:
+                        counter += min(seqlen, max_seq_len)
+                        seqlen = 0
+                    # end if
                 # end if
                 
                 if line == "": # if end of file (data) is reached
                     break
                 # end if
+
+                if not line.startswith('>'):
+                    seqlen += len(line.strip())
+                # end if
+
                 packet += line + '\n' # add line to packet
             # end while
 
@@ -137,7 +158,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max
                 qual_dict[name] = '-' # there is no quality info in fasta files
             # end for
 
-            if not max_seq_len is None: # prune sequences
+            if max_seq_len < float("inf"): # prune sequences
                 packet = prune_seqs(packet, 'l', max_seq_len)
             # end if
 
@@ -146,6 +167,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, saved_packet_size=None, max
                 # Reset packet and switch back to standart packet size
                 # As Vorotos said, repeated assignment is the best check:
                 tmp_pack_size = packet_size
+                tmp_pack_mode = packet_mode
                 qual_dict = dict()
                 if not next_id_line is None:
                     packet = next_id_line+'\n'
