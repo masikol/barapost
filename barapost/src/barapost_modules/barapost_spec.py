@@ -76,7 +76,7 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
 # end def look_around
 
 
-def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fasta):
+def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path, logfile_path):
     """
     Function launches 'blastn' utility from "BLAST+" toolkit and returns it's response.
 
@@ -88,8 +88,10 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
     :type use_index: bool:
     :param queries_tmp_dir: path to directory with query files;
     :type queries_tmp_dir: str:
-    :param local_fasta: path to database;
-    :type local_fasta: str:
+    :param db_path: path to database;
+    :type db_path: str:
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     # PID of current process won't change, so we can use it to mark query files.
@@ -103,7 +105,7 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
 
     # Configure command line
     blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 10 -max_hsps 1 -use_index {}".format(query_path,
-        local_fasta, blast_algorithm, use_index)
+        db_path, blast_algorithm, use_index)
 
     pipe = sp_Popen(blast_cmd, shell=True, stdout=sp_PIPE, stderr=sp_PIPE)
     stdout_stderr = pipe.communicate()
@@ -118,7 +120,7 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, local_fas
 # end def launch_blastn
 
 
-def parse_align_results_xml(xml_text, qual_dict, tax_file, logfile_path):
+def parse_align_results_xml(xml_text, qual_dict, logfile_path):
     """
     Function parses BLAST xml response and returns tsv lines containing gathered information:
         1. Query name.
@@ -136,8 +138,6 @@ def parse_align_results_xml(xml_text, qual_dict, tax_file, logfile_path):
     :type xml_text: str;
     :param qual_dict: dict, which maps sequence IDs to their quality;
     :type qual_dict: dict<str: float>;
-    :param tax_file: taxonomy file instance;
-    :type tax_file: shelve.DbfilenameShelf;
     :param logfile_path: path to logfile;
     :type logfile_path: str;
 

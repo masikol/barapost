@@ -238,7 +238,12 @@ Enter 'r' to remove all files in this directory and create the database from the
                 if reply == "":
                     # Do not build a database, just return path to it.
                     printl(logfile_path, "") # just print blank line
-                    return os.path.join(db_dir, "local_seq_set.fasta")
+
+                    # Return path to DB located in this directory
+                    dbpath = next(iter(os.listdir(db_dir)))
+                    dbpath = dbpath.partition(".fasta")[0] + dbpath.partition(".fasta")[1] # remove all after '.fasta'
+
+                    return os.path.join(db_dir, dbpath)
                 
                 elif reply == 'r':
 

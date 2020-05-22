@@ -43,17 +43,20 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
-        print(""" - if no input files are specified, "prober.py" processes
-  all FASTQ and FASTA files in working directory;""")
-        print(" - packet size (see '-p' option): 100 sequences;")
-        print(" - probing batch size (see '-b' option): 200 sequences;")
-        print(" - algorithm (see '-a' option): 0 (megaBlast);")
-        print(" - database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;")
-        print(""" - output directory ('-o' option): directory named 'barapost_result'
-  nested in working directory;""")
-        print(" - prober sends no email information ('-e' option) to NCBI;")
-        print(""" - prober sends sequences intact
-  (i.e. does not prune them before submission (see '-x' option));""")
+        print("""- if no input files are specified, "prober.py" processes
+   all FASTQ and FASTA files in working directory;""")
+        print("""- algorithm (see '-a' option): '0' (zero, i.e. megaBlast);""")
+        print("""- packet forming mode (see '-c' option): '0' (zero);""")
+        print("""- packet size: (see '-p' option):
+   100 sequences for packet forming mode '0',
+   20,000 base pairs for packet forming mode '1';""")
+        print("""- probing batch size (see '-b' option): 200 sequences;""")
+        print("""- database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;""")
+        print("""- output directory ('-o' option): directory named 'barapost_result'
+   nested in working directory;""")
+        print("""- prober sends no email information ('-e' option) to NCBI;""")
+        print("""- prober sends sequences intact
+   (i.e. does not prune them before submission (see '-x' option));""")
         print("----------------------------------------------------------\n")
     # end if
 
@@ -67,9 +70,17 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    I.e. all FASTQ and FASTA files in this direcory will be processed;\n""")
     print("""-o (--outdir) --- output directory.
    Default value: 'barapost_result';\n""")
+    print("""-c (--packet-mode) --- indicates how prober calculates size of packet.
+   Values:
+   0 -- packet size equals number of sequences in it [default mode];
+   1 -- packet size equals sum of lengths of sequences in it;
+   Mode 1 performs better if input sequences are sorted by length within input file;\n""")
     print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
    It means that "prober.py" can preform multiple requests during single run.
-   Value: positive integer number. Default value is 100;\n""")
+   Value: positive integer number.
+   Default value:
+   100 (sequences) for mode 0;
+   20,000 (base pairs) for mode 1;\n""")
     print("""-a (--algorithm) --- BLASTn algorithm to use for alignment.
    Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
    Default is 0 (megaBlast);\n""")

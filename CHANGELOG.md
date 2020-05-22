@@ -2,6 +2,14 @@
 
 ## 2020-05-21
 
+- barapost: minor performance fix;
+
+## Version changes:
+
+1. barapost: `3.14.a --> 3.14.b`;
+
+## 2020-05-21
+
 - prober: `-c` option added, enabling better performance if input sequences are sorted by length within input file;
 - prober: "no-hits" error fixed;
 

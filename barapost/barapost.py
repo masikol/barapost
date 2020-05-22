@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.14.a"
+__version__ = "3.14.b"
 # Year, month, day
-__last_update_date__ = "2020-05-13"
+__last_update_date__ = "2020-05-22"
 
 # |===== Check python interpreter version =====|
 
@@ -443,18 +443,11 @@ else:
 from src.barapost_modules.build_local_db import build_local_db
 
 # Build a database
-local_fasta = build_local_db(tax_annot_res_dir,
+db_path = build_local_db(tax_annot_res_dir,
     acc_fpath,
     your_own_fasta_lst,
     accs_to_download,
     logfile_path)
-
-if not os.path.exists(local_fasta):
-    local_fasta = os.path.join(tax_annot_res_dir, "local_database", "local_seq_set.fasta")
-else:
-    print(err_fmt("database menaging error"))
-    platf_depend_exit(1)
-# end if
 
 # Create temporary directory for query files:
 queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
@@ -500,6 +493,7 @@ if n_thr <= len(fq_fa_list):
             tax_annot_res_dir,
             blast_algorithm,
             use_index,
+            db_path,
             logfile_path)
 
     else:
@@ -513,6 +507,7 @@ if n_thr <= len(fq_fa_list):
             tax_annot_res_dir,
             blast_algorithm,
             use_index,
+            db_path,
             logfile_path)
     # end if
 else:
@@ -527,6 +522,7 @@ else:
         tax_annot_res_dir,
         blast_algorithm,
         use_index,
+        db_path,
         logfile_path)
 # end if
 

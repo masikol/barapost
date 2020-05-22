@@ -39,7 +39,7 @@ def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff):
 
 
 def process_part_of_file(data, tsv_res_path, packet_size, tax_annot_res_dir,
-    blast_algorithm, use_index, logfile_path):
+    blast_algorithm, use_index, db_path, logfile_path):
     """
     Function preforms processing part of file in 'few_files'-parallel mode.
 
@@ -55,48 +55,57 @@ def process_part_of_file(data, tsv_res_path, packet_size, tax_annot_res_dir,
     :type blast_algorithm: str;
     :param use_index: logic value indicationg whether to use indes;
     :type use_index: bool;
+    :param db_path: path to database;
+    :type db_path: str;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
 
-    taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
     queries_tmp_dir = os.path.join(tax_annot_res_dir, "queries-tmp")
-    local_fasta = os.path.join(tax_annot_res_dir, "local_database", "local_seq_set.fasta")
 
-    with shelve.open(taxonomy_path, 'r') as tax_file:
+    for packet in fasta_packets_from_str(data["fasta"], packet_size):
 
-        for packet in fasta_packets_from_str(data["fasta"], packet_size):
+        # Blast the packet
+        align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,
+            use_index, queries_tmp_dir, db_path, logfile_path)
 
-            # Blast the packet
-            align_xml_text = launch_blastn(packet["fasta"], blast_algorithm,
-                use_index, queries_tmp_dir, local_fasta)
+        # Get result tsv lines
+        result_tsv_lines = parse_align_results_xml(align_xml_text,
+            data["qual"], logfile_path)
+        # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
+        # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
 
-            # Get result tsv lines
-            result_tsv_lines = parse_align_results_xml(align_xml_text,
-                data["qual"], tax_file, logfile_path)
-            # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
-            # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
-
-            # Write the result to TSV file
-            with write_lock:
-                write_classification(result_tsv_lines, tsv_res_path)
-            # end with
-        # end for
-    # end with
+        # Write the result to TSV file
+        with write_lock:
+            write_classification(result_tsv_lines, tsv_res_path)
+        # end with
+    # end for
 
     remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
 # end def process_part_of_file
 
 
 def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
-            blast_algorithm, use_index, logfile_path):
+            blast_algorithm, use_index, db_path, logfile_path):
     """
     Function preforms "few_files"-parallel mode.
 
     :param fq_fa_list: list of paths to files meant to be processed;
     :type fq_fa_list: list<str>;
-    :param i: number of this file;
-    :type i: int;
+    :param n_thr: number of threads to launch;
+    :type n_thr: int;
+    :param packet_size: number of sequences processed by blast in a single launching;
+    :type packet_size: int;
+    :param tax_annot_res_dir: path to ouput directory that contains taxonomic annotation;
+    :type tax_annot_res_dir: str;
+    :param blast_algorithm: blast algorithm to use;
+    :type blast_algorithm: str;
+    :param use_index: logic value indicationg whether to use indes;
+    :type use_index: bool;
+    :param db_path: path to database;
+    :type db_path: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     nfiles = len(fq_fa_list)
@@ -156,6 +165,7 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
             tax_annot_res_dir,
             blast_algorithm,
             use_index,
+            db_path,
             logfile_path) for file_part in packet_generator(fq_fa_path,
                 file_part_size,
                 num_done_seqs)])
