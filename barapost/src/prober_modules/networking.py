@@ -206,17 +206,21 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     server = "blast.ncbi.nlm.nih.gov"
     wait_url = "/blast/Blast.cgi?CMD=Get&FORMAT_OBJECT=SearchInfo&RID=" + rid
 
+    whtspc_len = 6 + len("(requesting)")
+
     while True:
         resp_content = lingering_https_get_request(server, wait_url, logfile_path, "BLAST response")
 
         # if server asks to wait
         if "Status=WAITING" in resp_content:
-            printn("\r{} - The request is being processed. Waiting      \033[6D".format(getwt()))
+            printn("\r{} - The request is being processed. Waiting{}{}".format(getwt(),
+                ' '*whtspc_len, "\033[%dD" % whtspc_len))
             # indicate each 20 seconds with a dot
             for i in range(1, 7):
                 sleep(10)
                 printn("\r{} - The request is being processed. Waiting{}".format(getwt(), '.'*i))
             # end for
+            printn("(requesting)")
             continue
         elif "Status=FAILED" in resp_content:
             # if job failed
@@ -276,17 +280,17 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
         "XML BLAST response")
 
     if "Bad Gateway" in xml_text:
-        printl(logfile_path, getwt() + " - ERROR! Bad Gateway! Data from last packet has been lost.")
+        printl(logfile_path, getwt() + " - Error! Bad Gateway! Data from last packet has been lost.")
         printl(logfile_path, "Resending this packet.")
         return None
 
     elif "Status=FAILED" in xml_text:
-        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!: request failed")
+        printl(logfile_path, '\n' + getwt() + "BLAST error!: request failed")
         printl(logfile_path, "Resending this packet.")
         return None
 
     elif "to start it again" in xml_text:
-        printl(logfile_path, '\n' + getwt() + "BLAST ERROR!")
+        printl(logfile_path, '\n' + getwt() + "BLAST error!")
         printl(logfile_path, "Resending this packet.")
         return None
 

@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-05-23
+
+- prober: bug emerged due to embedding `-c` option fixed;
+
+## Version changes:
+
+1. prober: `1.20.a -> 1.20.b`;
+
 ## 2020-05-21
 
 - barapost: minor performance fix;

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.20.a"
+__version__ = "1.20.b"
 # Year, month, day
-__last_update_date__ = "2020-05-21"
+__last_update_date__ = "2020-05-23"
 
 # |===== Check python interpreter version =====|
 
@@ -370,8 +370,10 @@ if any(filter(is_fasta, fq_fa_list)):
     from src.fasta import fasta_packets
 # end if
 
-# Make packet size consistent with probing batch size
-# packet_size = min(packet_size, probing_batch_size)
+if packet_mode == 0:
+    # Make packet size consistent with probing batch size
+    packet_size = min(packet_size, probing_batch_size)
+# end if
 
 # Create output directory
 if not os.path.isdir(outdir_path):
@@ -579,13 +581,15 @@ for i, fq_fa_path in enumerate(fq_fa_list):
             # end if
         # end if
 
-        if send: # submittie the query to BLAST server
+        if send: # submit query to BLAST server
 
             s_letter = 's' if len(packet["qual"]) != 1 else ''
             printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
+
             lines = filter(lambda x: not x.startswith('>'), packet["fasta"].splitlines())
             totalbp = len(''.join(map(lambda x: x.strip(), lines)))
             del lines
+
             printl(logfile_path, "Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send,
                 out_of_n, len(packet["qual"]), s_letter, totalbp))
 
