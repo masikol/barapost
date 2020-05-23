@@ -3,10 +3,12 @@
 ## 2020-05-23
 
 - prober: bug emerged due to embedding `-c` option fixed;
+- barapost: multiprocessing bug fixed;
 
 ## Version changes:
 
 1. prober: `1.20.a -> 1.20.b`;
+2. barapost: `3.14.b --> 3.14.c`;
 
 ## 2020-05-21
 
