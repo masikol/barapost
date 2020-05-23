@@ -71,7 +71,7 @@ def form_packet_numseqs(fastq_file, packet_size, fmt_func, max_seq_len):
     # end for
 
     if max_seq_len < float("inf"): # prune sequences
-        packet = prune_seqs(packet, 'l', max_seq_len)
+        packet = prune_seqs(packet, max_seq_len)
     # end if
 
     return {"fasta": packet, "qual": qual_dict}, eof
@@ -118,7 +118,7 @@ def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
     # end for
 
     if max_seq_len < float("inf"): # prune sequences
-        packet = prune_seqs(packet, 'l', max_seq_len)
+        packet = prune_seqs(packet, max_seq_len)
     # end if
 
     return {"fasta": packet, "qual": qual_dict}, eof

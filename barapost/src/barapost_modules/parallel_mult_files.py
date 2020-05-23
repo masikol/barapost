@@ -144,7 +144,7 @@ def process_paral(fq_fa_list, packet_size, tax_annot_res_dir,
 
 
 def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
-    blast_algorithm, use_index, logfile_path):
+    blast_algorithm, use_index, db_path, logfile_path):
     """
     Function launches parallel processing in "many-files" mode by barapost.py.
 
