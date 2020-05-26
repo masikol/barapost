@@ -115,7 +115,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
         rename_file_verbosely(tmp_fpath, logfile_path)
         rename_file_verbosely(acc_fpath, logfile_path)
     elif resume == True:
-        printl(logfile_path, "Let's try to continue...")
+        printl(logfile_path, "Let's try to resume...")
 
         # Collect information from result file
         if os.path.exists(tsv_res_fpath):
@@ -245,7 +245,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
 
             RID_save = re_search(r"Request_ID: (.+)", temp_lines[0]).group(1).strip()
             packet_size_save = int(re_search(r"Packet_size: ([0-9]*)", temp_lines[1]).group(1).strip())
-            packet_mode_save = int(re_search(r"Packet mode: ([0-9]{1})", temp_lines[2]).group(1).strip())
+            packet_mode_save = int(re_search(r"Packet_mode: ([0-9]{1})", temp_lines[2]).group(1).strip())
 
         except (AttributeError, OSError):
 

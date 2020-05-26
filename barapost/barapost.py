@@ -165,16 +165,16 @@ for opt, arg in opts:
         # end try
         if n_thr > len(os.sched_getaffinity(0)):
             print("""\nWarning! You have specified {} threads to use
-  although {} are available.""".format(n_thr, mp.cpu_count()))
+  although {} are available.""".format(n_thr, len(os.sched_getaffinity(0))))
             error = True
             while error:
                 reply = input("""\nPress ENTER to switch to {} threads,
   or enter 'c' to continue with {} threads,
-  or enter 'q' to exit:>>""".format(mp.cpu_count(), n_thr))
+  or enter 'q' to exit:>>""".format(len(os.sched_getaffinity(0)), n_thr))
                 if reply in ("", 'c', 'q'):
                     error = False
                     if reply == "":
-                        n_thr = mp.cpu_count()
+                        n_thr = len(os.sched_getaffinity(0))
                         print("\nNumber of threads switched to {}\n".format(n_thr))
                     elif reply == 'c':
                         pass

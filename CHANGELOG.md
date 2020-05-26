@@ -1,12 +1,24 @@
 # "Barapost" changelog
 
+## 2020-05-26 edition
+
+- prober: prober now will split packet into two if BLAST error encounters, leaving sequences intact. prober now prunes sequences twofold only if packet consists of the only sequence;
+- barapost: one more minor multiprocessing bug fixed;
+
+## Version changes:
+
+- prober: `1.20.b -> 1.21.a`;
+- barapost: `3.14.c --> 3.14.d`;
+
 ## 2020-05-23
 
 - prober: bug emerged due to embedding `-c` option fixed;
+- barapost: multiprocessing bug fixed;
 
 ## Version changes:
 
 1. prober: `1.20.a -> 1.20.b`;
+2. barapost: `3.14.b --> 3.14.c`;
 
 ## 2020-05-21
 

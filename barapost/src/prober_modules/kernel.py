@@ -63,7 +63,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         # Update this dictionary to print how many packets left
         if not out_of_n["npacks"] is None:
             out_of_n["npacks"] += 1
-            out_of_n["msg"] = " out of {}".format(packs_at_all)
+            out_of_n["msg"] = " out of {}".format(out_of_n["npacks"])
         # end if
 
         # Calculate size of subpacket
@@ -93,7 +93,8 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         printl(logfile_path, "prober will prune this sequence twofold and resubmit it.")
 
         # Calculate new length for this sequence
-        old_len = len(packet["fasta"].splitlines[1].strip())
+        old_seq = map(str.strip, packet["fasta"].splitlines()[1:]) # generator of stripped sequence-sontaining lines
+        old_len = len(''.join(old_seq)) # calculate length of old sequence
         new_len = old_len // 2
         if old_len % 2 != 0:
             new_len += 1

@@ -165,7 +165,7 @@ def send_request(request, pack_to_send, packet_size, packet_mode, filename, tmp_
     with open(tmp_fpath, 'w') as tmpfile:
         tmpfile.write("Request_ID: {}\n".format(rid))
         tmpfile.write("Packet_size: {}\n".format(packet_size))
-        tmpfile.write("Packet mode: {}".format(packet_mode))
+        tmpfile.write("Packet_mode: {}".format(packet_mode))
     # end with
 
     # Wait for results of alignment
@@ -233,7 +233,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
             # if job failed
             printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
             printl(logfile_path, "Resending this packet.")
-            return None, BlastError(1)
+            return None, BlastError(2)
         elif "Status=UNKNOWN" in resp_content:
             # if job expired
             printl(logfile_path, '\n' + getwt() + " - Job expired\a\n")
@@ -272,7 +272,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
                 # probably, job is failed if execution reaches here
                 printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
                 printl(logfile_path, "Resending this packet.")
-                return None, BlastError(1)
+                return None, BlastError(2)
             # end if
             break
         # end if
@@ -294,12 +294,12 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     elif "Status=FAILED" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST error!: request failed")
         printl(logfile_path, "Resending this packet.")
-        return None, BlastError(1)
+        return None, BlastError(2)
 
     elif "to start it again" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST error!")
         printl(logfile_path, "Resending this packet.")
-        return None, BlastError(1)
+        return None, BlastError(2)
 
     elif "[blastsrv4.REAL]" in xml_text:
         printl(logfile_path, "BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", xml_text).group(1)))
