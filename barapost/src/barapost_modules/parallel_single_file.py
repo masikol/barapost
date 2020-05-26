@@ -7,9 +7,8 @@ import shelve
 import multiprocessing as mp
 from re import search as re_search
 
-from src.fasta import fasta_packets
+from src.fasta import fasta_packets, fasta_packets_from_str
 from src.fastq import fastq_packets
-from src.barapost_modules.fasta_packets_from_str import fasta_packets_from_str
 
 from src.printlog import getwt, printl, printn, println
 from src.write_classification import write_classification

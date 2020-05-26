@@ -396,7 +396,6 @@ if not os.path.isdir(taxonomy_dir):
 # end if
 taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
 
-
 #                       |===== Proceed =====|
 
 check_connection("https://blast.ncbi.nlm.nih.gov")
@@ -411,11 +410,8 @@ from src.prober_modules.networking import verify_taxids
 # Make sure that TaxIDs specified by user actually exist
 organisms = verify_taxids(taxid_list, logfile_path)
 
-from src.prune_seqs import prune_seqs
 from src.prober_modules.prober_spec import look_around
-from src.write_classification import write_classification
-from src.prober_modules.networking import configure_request, send_request, wait_for_align
-from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
+from src.prober_modules.kernel import submit, retrieve_ready_job
 
 
 # Print information about the run
@@ -463,7 +459,8 @@ printl(logfile_path, '-'*30)
 acc_dict = dict()
 
 # Counter of sequences processed during current run
-seqs_processed = 0
+seqs_processed = [0] # it should be mutable
+
 # Counter of sequences processed concerning possible previous run(s)
 glob_seqs_processed = 0
 
@@ -531,7 +528,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
     glob_seqs_processed += num_done_seqs
 
     if send_all or packet_mode == 1:
-        out_of_n = ""
+        out_of_n = {"msg": "", "npacks": None}
     else:
         # Calculate total number of packets meant to be sent from current FASTA file
         packs_at_all = probing_batch_size // packet_size
@@ -541,11 +538,11 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         # end if
 
         # Pretty string to print "Request 3 out of 7" if not 'send_all'
-        out_of_n = " out of {}".format(packs_at_all)
+        out_of_n = {"msg": " out of {}".format(packs_at_all), "npacks": packs_at_all}
     # enf if
 
     # Ordinal number of packet meant to be sent (will incrementing after every successful submission)
-    pack_to_send = 1
+    pack_to_send = [1] # it should be mutable
 
     # Choose appropriate record generator:
     packet_generator = fastq_packets if is_fastq(fq_fa_path) else fasta_packets
@@ -556,75 +553,25 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True
-        align_xml_text = None # will remain None if a necessity to resend packet appears
 
         # If current packet has been already send, we can try just to request for results
         if not saved_RID is None:
-
-            resume_rtoe = 0 # we will not sleep at the very beginning of resumption
-
-            # Get BLAST XML response
-            align_xml_text = wait_for_align(saved_RID, resume_rtoe,
-                pack_to_send, os.path.basename(fq_fa_path), logfile_path)
+            send = retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send, seqs_processed,
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
+                blast_algorithm, user_email, organisms,
+                acc_dict, out_of_n)
             saved_RID = None
-
-            if align_xml_text is None:
-                # Resend the packet ('send' remains True)
-                pass
-            elif align_xml_text == "[blastsrv4.REAL]":
-                # Halve sequences and resend the packet ('send' remains True)
-                packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
-                align_xml_text = None
-            else:
-                # OK -- results are retrieved and we can omit next 'if send' statement
-                send = False
-            # end if
         # end if
 
-        if send: # submit query to BLAST server
-
-            s_letter = 's' if len(packet["qual"]) != 1 else ''
-            printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
-
-            lines = filter(lambda x: not x.startswith('>'), packet["fasta"].splitlines())
-            totalbp = len(''.join(map(lambda x: x.strip(), lines)))
-            del lines
-
-            printl(logfile_path, "Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send,
-                out_of_n, len(packet["qual"]), s_letter, totalbp))
-
-            while align_xml_text is None: # until successfull attempt
-
-                request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email) # get the request
-
-                # Send the request and get BLAST XML response.
-                # 'align_xml_text' will be None if an error occurs.
-                align_xml_text = send_request(request, pack_to_send, packet_size, packet_mode,
-                    os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
-
-                # If NCBI BLAST server rejects the request due to too large amount of data in it --
-                #    shorten all sequences in packet twofold and resend it.
-                if align_xml_text == "[blastsrv4.REAL]":
-                    packet["fasta"] = prune_seqs(packet["fasta"], 'f', 0.5)
-                    align_xml_text = None
-                # end if
-            # end while
+        # Submit current packet to BLAST server
+        if send:
+            submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
+                blast_algorithm, user_email, organisms,
+                acc_dict, out_of_n)
         # end if
 
-        # Get result tsv lines
-        result_tsv_lines = parse_align_results_xml(align_xml_text,
-            packet["qual"], acc_dict, logfile_path, taxonomy_path)
-
-        # Write classification to TSV file
-        write_classification(result_tsv_lines, tsv_res_path)
-        # Write accessions and names of hits to TSV file 'hits_to_download.tsv'
-        write_hits_to_download(acc_dict, acc_fpath)
-
-        seqs_processed += len( packet["qual"] )
-        pack_to_send += 1
-        remove_tmp_files(tmp_fpath)
-
-        if not send_all and seqs_processed >= probing_batch_size: # probing batch is processed -- finish work
+        if not send_all and seqs_processed[0] >= probing_batch_size: # probing batch is processed -- finish work
             stop = True
             break
         # end if
@@ -637,8 +584,8 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
 
 # Print some summary:
-glob_seqs_processed += seqs_processed
-str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed else ""
+glob_seqs_processed += seqs_processed[0]
+str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed[0] else ""
 
 printl(logfile_path, '-'*20+'\n')
 space_sep_num = "{:,}".format(glob_seqs_processed).replace(',', ' ')

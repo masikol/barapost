@@ -49,7 +49,7 @@ def verify_taxids(taxid_list, logfile_path):
                 printl(logfile_path,  str(oserr) )
                 platf_depend_exit(-2)
             else:
-                printl(logfile_path, tax_name)
+                printl(logfile_path, "\r   {} - {}".format(taxid, tax_name))
                 organisms.append("{} (taxid:{})".format(tax_name, taxid))
             # end try
         # end for
@@ -165,12 +165,19 @@ def send_request(request, pack_to_send, packet_size, packet_mode, filename, tmp_
     with open(tmp_fpath, 'w') as tmpfile:
         tmpfile.write("Request_ID: {}\n".format(rid))
         tmpfile.write("Packet_size: {}\n".format(packet_size))
-        tmpfile.write("Packet mode: {}".format(packet_mode))
+        tmpfile.write("Packet_mode: {}".format(packet_mode))
     # end with
 
     # Wait for results of alignment
     return( wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path) )
 # end def send_request
+
+
+class BlastError:
+    def __init__(self, code):
+        self.code = code
+    # end def
+# end class BlastError
 
 
 def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
@@ -192,7 +199,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     """
 
     printl(logfile_path, "\n{} - Requesting for current query status. Request ID: {},\n '{}'; Submission #{}".format(getwt(),
-    rid, filename, pack_to_send,))
+    rid, filename, pack_to_send[0],))
     # RTOE can be zero at the very beginning of resumption
     if rtoe > 0:
 
@@ -226,15 +233,15 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
             # if job failed
             printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
             printl(logfile_path, "Resending this packet.")
-            return None
+            return None, BlastError(2)
         elif "Status=UNKNOWN" in resp_content:
             # if job expired
             printl(logfile_path, '\n' + getwt() + " - Job expired\a\n")
             printl(logfile_path, "Resending this packet.")
-            return None
+            return None, BlastError(1)
         # if results are ready
         elif "Status=READY" in resp_content:
-            printl(logfile_path, "\n{} - Result for query '{}' #{} is ready!".format(getwt(), filename, pack_to_send))
+            printl(logfile_path, "\n{} - Result for query '{}' #{} is ready!".format(getwt(), filename, pack_to_send[0]))
             # if there are hits
             if "ThereAreHits=yes" in resp_content:
                 for i in range(15, 0, -5):
@@ -265,7 +272,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
                 # probably, job is failed if execution reaches here
                 printl(logfile_path, '\n' + getwt() + " - Job failed\a\n")
                 printl(logfile_path, "Resending this packet.")
-                return None
+                return None, BlastError(2)
             # end if
             break
         # end if
@@ -282,23 +289,23 @@ def wait_for_align(rid, rtoe, pack_to_send, filename, logfile_path):
     if "Bad Gateway" in xml_text:
         printl(logfile_path, getwt() + " - Error! Bad Gateway! Data from last packet has been lost.")
         printl(logfile_path, "Resending this packet.")
-        return None
+        return None, BlastError(1)
 
     elif "Status=FAILED" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST error!: request failed")
         printl(logfile_path, "Resending this packet.")
-        return None
+        return None, BlastError(2)
 
     elif "to start it again" in xml_text:
         printl(logfile_path, '\n' + getwt() + "BLAST error!")
         printl(logfile_path, "Resending this packet.")
-        return None
+        return None, BlastError(2)
 
     elif "[blastsrv4.REAL]" in xml_text:
         printl(logfile_path, "BLAST server error:\n  {}".format(re_search(r"(\[blastsrv4\.REAL\].*\))", xml_text).group(1)))
-        printl(logfile_path, "All sequences in recent packet will be halved and this packet will be resent to NCBI BLAST server.")
-        return "[blastsrv4.REAL]"
+        # Error code 2 indicated that we need to split packet and resubmit
+        return None, BlastError(2)
     # end if
 
-    return xml_text
+    return xml_text, BlastError(0)
 # end def wait_for_align

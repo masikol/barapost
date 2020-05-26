@@ -159,7 +159,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
             # end for
 
             if max_seq_len < float("inf"): # prune sequences
-                packet = prune_seqs(packet, 'l', max_seq_len)
+                packet = prune_seqs(packet, max_seq_len)
             # end if
 
             if packet != "":
@@ -178,3 +178,93 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
         # end while
     # end with
 # end def fasta_packets
+
+
+def fasta_packets_from_str(data, packet_size):
+    """
+    Generator retrieves 'packet_size' records from 'fasta'
+        no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
+
+    :param data: FASTA-formatted string;
+    :type data: str;
+    :param packet_size: number of sequences to align in one 'blastn' launching;
+    :type packet_size: int;
+    """
+
+    fasta_lines = data.splitlines()
+    fasta_lines.append("") # append fictive value imitating end of file
+    del data # let interpreter get rid of this large string -- we do not need it any more
+
+    qual_dict = dict() # {<seq_id>: '-'}, as soon as fasta file is being processed
+
+    # Variable for counting lines (it is list in order to circumvent immutability of int type)
+    line_i = 0
+
+    # Variable that contains id of next sequence in current FASTA file.
+    # If no or all sequences in current FASTA file have been already processed, this variable is None.
+    # There is no way to count sequences in multi-FASTA file, accept of counting sequence IDs.
+    # Therefore 'next_id_line' should be saved in memory after moment when packet is formed.
+    next_id_line = None
+
+    # The first line is always a sequence ID if data is not a file, but a fasta-formatted string.
+    #   Because in this case all "done" sequences are already passed by function 'fasta_packets'
+    line = fmt_read_id(fasta_lines[line_i])
+    line_i += 1
+
+    packet = line+'\n' # add recently read line
+
+    eof = False
+
+    # Iterate over packets left to process
+    while not eof:
+
+        i = 0 # variable for counting sequenes within packet
+
+        while i < packet_size:
+
+            line = fasta_lines[line_i]
+
+            if line == "": # if end of data is reached
+                eof = True
+                break
+            # end if
+
+            line_i += 1
+
+            if line.startswith('>'):
+                line = fmt_read_id(line)
+                i += 1
+            # end if
+            packet += line + '\n' # add line to packet
+        # end while
+
+        if line != "":
+            next_id_line = packet.splitlines()[-1] # save sequence ID next packet will start with
+            packet = '\n'.join(packet.splitlines()[:-1]) # exclude 'next_id_line' from packet
+        else:
+            next_id_line = None
+        # end if
+
+        # Get list of sequence IDs:
+        names = filter(lambda l: True if l.startswith('>') else False, packet.splitlines())
+        names = map(lambda l: l.replace('>', ''), names)
+
+        for name in names:
+            qual_dict[name] = '-' # there is no quality info in fasta files
+        # end for
+
+        # No way to get quality from fasta-formatted string.
+        # However, we will have it from 'packet_generator()' launching 
+        #   (see function 'process' in src/barapost_modules/parallel_single_file.py).
+        if packet != "":
+            yield {"fasta": packet, "qual": qual_dict}
+            # Reset packet
+            if not next_id_line is None:
+                packet = next_id_line+'\n'
+                qual_dict = dict()
+            # end if
+        else:
+            return
+        # end if
+    # end while
+# end def fasta_packets_from_str
