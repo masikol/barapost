@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-06-05 edition
+
+- sorter. Bug fix: sorting fast5 files according to classification made on fasta files no longer fails;
+- prober, barapost: minor modifications;
+
+## Version changes:
+
+- prober: `1.21.a --> 1.21.b`;
+- barapost `3.14.d --> 3.14.e`;
+- sorter: `4.5.e --> 4.5.f`;
+
 ## 2020-05-26 edition
 
 - prober: prober now will split packet into two if BLAST error encounters, leaving sequences intact. prober now prunes sequences twofold only if packet consists of the only sequence;

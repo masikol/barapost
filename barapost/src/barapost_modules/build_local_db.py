@@ -312,10 +312,10 @@ Enter 'r' to remove all files in this directory and create the database from the
         printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
         with shelve.open(taxonomy_path, 'c') as tax_file:
             for i, acc in enumerate(acc_dict.keys()):
-                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
                 if not acc in tax_exist_accs:
                     download_lineage(acc, acc_dict[acc][1], tax_file, logfile_path)
                 # end if
+                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
                 # Accessions can be of different length
             # end for
         # end with

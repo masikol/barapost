@@ -2,6 +2,7 @@
 # This module defines functions, which download and format organisms' lineages.
 
 import os
+import sys
 from time import sleep
 from re import search as re_search, findall as re_findall
 
@@ -63,14 +64,13 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     # Firstly convert tuples to lists in order to change them:
     lineage = list(map(lambda x: list(x), lineage))
 
-
     # Remove odd information from beginnig of names:
     for i in range(len(lineage)):
         lineage[i][0] = lineage[i][0].lower() # just in case
     # end for
 
-    # We will leave only following taxonomic ranks.
-    # Species name need special handling, it will be added later.
+    # We will leave only following taxonomic ranks: domain, phylum, class, order, family, genus.
+    # Species name needs special handling, it will be added later.
     ranks_to_select = ranks[:-1]
 
     # Remove redundant ranks:
@@ -83,7 +83,7 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     # Merely return it's definition
     if len(lineage) == 0:
         # Save taxonomy
-        tax_file[hit_acc] = hit_def
+        tax_file[sys.intern(hit_acc)] = hit_def
         return hit_def
     # end if
 
@@ -131,7 +131,7 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     lineage = tuple(lineage)
 
     # Save taxonomy
-    tax_file[hit_acc] = lineage
+    tax_file[sys.intern(hit_acc)] = lineage
 
     return get_str_to_print(lineage, hit_acc)
 # end def download_lineage
@@ -160,7 +160,7 @@ def find_lineage(hit_acc, hit_def, tax_file, logfile_path):
         lineage = download_lineage(hit_acc, hit_def, tax_file, logfile_path)
     else:
         # If hit is not new -- simply retrieve it from taxonomy file
-        lineage = get_str_to_print(tax_file[str(hit_acc)], hit_acc)
+        lineage = get_str_to_print(tax_file[sys.intern(hit_acc)], hit_acc)
     # end if
 
     return lineage
@@ -261,5 +261,5 @@ def save_own_seq_taxonomy(seq_name, acc, tax_file):
     # end if
 
     # Save taxonomy
-    tax_file[acc] = lineage
+    tax_file[sys.intern(acc)] = lineage
 # end def save_own_seq_taxonomy

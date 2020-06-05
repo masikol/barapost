@@ -257,7 +257,7 @@ def _deduplicate_replicons(repl_list, src_acc, logfile_path):
     # Print what we've got
     if len(dedupl_list) != 0:
         for i, (acc, hit_def) in enumerate(dedupl_list):
-            printl(logfile_path, "  {}. {} - {}".format(i+1, acc, hit_def))
+            printl(logfile_path, "  {}) {} - {}".format(i+1, acc, hit_def))
         # end for
     else:
         printl(logfile_path, "  It is the only replicon of this organism.")
@@ -305,7 +305,7 @@ def _get_related_replicons(acc, acc_dict, logfile_path):
 
     # XML should contain element "LinkSetDb"
     if linkset is None:
-        printl(logfile_path, "\nCannot check replicons for '{}': \
+        printl(logfile_path, "Cannot check replicons for '{}': \
 there is no BioSample page for this record.".format(acc))
         return list()
     # end if
@@ -370,7 +370,7 @@ def search_for_related_replicons(acc_dict, logfile_path):
 
     for i, acc in enumerate(start_accs):
 
-        printl(logfile_path, "{} ({}):".format(acc, acc_dict[acc]))
+        printl(logfile_path, "{}. {} ({}):".format(i+1, acc, acc_dict[acc]))
 
         # Search for related replicons:
         try:

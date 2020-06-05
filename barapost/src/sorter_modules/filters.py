@@ -46,7 +46,19 @@ def get_QL_filter(fpath, quality, length):
     # Ad quality filter
     # There will be minus instead of quality for fasta files
     if not is_fasta(fpath):
-        filters.append(lambda x: x[0] >= quality)
+
+        # Someone can try to classifu fasta files and then sort fast5 accoeding to the classification.
+        # In this case TypeError will be raised. Then just return True.
+
+        def qual_filter(x):
+            try:
+                return x[0] >= quality
+            except TypeError:
+                return True
+            # end try
+        # end def qual_filter
+
+        filters.append(qual_filter)
     # end if
 
     # Add length filter

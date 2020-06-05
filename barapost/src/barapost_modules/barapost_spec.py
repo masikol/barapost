@@ -5,7 +5,7 @@ import os
 import sys
 import shelve
 from glob import glob
-from re import search as re_search
+import re
 
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
@@ -41,7 +41,7 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fq_fa_path) # get rid of absolute path
-    fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
+    fasta_hname = re.search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
 
     # Form path to result file
     tsv_res_fpath = os.path.join(new_dpath, "classification.tsv")
@@ -257,7 +257,11 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
                             line_splt = line.split('\t')
 
                             if len(line_splt) == 3:
-                                name = line_splt[1]
+                                if re.match(r"[0-9]+", line_splt[-1]) is None:
+                                    name = line_splt[-1]
+                                else:
+                                    name = line_splt[1]
+                                # end if
                             elif len(line_splt) == 4: # backward compatibility
                                 name = line_splt[2]
                             else:

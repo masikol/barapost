@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.e"
+__version__ = "4.5.f"
 # Year, month, day
-__last_update_date__ = "2020-05-01"
+__last_update_date__ = "2020-06-05"
 
 # |===== Check python interpreter version =====|
 
