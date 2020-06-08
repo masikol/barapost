@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-06-08 edition
+
+- barapost: fixed bug that did not allow to download many (200+) genomes due to too long URL;
+
+## Version changes:
+
+- barapost `3.14.e --> 3.14.f`;
+
 ## 2020-06-05 edition
 
 - sorter. Bug fix: sorting fast5 files according to classification made on fasta files no longer fails;
