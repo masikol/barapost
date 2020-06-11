@@ -1,5 +1,5 @@
 # -*- coding: utf-8  -*-
-# This module defines functions necessary for barapost.py to perform single-thread work.
+# This module defines functions necessary for barapost-local.py to perform single-thread work.
 
 import os
 import shelve
@@ -18,7 +18,7 @@ from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse
 
 def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_index, db_path, logfile_path):
     """
-    Function launches parallel processing in "many-files" mode by barapost.py.
+    Function launches parallel processing in "many-files" mode by barapost-local.py.
 
     :param fq_fa_list: list of paths to files meant to be processed;
     :type fq_fa_list: list<str>;

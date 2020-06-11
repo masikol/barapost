@@ -1,5 +1,5 @@
 # -*- coding: utf-8  -*-
-# This module defines functions necessary for barapost.py to perform parallel
+# This module defines functions necessary for barapost-local.py to perform parallel
 #   processing in "many-files" mode.
 
 import os
@@ -46,7 +46,7 @@ def init_process(print_lock_buff, conter_lock_buff, file_counter_buff):
 def process_paral(fq_fa_list, packet_size, tax_annot_res_dir,
     blast_algorithm, use_index, db_path, nfiles, logfile_path):
     """
-    Function performs 'many_files'-parallel mode of barapost.py.
+    Function performs 'many_files'-parallel mode of barapost-local.py.
 
     :param fq_fa_list: list of paths to FASTA and FASTQ files meant to be processed;
     :type fq_fa_list: list<str>;
@@ -146,7 +146,7 @@ def process_paral(fq_fa_list, packet_size, tax_annot_res_dir,
 def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
     blast_algorithm, use_index, db_path, logfile_path):
     """
-    Function launches parallel processing in "many-files" mode by barapost.py.
+    Function launches parallel processing in "many-files" mode by barapost-local.py.
 
     :param fq_fa_list: list of paths to files meant to be processed;
     :type fq_fa_list: list<str>;

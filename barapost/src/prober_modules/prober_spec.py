@@ -423,12 +423,12 @@ def write_hits_to_download(acc_dict, acc_file_path):
 
     # Rewrite head:
     with open(acc_file_path, 'w') as acc_file:
-        acc_file.write("# Here are accessions and names of Genbank records that can be used for sorting by 'barapost.py'\n")
+        acc_file.write("# Here are accessions and names of Genbank records that can be used for sorting by 'barapost-local.py'\n")
         acc_file.write("# Values in this file are delimited by tabs.\n")
         acc_file.write("# You are welcome to edit this file by adding,\n")
         acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")
-        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost.py'.\n")
-        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost.py'.\n")
+        acc_file.write("# Lines muted with '#' won't be noticed by 'barapost-local.py'.\n")
+        acc_file.write("# You can specify your own FASTA files that you want to use as database for 'barapost-local.py'.\n")
         acc_file.write("# To do it, just write your FASTA file's path to this TSV file in new line.\n\n")
         acc_file.write('\t'.join( ["ACCESSION", "RECORD_NAME", "OCCURRENCE_NUMBER"] ) + '\n')
 

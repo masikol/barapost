@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# This module defines functions necessary for barapost.py to perform parallel
+# This module defines functions necessary for barapost-local.py to perform parallel
 #   processing in "few-files" mode.
 
 import os

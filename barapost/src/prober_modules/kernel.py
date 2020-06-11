@@ -18,7 +18,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         blast_algorithm, user_email, organisms,
         acc_dict, out_of_n):
     """
-    :param packet: "packet" dictionary described in "prober.py" before the kernel loop:
+    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     :type packet: dict;
     :param packet_size: size of the packet (see option '-c' for definition);
     :type packet_size: int;
@@ -116,7 +116,7 @@ def _handle_result(align_xml_text, packet, taxonomy_path,
     """
     :param align_xml_text: XML text with results of alignment;
     :type align_xml_text: str;
-    :param packet: "packet" dictionary described in "prober.py" before the kernel loop:
+    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     :type packet: dict;
     :param taxonomy_path: path to taxonomt file;
     :type taxonomy_path: str;
@@ -160,7 +160,7 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
     """
     :param saved_RID: saved Request ID from previous run;
     :type saved_RID: str;
-    :param packet: "packet" dictionary described in "prober.py" before the kernel loop:
+    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     :type packet: dict;
     :param packet_size: size of the packet (see option '-c' for definition);
     :type packet_size: int;
@@ -231,7 +231,7 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
         blast_algorithm, user_email, organisms,
         acc_dict, out_of_n):
     """
-    :param packet: "packet" dictionary described in "prober.py" before the kernel loop:
+    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     :type packet: dict;
     :param packet_size: size of the packet (see option '-c' for definition);
     :type packet_size: int;

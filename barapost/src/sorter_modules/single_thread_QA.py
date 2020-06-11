@@ -123,7 +123,7 @@ def sort_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
         except KeyError:
             printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
 This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
-            printl(logfile_path, "Make sure that this read has been already processed by 'prober.py' and 'barapost.py'.")
+            printl(logfile_path, "Make sure that this read has been already processed by 'barapost-prober.py' and 'barapost-local.py'.")
             platf_depend_exit(1)
         # end try
 

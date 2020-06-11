@@ -148,7 +148,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
                 except Exception as err:
                     printl(logfile_path, err_fmt("error while downloading fasta file"))
                     printl(logfile_path,  str(err) )
-                    printl(logfile_path, "'barapost.py' will try again in 30 seconds")
+                    printl(logfile_path, "'barapost-local.py' will try again in 30 seconds")
                     if os.path.exists(tmp_fasta):
                         os.unlink(tmp_fasta)
                     # end if

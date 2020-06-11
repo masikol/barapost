@@ -27,23 +27,23 @@ from src.platform import platf_depend_exit
 
 if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
 
-    print("\n  prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
+    print("\n  barapost-prober.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
     print("""This script is designed for taxonomic classification
   of nucleotide sequences by finding the most similar sequence
   in NCBI Nucleotide database using BLAST web service.\n""")
 
     if "--help" in sys.argv[1:]: # print more detailed help message
-        print("""Processing entire data set with "prober.py" is not expedient,
+        print("""Processing entire data set with "barapost-prober.py" is not expedient,
   since servers are in public use and handling a request can linger for a long time.""")
         print("""Therefore the main goal of this script is to submit a relatively small
   probing batch (see `-b` option) of sequences to NCBI BLAST service and discover,
   what Genbank records can be downloaded and used as reference sequences in a database
-  stored on local machine. Further classification will be performed by "barapost.py" on local machine.""")
+  stored on local machine. Further classification will be performed by "barapost-local.py" on local machine.""")
         print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
-        print("""- if no input files are specified, "prober.py" processes
+        print("""- if no input files are specified, "barapost-prober.py" processes
    all FASTQ and FASTA files in working directory;""")
         print("""- algorithm (see '-a' option): '0' (zero, i.e. megaBlast);""")
         print("""- packet forming mode (see '-c' option): '0' (zero);""")
@@ -60,7 +60,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
     # end if
 
-    print("""Files that you want 'prober.py' to process should be specified as
+    print("""Files that you want 'barapost-prober.py' to process should be specified as
   positional arguments (see EXAMPLE #2 in detailed (--help) help message).\n""")
     print("OPTIONS:\n")
     print("""-h (--help) --- show help message.
@@ -76,7 +76,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    1 -- packet size equals sum of lengths of sequences in it;
    Mode 1 performs better if input sequences are sorted by length within input file;\n""")
     print("""-p (--packet-size) --- size of the packet, i.e. number of sequence to blast in one request.
-   It means that "prober.py" can preform multiple requests during single run.
+   It means that "barapost-prober.py" can preform multiple requests during single run.
    Value: positive integer number.
    Default value:
    100 (sequences) for mode 0;
@@ -93,11 +93,11 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    Default value is full 'nr/nt' database, i.e. no slices.
    You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi';\n""")
     print("""-b (--probing-batch-size) --- total number of sequences that will be submitted to BLAST server
-   during 'prober.py' run.
-   You can specify '-b all' to process all your sequeces by 'prober.py'.
+   during 'barapost-prober.py' run.
+   You can specify '-b all' to process all your sequeces by 'barapost-prober.py'.
    Value: positive integer number.
    Default value is 200;\n""")
-    print("""-e (--email) --- your email. Please, specify your email when you run "prober.py",
+    print("""-e (--email) --- your email. Please, specify your email when you run "barapost-prober.py",
    so that the NCBI can contact you if there is a problem. See Example #2 below;\n""")
     print("""-x (--max-seq-len) --- maximum length of a sequence that prober subits to NCBI BLAST service.
    It means that prober can prune your sequences before submission in order to spare NCBI servers.
@@ -107,19 +107,19 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
-   prober.py\n""")
+   barapost-prober.py\n""")
         print("""2. Process all files starting with "some_fasta" in the working directory with default settings.
    Provide NCBI with your email:\n
-   prober.py some_fasta* -e my.email@sth.com\n""")
+   barapost-prober.py some_fasta* -e my.email@sth.com\n""")
         print("""3. Process one file with default settings:\n
-   prober.py reads.fastq\n""")
+   barapost-prober.py reads.fastq\n""")
         print("""4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
    Search only among Erwinia sequences (551 is Erwinia taxid):\n
-   prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
+   barapost-prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
         print("""5. Process all FASTQ and FASTA files in directory named `some_dir`.
    Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
    Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
-   prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100\n""")
+   barapost-prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100\n""")
     # end if
     platf_depend_exit(0)
 # end if
@@ -301,11 +301,11 @@ if len(fq_fa_list) == 0:
 
         # If there are nothing to process -- just show help message
         if len(fq_fa_list) == 0:
-            print("\nprober.py (Version {})\n".format(__version__))
+            print("\nbarapost-prober.py (Version {})\n".format(__version__))
             print("Usage:")
-            print("  prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
+            print("  barapost-prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
             print("For more detailed description, run:")
-            print("  prober.py -h\n")
+            print("  barapost-prober.py -h\n")
             platf_depend_exit(0)
         else:
             # Ask if a user wants to proceed or he/she ran it occasionally and wants just help message
@@ -320,11 +320,11 @@ if len(fq_fa_list) == 0:
                 elif reply == 'h':
                     error = False
                     print('\n' + '-'*15)
-                    print("  prober.py (Version {})\n".format(__version__))
+                    print("  barapost-prober.py (Version {})\n".format(__version__))
                     print("Usage:")
-                    print("  prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
+                    print("  barapost-prober.py one.fastq.gz another.fasta [...] [OPTIONS]")
                     print("For more detailed description, run:")
-                    print("  prober.py -h\n")
+                    print("  barapost-prober.py -h\n")
                     platf_depend_exit(0)
                 else:
                     print("Invalid reply: {}\n".format(reply))
@@ -402,7 +402,7 @@ check_connection("https://blast.ncbi.nlm.nih.gov")
 
 logfile_path = get_logfile_path("prober", outdir_path)
 
-printl(logfile_path, "\n |=== prober.py (version {}) ===|\n".format(__version__))
+printl(logfile_path, "\n |=== barapost-prober.py (version {}) ===|\n".format(__version__))
 printl(logfile_path, get_full_time() + "- Start working\n")
 
 from src.prober_modules.networking import verify_taxids
@@ -592,7 +592,7 @@ space_sep_num = "{:,}".format(glob_seqs_processed).replace(',', ' ')
 printl(logfile_path, " {} sequences have been processed{}\n".format(space_sep_num,
     str_about_prev_runs))
 
-printl(logfile_path, "Here are Genbank records that can be used for further sorting by 'barapost.py'.")
+printl(logfile_path, "Here are Genbank records that can be used for further sorting by 'barapost-local.py'.")
 printl(logfile_path, "They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence
@@ -614,9 +614,9 @@ if unkn_num > 0:
 
 printl(logfile_path, """\nThey are saved in following file:
   '{}'""".format(acc_fpath))
-printl(logfile_path, """\nYou can edit this file before running 'barapost.py' in order to
+printl(logfile_path, """\nYou can edit this file before running 'barapost-local.py' in order to
   modify list of sequences that will be downloaded from Genbank
-  and used as local (i.e. on your local computer) database by 'barapost.py'.""")
+  and used as local (i.e. on your local computer) database by 'barapost-local.py'.""")
 
 printl(logfile_path, '\n' + get_full_time() + "- Task is completed\n")
 platf_depend_exit(0)

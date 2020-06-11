@@ -270,9 +270,9 @@ def _deduplicate_replicons(repl_list, src_acc, logfile_path):
 def _get_related_replicons(acc, acc_dict, logfile_path):
     """
     Generator finds replicons (other chromosomes or plasmids, sometimes even proviruses),
-      which are related to Genbank record "discovered" by prober.py.
+      which are related to Genbank record "discovered" by barapost-prober.py.
 
-    :param acc: accession of a record "discovered" by prober.py;
+    :param acc: accession of a record "discovered" by barapost-prober.py;
     :type acc: str;
     :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
     :type acc_dict: dict<str: tuple<str>>;
