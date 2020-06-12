@@ -13,7 +13,7 @@ from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS, F
 from src.fasta import fasta_packets
 from src.fastq import fastq_packets
 
-from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
+from src.barapost_local_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
 def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_index, db_path, logfile_path):

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Module defines functions necessary for sorting FASTA and FASTQ files in parallel.
+# Module defines functions necessary for binning FASTA and FASTQ files in parallel.
 
 # If we process files in parallel, we need to open output files each time we need to write to it,
 #    because different processed cannot correctly write to the same file and have their own file descriptors:
@@ -10,60 +10,60 @@ import os
 import sys
 import multiprocessing as mp
 
-from src.sorter_modules.sorter_spec import *
+from src.binning_modules.binning_spec import *
 
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
 from src.filesystem import get_curr_res_dpath, is_fastq
 
-from src.sorter_modules.fastq_records import fastq_records
-from src.sorter_modules.fasta_records import fasta_records
+from src.binning_modules.fastq_records import fastq_records
+from src.binning_modules.fasta_records import fasta_records
 
-from src.sorter_modules.filters import get_QL_filter, get_QL_trash_fpath
-from src.sorter_modules.filters import get_align_filter, get_align_trash_fpath
+from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
+from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 
-def write_fastq_record(sorted_path, fastq_record):
+def write_fastq_record(binned_fpath, fastq_record):
     """
-    :param sorted_path: path to file, in which data from fastq_record is oing to be written;
-    :type sorted_path: str;
+    :param binned_fpath: path to file, in which data from fastq_record is oing to be written;
+    :type binned_fpath: str;
     :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ;
     :type fastq_record: dict<str: str>;
     """
 
-    with open(sorted_path, 'a') as sorted_file:
+    with open(binned_fpath, 'a') as binned_file:
 
-        sorted_file.write(fastq_record["seq_id"]+'\n')
-        sorted_file.write(fastq_record["seq"]+'\n')
-        sorted_file.write(fastq_record["opt_id"]+'\n')
-        sorted_file.write(fastq_record["qual_line"]+'\n')
+        binned_file.write(fastq_record["seq_id"]+'\n')
+        binned_file.write(fastq_record["seq"]+'\n')
+        binned_file.write(fastq_record["opt_id"]+'\n')
+        binned_file.write(fastq_record["qual_line"]+'\n')
     # end with
 # end def write_fastq_record
 
 
-def write_fasta_record(sorted_fpath, fasta_record):
+def write_fasta_record(binned_fpath, fasta_record):
     """
-    :param sorted_file: file, which data from fasta_record is written in
-    :type sorted_file: _io.TextIOWrapper
+    :param binned_file: file, which data from fasta_record is written in
+    :type binned_file: _io.TextIOWrapper
     :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
     :type fasta_record: dict<str: str>
     """
 
-    with open(sorted_fpath, 'a') as sorted_file:
-        sorted_file.write(fasta_record["seq_id"]+'\n')
-        sorted_file.write(fasta_record["seq"]+'\n')
+    with open(binned_fpath, 'a') as binned_file:
+        binned_file.write(fasta_record["seq_id"]+'\n')
+        binned_file.write(fasta_record["seq"]+'\n')
     # end with
 # end def write_fasta_record
 
 
-def init_paral_sorting(print_lock_buff, write_lock_buff):
+def init_paral_binning(print_lock_buff, write_lock_buff):
     """
-    Function initializes global locks for parallel sorting of fasta and fastq files.
+    Function initializes global locks for parallel binning of fasta and fastq files.
 
     :param print_lock_buff: lock for printing to console;
     :type print_lock_buff: multiprocessing.Lock;
-    :param write_lock_buff: lock for printing writing to sorted files;
+    :param write_lock_buff: lock for printing writing to binned files;
     :type write_lock_buff: multiprocessing.Lock;
     """
 
@@ -73,14 +73,14 @@ def init_paral_sorting(print_lock_buff, write_lock_buff):
     global write_lock
     write_lock = write_lock_buff
 
-# end def init_paral_sorting
+# end def init_paral_binning
 
 
-def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
+def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
     min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
-    Function for parallel sorting FASTQ and FASTA files.
-    Actually sorts multiple files.
+    Function for parallel binning FASTQ and FASTA files.
+    Actually bins multiple files.
 
     :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
     :type fq_fa_lst: list<str>;
@@ -169,9 +169,9 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                 else:
                     for hit_name in hit_names.split("&&"):
                         # Get name of result FASTQ file to write this read in
-                        sorted_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
+                        binned_file_path = os.path.join(outdir_path, "{}.fast{}".format(hit_name,
                             'q' if is_fastq(fq_fa_path) else 'a'))
-                        to_write[read_name] = (fastqa_rec, sorted_file_path)
+                        to_write[read_name] = (fastqa_rec, binned_file_path)
                     # end for
                     seqs_pass += 1
                 # end if
@@ -195,10 +195,10 @@ def sort_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
             # end with
         # end if
 
-        printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(fq_fa_path)))
+        printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(fq_fa_path)))
         printn(" Working...")
     # end for
 
 
     return (seqs_pass, QL_seqs_fail, align_seqs_fail)
-# end def sort_fastqa_file
+# end def bin_fastqa_file

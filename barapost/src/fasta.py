@@ -255,7 +255,7 @@ def fasta_packets_from_str(data, packet_size):
 
         # No way to get quality from fasta-formatted string.
         # However, we will have it from 'packet_generator()' launching 
-        #   (see function 'process' in src/barapost_modules/parallel_single_file.py).
+        #   (see function 'process' in src/barapost_local_modules/parallel_single_file.py).
         if packet != "":
             yield {"fasta": packet, "qual": qual_dict}
             # Reset packet

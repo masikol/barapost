@@ -10,7 +10,7 @@ from shelve import open as open_shelve
 
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
-from src.sorter_modules.fast5 import fast5_readids
+from src.binning_modules.fast5 import fast5_readids
 from src.printlog import printl, printn, getwt, err_fmt
 
 index_name = "fast5_to_tsvtaxann_idx"
@@ -30,7 +30,7 @@ def init_paral_utw(write_lock_buff, print_lock_buff):
 
     global print_lock
     print_lock = print_lock_buff
-# end def init_paral_sorting
+# end def init_paral_binning
 
 
 #   Structure of index:

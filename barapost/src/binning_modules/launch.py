@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
-# Module defines functions that launch sorting.
+# Module defines functions that launch binning.
 
 import multiprocessing as mp
 from functools import partial
 
 from src.spread_files_equally import spread_files_equally
-from src.sorter_modules.parallel_QA import init_paral_sorting
+from src.binning_modules.parallel_QA import init_paral_binning
 
 
-def launch_single_thread_sorting(fpath_list, str_func, tax_annot_res_dir, sens,
+def launch_single_thread_binning(fpath_list, str_func, tax_annot_res_dir, sens,
     min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
-    Function launches single-thread sorting, performed by finction 'srt_func'.
+    Function launches single-thread binning, performed by finction 'srt_func'.
 
     :param fpath_list: list of path to files to process;
     :type fpath_list: list<str>;
-    :param str_func: function that performs sorting;
+    :param str_func: function that performs binning;
     :param tax_annot_res_dir: path to directory containing taxonomic annotation;
     :type tax_annot_res_dir: str;
-    :param sens: sorting sensitivity;
+    :param sens: binning sensitivity;
     :type sens: str;
     :param min_qual: threshold for quality filter;
     :type min_qual: float;
@@ -40,20 +40,20 @@ def launch_single_thread_sorting(fpath_list, str_func, tax_annot_res_dir, sens,
         fpath_list)
 
     return res_stats
-# end def launch_single_thread_sorting
+# end def launch_single_thread_binning
 
 
-def launch_parallel_sorting(fpath_list, str_func, tax_annot_res_dir, sens, n_thr,
+def launch_parallel_binning(fpath_list, str_func, tax_annot_res_dir, sens, n_thr,
     min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
-    Function launches single-thread sorting, performed by finction 'srt_func'.
+    Function launches single-thread binning, performed by finction 'srt_func'.
 
     :param fpath_list: list of path to files to process;
     :type fpath_list: list<str>;
-    :param str_func: function that performs sorting;
+    :param str_func: function that performs binning;
     :param tax_annot_res_dir: path to directory containing taxonomic annotation;
     :type tax_annot_res_dir: str;
-    :param sens: sorting sensitivity;
+    :param sens: binning sensitivity;
     :type sens: str;
     :param n_thr: number of threads to launch;
     :type n_thr: int;
@@ -72,7 +72,7 @@ def launch_parallel_sorting(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
     # trick
     n_thr = min(n_thr, len(fpath_list))
 
-    pool = mp.Pool(n_thr, initializer=init_paral_sorting,
+    pool = mp.Pool(n_thr, initializer=init_paral_binning,
         initargs=(mp.Lock(), mp.Lock(),))
 
     res_stats = pool.starmap(partial(str_func,
@@ -90,4 +90,4 @@ def launch_parallel_sorting(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
     pool.join()
 
     return res_stats
-# end def launch_parallel_sorting
+# end def launch_parallel_binning

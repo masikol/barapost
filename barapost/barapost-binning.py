@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.f"
+__version__ = "4.5.g"
 # Year, month, day
-__last_update_date__ = "2020-06-05"
+__last_update_date__ = "2020-06-12"
 
 # |===== Check python interpreter version =====|
 
@@ -28,17 +28,17 @@ from src.platform import platf_depend_exit
 if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("\n  barapost-binning.py\n  Version {}; {} edition;\n".format(__version__, __last_update_date__))
     print("DESCRIPTION:\n")
-    print("""barapost-binning.py -- this script is designed for sorting (dividing into separate files)
+    print("""barapost-binning.py -- this script is designed for binning (dividing into separate files)
     FASTQ and FASTA files processed by "barapost-local.py".""")
-    print("""Moreover, it can sort FAST5 files according to taxonomical annotation of basecallsed
+    print("""Moreover, it can bin FAST5 files according to taxonomical annotation of basecallsed
   FASTQ files. For details, see README.md on github page
-  ('FAST5 sorting' section): https://github.com/masikol/barapost\n""")
+  ('FAST5 binning' section): https://github.com/masikol/barapost\n""")
     if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
         print("""Default parameters:\n
  - if no input files are specified, all FASTQ, FASTA and FAST5 files in current directory will be processed;
- - sorting sensitivity (see '-s' option): 5 (genus);
- - output directory ('-o' option): directory named 'sorter_result_<date_and_time_of_run>'
+ - binning sensitivity (see '-s' option): 5 (genus);
+ - output directory ('-o' option): directory named 'binning_result_<date_and_time_of_run>'
    nested in working directory;
  - minimum mean quality of a read to keep ('-q' option): 10;
  - filtering by length ('-m' option) is disabled;
@@ -60,17 +60,17 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    and to 'barapost-local.py' with '-r' option.
    Default value is "barapost_result".\n""")
     print("""-d (--indir) --- directory which contains FAST(Q/A/5) files
-   meant to be sorted. I.e. all FASTQ, FASTA and FAST5 files in this direcory will be processed;\n""")
+   meant to be binned. I.e. all FASTQ, FASTA and FAST5 files in this direcory will be processed;\n""")
     print("-o (--outdir) --- output directory;\n")
-    print("""-s (--binning-sensitivity) --- sorting sensitivity,
-   i.e. the lowest taxonomy rank that sorter regards;
+    print("""-s (--binning-sensitivity) --- binning sensitivity,
+   i.e. the lowest taxonomy rank that barapost-binning regards;
    Available values:
      0 for domain, 1 for phylum, 2 for class,
      3 for order, 4 for family, 5 for genus,
      6 for species.
    Default is 5 (genus);\n""")
     print("""-u (--untwist-fast5) --- flag option. If specified, FAST5 files will be
-   sorted considering that corresponding FASTQ files may contain reads from other FAST5 files
+   binned considering that corresponding FASTQ files may contain reads from other FAST5 files
    and reads from a particular FAST5 file may be ditributed among multiple FASTQ files.
    Feature is disabled by default;\n""")
     print("""-z (--gzip) --- Compress output files with gzip.
@@ -78,8 +78,8 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    Values: 1 for compress, 0 for not to compress (see Example #2).
    1 is default value.\n""")
     print("""-t (--threads) --- number of CPU threads to use.
-   Affects only FASTA and FASTQ sorting.
-   Sorter processes FAST5 files in 1 thread anyway (exception is "FAST5 untwisting").\n""")
+   Affects only FASTA and FASTQ binning.
+   barapost-binning processes FAST5 files in 1 thread anyway (exception is "FAST5 untwisting").\n""")
     print("  Filter options:\n")
     print(" Quality and length filters:\n")
     print("""-q (--min-qual) --- threshold for quality filter;
@@ -118,7 +118,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    results of classification are in directory 'prober_outdir':\n
   barapost-binning.py reads_1.fastq.gz some_sequences_2.fasta -o outdir -r prober_outdir/\n""")
         print("""  5. Process all FASTQ, FASTA and FAST5 files in directory named 'dir_with_seqs'.
-  Sort by species ('-s 6'). All these files have been already classified and
+  Binning by species ('-s 6'). All these files have been already classified and
    results of classification are in directory 'prober_outdir'. Perform "FAST5 untwisting":\n
   barapost-binning.py -d dir_with_seqs -o outdir -r prober_outdir/ -s 6 -u""")
         # end if
@@ -159,7 +159,7 @@ fast5_list = list() # list with input FAST5 files paths
 tax_annot_res_dir = "barapost_result" # path to directory with classification results
 indir_path = None # path to input directory
 outdir_path = "binning_result_{}".format(now.replace(' ', '_')) # path to output directory
-sens = ("genus", 5) # sorting sensitivity
+sens = ("genus", 5) # binning sensitivity
 min_qual = 10 # minimum mean read quality to keep
 min_qlen = None # minimum seqeunce length to keep
 min_pident = None # minimum alignment identity in percent
@@ -418,7 +418,7 @@ if len(fast5_list) != 0:
         import h5py
     except ImportError as imperr:
         print("\nPackage 'h5py' is not installed: " + str(imperr))
-        print("\n 'h5py' package is necessary for FAST5 files sorting.")
+        print("\n 'h5py' package is necessary for FAST5 files binning.")
         print(" Please, install it (e.g. 'pip3 install h5py').")
         print(" Tip for Linux users: you may need to install 'libhdf5-dev' with your packet manager first and then go to pip.")
         platf_depend_exit(1)
@@ -433,13 +433,13 @@ fast5_list.sort()
 # Some warnings:
 
 if len(fq_fa_list) == 0 and n_thr != 1 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
-    print("\nWarning! Sorting FAST5 files in parallel doesn't give any profit.")
+    print("\nWarning! Binning FAST5 files in parallel doesn't give any profit.")
     print("Number of threads is switched to 1.")
     n_thr = 1
 # end if
 
 if len(fast5_list) == 0 and untwist_fast5:
-    print("\nWarning! No FAST5 file has been given to sorter's input.")
+    print("\nWarning! No FAST5 file has been given to barapost-binning's input.")
     print("Therefore, '-u' ('--untwist-fast5') flag does not make any sense.")
     print("Ignoring it.")
     untwist_fast5 = False
@@ -452,7 +452,7 @@ if not os.path.isdir(outdir_path):
         os.makedirs(outdir_path)
     except OSError as oserr:
         print(err_fmt("unable to create result directory"))
-        print("fastQA5-sorter just tried to create directory '{}' and crushed.".format(outdir_path))
+        print("barapost-binning just tried to create directory '{}' and crushed.".format(outdir_path))
         print("Reason: {}".format( str(oserr) ))
         platf_depend_exit(1)
     # end try
@@ -461,7 +461,7 @@ if not os.path.isdir(outdir_path):
 
 def get_checkstr(fast5_fpath):
     """
-    Function returns string that will help fasQA5-sorter to find
+    Function returns string that will help barapost-binning to find
         TSV file generated by prober and barapost while processing FASTQ file
         that in turn is basecalled 'fast5_fpath'-file.
     
@@ -496,7 +496,7 @@ def get_checkstr(fast5_fpath):
 # end def get_checkstr
 
 from src.platform import get_logfile_path
-logfile_path = get_logfile_path("fastQA5-sorter", outdir_path)
+logfile_path = get_logfile_path("barapost-binning", outdir_path)
 
 printl(logfile_path, "\n |=== barapost-binning.py (version {}) ===|\n".format(__version__))
 printl(logfile_path, get_full_time() + "- Start working\n")
@@ -515,12 +515,12 @@ if not untwist_fast5:
         if possible_fast5_resdirs_num == 1:
             continue # OK
         elif possible_fast5_resdirs_num == 0: # there is no such a directory
-            print(err_fmt("""directory that may be considered as valid for sorting of file
+            print(err_fmt("""directory that may be considered as valid for binning of file
   '{}'\n    is not found in the directory '{}'""".format(fpath, tax_annot_res_dir)))
-            print("Try running sorter with '-u' ('--untwist-fast5') flag.\n")
+            print("Try running barapost-binning with '-u' ('--untwist-fast5') flag.\n")
             platf_depend_exit(1)
         else: # there are multiple directories where prober-barapost results can be located
-            print(err_fmt("multiple result directories match FAST5 file meant to be sorted"))
+            print(err_fmt("multiple result directories match FAST5 file meant to be binned"))
             print("File: '{}'".format(os.path.basename(fpath)))
             print("Directories:")
             for d in glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(fpath))):
@@ -668,13 +668,13 @@ if not os.path.exists(outdir_path):
 
 # Here we are going to import different functions for different use cases:
 #   parallel and single-thread procesing requires different functions that
-#   performs writing to and sorting plain (FASTA, FASTQ) files.
+#   performs writing to and binning plain (FASTA, FASTQ) files.
 # It is better to check number of threads once and define functions that will
 #   be as strait-forward as possible rather than check conditions each time in a spaghetti-function.
 
-# Module, which defines function for sorting FAST5 files (with untwisting or not):
+# Module, which defines function for binning FAST5 files (with untwisting or not):
 FAST5_srt_module = None
-# Module, which defines function for sorting FASTA and FASTQ files (parallel or not):
+# Module, which defines function for binning FASTA and FASTQ files (parallel or not):
 QA_srt_module = None
 # Module, which defines function for "FAST5-untwisting" (parallel or not):
 utw_module = None
@@ -682,10 +682,10 @@ utw_module = None
 try:
 
     if len(fq_fa_list) != 0:
-        if n_thr == 1: # import single-thread FASTA-FASTQ sorting function
-            import src.sorter_modules.single_thread_QA as QA_srt_module
-        else: # import parallel FASTA-FASTQ sorting function
-            import src.sorter_modules.parallel_QA as QA_srt_module
+        if n_thr == 1: # import single-thread FASTA-FASTQ binning function
+            import src.binning_modules.single_thread_QA as QA_srt_module
+        else: # import parallel FASTA-FASTQ binning function
+            import src.binning_modules.parallel_QA as QA_srt_module
         # end if
     # end if
 
@@ -699,19 +699,19 @@ try:
             # We do not need untwisting function if we do not make new index
             if not use_old_index:
                 if n_thr == 1: # import single-thread untwisting
-                    import src.sorter_modules.single_thread_FAST5_utwfunc as utw_module
+                    import src.binning_modules.single_thread_FAST5_utwfunc as utw_module
                 else: # import parallel untwisting
-                    import src.sorter_modules.parallel_FAST5_utwfunc as utw_module
+                    import src.binning_modules.parallel_FAST5_utwfunc as utw_module
                 # end if
             # end if
         # end if
 
         if use_old_index is None:
-            # If untwisting is disabled, import simple FAST5-sorting function:
-            import src.sorter_modules.single_thread_FAST5_srtfunc as FAST5_srt_module
+            # If untwisting is disabled, import simple FAST5-binning function:
+            import src.binning_modules.single_thread_FAST5_binfunc as FAST5_srt_module
         else:
-            # If untwisting is enabled, import FAST5-sorting function that "knows" about untwisting:
-            import src.sorter_modules.single_thread_FAST5_srtfunc_utw as FAST5_srt_module
+            # If untwisting is enabled, import FAST5-binning function that "knows" about untwisting:
+            import src.binning_modules.single_thread_FAST5_binfunc_utw as FAST5_srt_module
         # end if
     # end if
 except ImportError as imperr:
@@ -726,9 +726,9 @@ except ImportError as imperr:
 printl(logfile_path, '-' * 30)
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
 printl(logfile_path, " - Logging to '{}';".format(logfile_path))
-printl(logfile_path, " - Sorting according to classification in directory '{}';".format(tax_annot_res_dir))
+printl(logfile_path, " - Binning according to classification in directory '{}';".format(tax_annot_res_dir))
 
-printl(logfile_path, " - Sorting sensitivity: {};".format(sens[0]))
+printl(logfile_path, " - Binning sensitivity: {};".format(sens[0]))
 printl(logfile_path, " - Threads: {};".format(n_thr))
 if untwist_fast5:
     printl(logfile_path, " - \"FAST5 untwisting\" is enabled;")
@@ -773,7 +773,7 @@ if untwist_fast5 and not use_old_index:
     printl(logfile_path, "{} - Untwisting started.".format(getwt()))
     printn(" Working...")
 
-    from src.sorter_modules.sorter_spec import get_tsv_taxann_lst
+    from src.binning_modules.binning_spec import get_tsv_taxann_lst
     tsv_taxann_lst = get_tsv_taxann_lst(tax_annot_res_dir)
 
     if n_thr == 1:
@@ -799,48 +799,48 @@ if untwist_fast5 and not use_old_index:
 
 # Import launching module
 if n_thr == 1 or len(fast5_list) != 0:
-    from src.sorter_modules.launch import launch_single_thread_sorting
+    from src.binning_modules.launch import launch_single_thread_binning
 # end if
 
 if n_thr != 1:
-    from src.sorter_modules.launch import launch_parallel_sorting
+    from src.binning_modules.launch import launch_parallel_binning
 # end if
 
 
-# |=== Proceed sorting ===|
+# |=== Proceed binning ===|
 
-printl(logfile_path, "{} - Sorting started.".format(getwt()))
+printl(logfile_path, "{} - Binning started.".format(getwt()))
 printn(" Working...")
 
 res_stats = list()
 
-# Sort FAST5 files:
+# Bin FAST5 files:
 if len(fast5_list) != 0:
-    res_stats.extend(launch_single_thread_sorting(fast5_list,
-        FAST5_srt_module.sort_fast5_file, tax_annot_res_dir, sens,
+    res_stats.extend(launch_single_thread_binning(fast5_list,
+        FAST5_srt_module.bin_fast5_file, tax_annot_res_dir, sens,
             min_qual, min_qlen, min_pident, min_coverage, logfile_path))
 
     # Assign version attribute in FAST5 files to '2.0' -- multiFAST5
-    from src.sorter_modules.fast5 import assign_version_2
+    from src.binning_modules.fast5 import assign_version_2
     if len(fast5_list) != 0:
         assign_version_2(fast5_list)
     # end if
 # end if
 
-# Sort FASTA and FASTQ files:
+# Bin FASTA and FASTQ files:
 if len(fq_fa_list) != 0:
     if n_thr != 1: # in parallel
-        res_stats.extend(launch_parallel_sorting(fq_fa_list,
-            QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens, n_thr,
+        res_stats.extend(launch_parallel_binning(fq_fa_list,
+            QA_srt_module.bin_fastqa_file, tax_annot_res_dir, sens, n_thr,
             min_qual, min_qlen, min_pident, min_coverage, logfile_path))
     else: # in single thread
-        res_stats.extend(launch_single_thread_sorting(fq_fa_list,
-            QA_srt_module.sort_fastqa_file, tax_annot_res_dir, sens,
+        res_stats.extend(launch_single_thread_binning(fq_fa_list,
+            QA_srt_module.bin_fastqa_file, tax_annot_res_dir, sens,
             min_qual, min_qlen, min_pident, min_coverage, logfile_path))
     # end if
 # end if
 
-printl(logfile_path, "\r{} - Sorting is completed.\n".format(getwt()))
+printl(logfile_path, "\r{} - Binning is completed.\n".format(getwt()))
 
 # Summarize statistics
 seqs_pass = sum(map(lambda x: x[0], res_stats))

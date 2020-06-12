@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Module defines functions necessary for sorting FAST5 files "directly": without index.
+# Module defines functions necessary for binning FAST5 files "directly": without index.
 
 import h5py
 
@@ -7,12 +7,12 @@ import os
 import sys
 from glob import glob
 
-from src.sorter_modules.sorter_spec import *
-from src.sorter_modules.fast5 import update_file_dict
-from src.sorter_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
+from src.binning_modules.binning_spec import *
+from src.binning_modules.fast5 import update_file_dict
+from src.binning_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
 
-from src.sorter_modules.filters import get_QL_filter, get_QL_trash_fpath
-from src.sorter_modules.filters import get_align_filter, get_align_trash_fpath
+from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
+from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
@@ -20,16 +20,16 @@ from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
 
 
-def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
+def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
         min_qual, min_qlen, min_pident, min_coverage, logfile_path):
     """
-    Function sorts FAST5 file without untwisting.
+    Function bins FAST5 file without untwisting.
 
     :param f5_path: path to FAST5 file meant to be processed;
     :type f5_path: str;
     :param tax_annot_res_dir: path to directory containing taxonomic annotation;
     :type tax_annot_res_dir: str;
-    :param sens: sorting sensitivity;
+    :param sens: binning sensitivity;
     :type sens: str;
     :param min_qual: threshold for quality filter;
     :type min_qual: float;
@@ -104,7 +104,7 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
         except KeyError:
             printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
   This TSV file: '{}'""".format(fmt_read_id(read_name), tsv_res_fpath)))
-            printl(logfile_path, "Try running sorter with '-u' (--untwist-fast5') flag.\n")
+            printl(logfile_path, "Try running barapost-binning with '-u' (--untwist-fast5') flag.\n")
             platf_depend_exit(1)
         # end try
         # If read is found in TSV file:
@@ -125,11 +125,11 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
         else:
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
-                sorted_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
-                if sorted_file_path not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, sorted_file_path, logfile_path)
+                binned_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
+                if binned_file_path not in srt_file_dict.keys():
+                    srt_file_dict = update_file_dict(srt_file_dict, binned_file_path, logfile_path)
                 # end if
-                f5_cpy_func(from_f5, read_name, srt_file_dict[sorted_file_path], logfile_path)
+                f5_cpy_func(from_f5, read_name, srt_file_dict[binned_file_path], logfile_path)
             # end for
             seqs_pass += 1
         # end if
@@ -137,14 +137,14 @@ def sort_fast5_file(f5_path, tax_annot_res_dir, sens,
 
     from_f5.close()
 
-    # Close all sorted files
+    # Close all binned files
     for file_obj in srt_file_dict.values():
         file_obj.close()
     # end for
 
 
-    printl(logfile_path, "\r{} - File '{}' is sorted.".format(getwt(), os.path.basename(f5_path)))
+    printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(f5_path)))
     printn(" Working...")
 
     return (seqs_pass, QL_seqs_fail, align_seqs_fail)
-# end def sort_fast5_file
+# end def bin_fast5_file

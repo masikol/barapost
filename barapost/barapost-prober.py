@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.21.b"
+__version__ = "1.21.c"
 # Year, month, day
-__last_update_date__ = "2020-06-05"
+__last_update_date__ = "2020-06-12"
 
 # |===== Check python interpreter version =====|
 
@@ -592,7 +592,7 @@ space_sep_num = "{:,}".format(glob_seqs_processed).replace(',', ' ')
 printl(logfile_path, " {} sequences have been processed{}\n".format(space_sep_num,
     str_about_prev_runs))
 
-printl(logfile_path, "Here are Genbank records that can be used for further sorting by 'barapost-local.py'.")
+printl(logfile_path, "Here are Genbank records that can be used for further annotation by 'barapost-local.py'.")
 printl(logfile_path, "They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence

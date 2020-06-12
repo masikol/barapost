@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Module defines finctions that are "miscallaneous" for sorter.
+# Module defines finctions that are "miscallaneous" for barapost-binning.
 
 import os
 import sys
@@ -77,9 +77,9 @@ ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species
 
 def find_rank_for_filename(sens, taxonomy):
     """
-    Function forms name of sorted file according to annotation and sorting sensitivity.
+    Function forms name of binned file according to annotation and binning sensitivity.
 
-    :param sens: sorting sensitivity;
+    :param sens: binning sensitivity;
     :type sens: tuple<str, int>;
     :param taxonomy: taxonomy from taxopnomy file;
     :type taxonomy: tuple<tuple<str>>;
@@ -104,7 +104,7 @@ chars_excl_from_filename = ("/", "\\", ":", "*", "+", "?", "\"", "<", ">", "(", 
 
 def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
     """
-    Function formats taxonomy name according to chosen sensibiliry of sorting.
+    Function formats taxonomy name according to chosen sensibiliry of binning.
     :param hit_acc: accession(s) of best hit(s);
     :type hit_acc: str;
     :param hit_def: annotation of best hit;
@@ -123,7 +123,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
         return "unknown"
     # end if
 
-    best_hit_annots = list() # list of strings that will be names of sorted files
+    best_hit_annots = list() # list of strings that will be names of binned files
 
     for acc, annotation in zip(hit_acc.split('&&'), hit_def.split('&&')):
 
@@ -186,7 +186,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                             platf_depend_exit(1)
                         # end if
 
-                        # Include file path to sorted file name
+                        # Include file path to binned file name
                         # Replace path separetor with underscore in order not to held a bacchanalia in file system.
                         if assm_path is not None:
                             if sens[0] != "species":
@@ -232,12 +232,12 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
 
 def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
     """
-    Function returns dictionary, where keys are sequence (i.e. sequences meant to be sorted) IDs,
+    Function returns dictionary, where keys are sequence (i.e. sequences meant to be binned) IDs,
         and values are corresponding hit names.
 
     :param tsv_res_fpath: path to current TSV file. Sorting will be performed accorfing to this TSV file;
     :type tsv_res_fpath: str;
-    :param sens: sorting sensitivity;
+    :param sens: binning sensitivity;
     :type sens: str;
     :parm taxonomy_path: path to taxonomy file;
     :type taxonomy_file: str;

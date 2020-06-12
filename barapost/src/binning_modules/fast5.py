@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# This module defines functions, via which sorter manipulated FAST5 data
+# This module defines functions, via which barapost-binning manipulated FAST5 data
 
 import sys
 import h5py

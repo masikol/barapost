@@ -15,7 +15,7 @@ from src.write_classification import write_classification
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped, is_fastq
 from src.filesystem import get_curr_res_dpath, create_result_directory, remove_tmp_files
 
-from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
+from src.barapost_local_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
 def init_proc_single_file_in_paral(print_lock_buff, write_lock_buff):
@@ -72,7 +72,7 @@ def process_part_of_file(data, tsv_res_path, packet_size, tax_annot_res_dir,
         result_tsv_lines = parse_align_results_xml(align_xml_text,
             data["qual"], logfile_path)
         # If we use packet["qual"] -- we will have all '-'-s because 'data' is a fasta-formatted string
-        # Thus there are no value for key "qual" in 'packet' (see src/barapost_modules/fasta_packets_from_str.py)
+        # Thus there are no value for key "qual" in 'packet' (see src/barapost_local_modules/fasta_packets_from_str.py)
 
         # Write the result to TSV file
         with write_lock:

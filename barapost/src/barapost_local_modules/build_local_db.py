@@ -13,8 +13,8 @@ from threading import Thread, Event
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
 
-from src.barapost_modules.barapost_spec import configure_acc_dict
-from src.barapost_modules.related_replicons import search_for_related_replicons
+from src.barapost_local_modules.barapost_spec import configure_acc_dict
+from src.barapost_local_modules.related_replicons import search_for_related_replicons
 
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection

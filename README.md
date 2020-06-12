@@ -12,7 +12,7 @@ It is awful to sit in front of the computer for hours sending all these sequence
 
 ## Getting started
 
-You can get "barapost" in the following ways:
+You can get "Barapost" in the following ways:
 
 Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git`
 
@@ -23,11 +23,11 @@ After that, you can find executable Python scripts in directory `barapost/barapo
 Or you can add this directory to your PATH variable so that you won't need to enter full script's path to run it -- just it's name, for example:
 
 ```
-prober.py some_reads.fastq
+barapost-prober.py some_reads.fastq
 ```
 instead of
 ```
-/home/user/some/more/long/useless/path/barapost/barapost/prober.py some_reads.fastq
+/home/user/some/more/long/useless/path/barapost/barapost/barapost-prober.py some_reads.fastq
 ```
 
 If you are not sure how to do this, following links can help you:
@@ -38,11 +38,11 @@ If you are not sure how to do this, following links can help you:
 
 ## The workflow and what Barapost does
 
-1. **prober.py** -- this script sends several sequences (i.e.m only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "prober.py" saves accession of best hit(s) of each sequence from probing batch. Processing all sequences in this way takes too much time, what leads us to "barapost.py".
+1. **barapost-prober.py** -- this script sends several sequences (i.e.m only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "barapost-prober.py" saves accession of best hit(s) of each sequence from probing batch. Processing all sequences in this way takes too much time, what leads us to "barapost-local.py".
 
-2. **barapost.py** -- this script firstly downloads best hits "discovered" by "prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the major part of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
+2. **barapost-local.py** -- this script firstly downloads best hits "discovered" by "barapost-prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the major part of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
 
-3. **fastQA5-sorter.py** -- this script sorts (divides into separate files) nucleotide sequences according to results of "prober.py" and "barapost.py"
+3. **barapost-binning.py** -- this script sorts (divides into separate files) nucleotide sequences according to results of "barapost-prober.py" and "barapost-local.py"
 
 ![](imgs/Barapost-wokflow.png)
 

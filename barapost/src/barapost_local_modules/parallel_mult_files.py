@@ -16,7 +16,7 @@ from src.spread_files_equally import spread_files_equally
 from src.filesystem import get_curr_res_dpath, create_result_directory
 from src.filesystem import remove_tmp_files, is_fastq, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
-from src.barapost_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
+from src.barapost_local_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
 
 def init_process(print_lock_buff, conter_lock_buff, file_counter_buff):

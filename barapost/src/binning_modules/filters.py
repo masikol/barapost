@@ -47,7 +47,7 @@ def get_QL_filter(fpath, quality, length):
     # There will be minus instead of quality for fasta files
     if not is_fasta(fpath):
 
-        # Someone can try to classifu fasta files and then sort fast5 accoeding to the classification.
+        # Someone can try to classify fasta files and then bin fast5 accoeding to the classification.
         # In this case TypeError will be raised. Then just return True.
 
         def qual_filter(x):

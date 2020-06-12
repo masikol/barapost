@@ -423,7 +423,7 @@ def write_hits_to_download(acc_dict, acc_file_path):
 
     # Rewrite head:
     with open(acc_file_path, 'w') as acc_file:
-        acc_file.write("# Here are accessions and names of Genbank records that can be used for sorting by 'barapost-local.py'\n")
+        acc_file.write("# Here are accessions and names of Genbank records that can be used for anotation by 'barapost-local.py'\n")
         acc_file.write("# Values in this file are delimited by tabs.\n")
         acc_file.write("# You are welcome to edit this file by adding,\n")
         acc_file.write("#   removing or muting lines (with adding '#' symbol in it's beginning, just like this description).\n")

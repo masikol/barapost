@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.14.f"
+__version__ = "3.14.g"
 # Year, month, day
-__last_update_date__ = "2020-06-08"
+__last_update_date__ = "2020-06-12"
 
 # |===== Check python interpreter version =====|
 
@@ -440,7 +440,7 @@ else:
 # end if
 
 
-from src.barapost_modules.build_local_db import build_local_db
+from src.barapost_local_modules.build_local_db import build_local_db
 
 # Build a database
 db_path = build_local_db(tax_annot_res_dir,
@@ -485,7 +485,7 @@ if n_thr <= len(fq_fa_list):
 
         # Proceed 'many_files'-parallel processing
 
-        from src.barapost_modules.parallel_mult_files import process
+        from src.barapost_local_modules.parallel_mult_files import process
 
         process(fq_fa_list,
             n_thr,
@@ -500,7 +500,7 @@ if n_thr <= len(fq_fa_list):
 
         # Proceed single-thread processing
 
-        from src.barapost_modules.single_thread_mult_files import process
+        from src.barapost_local_modules.single_thread_mult_files import process
 
         process(fq_fa_list,
             packet_size,
@@ -514,7 +514,7 @@ else:
 
     # Proceed 'few_files'-parallel processing
 
-    from src.barapost_modules.parallel_single_file import process
+    from src.barapost_local_modules.parallel_single_file import process
 
     process(fq_fa_list,
         n_thr,
