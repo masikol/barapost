@@ -1,6 +1,6 @@
 # Barapost toolkit
 
-**"Barapost"** command line toolkit is designed for sorting of FASTA, FASTQ and FAST5 files (i.e. separation into different files) according to taxonomic classification of nucleotide sequences stored in them. Classification is implemented as finding the most similar reference sequence in a nucleotide database: remotely using NCBI BLAST web serveice or on a local machine with BLAST+ toolkit.
+**"Barapost"** command line toolkit is designed for binning of FASTA, FASTQ and FAST5 files (i.e. separation into different files) according to taxonomic classification of nucleotide sequences stored in them. Classification is implemented as finding the most similar reference sequence in a nucleotide database: remotely using NCBI BLAST web serveice or on a local machine with BLAST+ toolkit.
 
 ## Motivation
 
@@ -42,7 +42,7 @@ If you are not sure how to do this, following links can help you:
 
 2. **barapost-local.py** -- this script firstly downloads best hits "discovered" by "barapost-prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the major part of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
 
-3. **barapost-binning.py** -- this script sorts (divides into separate files) nucleotide sequences according to results of "barapost-prober.py" and "barapost-local.py"
+3. **barapost-binning.py** -- this script bins (divides into separate files) nucleotide sequences according to results of "barapost-prober.py" and "barapost-local.py"
 
 ![](imgs/Barapost-wokflow.png)
 

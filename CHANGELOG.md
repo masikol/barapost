@@ -29,7 +29,7 @@ All scripts are renamed.
 
 ## 2020-06-05 edition
 
-- barapost-binning. Bug fix: sorting fast5 files according to classification made on fasta files no longer fails;
+- barapost-binning. Bug fix: binning fast5 files according to classification made on fasta files no longer fails;
 - barapost-prober, barapost-local: minor modifications;
 
 ## Version changes:
@@ -68,7 +68,7 @@ All scripts are renamed.
 
 ## 2020-05-21
 
-- barapost-prober: `-c` option added, enabling better performance if input sequences are sorted by length within input file;
+- barapost-prober: `-c` option added, enabling better performance if input sequences are binned by length within input file;
 - barapost-prober: "no-hits" error fixed;
 
 ## Version changes:
@@ -192,7 +192,7 @@ All scripts are renamed.
 ## 2020-02-28 night edition.
 
 - barapost-local: blastn optimization options added;
-- all: bug leading to improper naming of sorted files fixed;
+- all: bug leading to improper naming of binned files fixed;
 
 ### Version changes:
 
@@ -231,7 +231,7 @@ All scripts are renamed.
 ## 2020-02-26 night edition.
 
 - all: new taxonomy system embedded;
-- barapost-binning: sorting sensitivity can now vary from domain to species;
+- barapost-binning: binning sensitivity can now vary from domain to species;
 
 ### Version changes:
 
@@ -426,15 +426,15 @@ All scripts are renamed.
 1. barapost-prober: `1.12.k --> 1.12.m`;
 2. barapost-local: `3.6.c --> 3.6.d`;
 
-## 2019-12-07 edition (parallel sorting enabled)
+## 2019-12-07 edition (parallel binning enabled)
 
 ### Noteworthy changes:
 
-1. barapost-binning: parallel FASTA and FASTQ sorting enabled;
+1. barapost-binning: parallel FASTA and FASTQ binning enabled;
 2. barapost-binning: parallel `-u` index creating enabled;
 3. barapost-binning: `-z (--gzip)` option added;
 
-Parallel FAST5 sorting is not embedded and perhaps won't be -- it gives no performance profit. The point is that writing to FAST5 files takes much more time than 'calculating'. Thus threads mostly just stay in a queue for writing rather than doinig their work.
+Parallel FAST5 binning is not embedded and perhaps won't be -- it gives no performance profit. The point is that writing to FAST5 files takes much more time than 'calculating'. Thus threads mostly just stay in a queue for writing rather than doinig their work.
 
 ### Version changes:
 

@@ -13,7 +13,7 @@ from src.printlog import printl, err_fmt
 
 def get_res_tsv_fpath(new_dpath):
     """
-    Function returns current TSV file. Sorting will be performad according to this file.
+    Function returns current TSV file. Binning will be performed according to this file.
 
     :param new_dpath: current result directory;
     :type new_dpath: str;
@@ -235,7 +235,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
     Function returns dictionary, where keys are sequence (i.e. sequences meant to be binned) IDs,
         and values are corresponding hit names.
 
-    :param tsv_res_fpath: path to current TSV file. Sorting will be performed accorfing to this TSV file;
+    :param tsv_res_fpath: path to current TSV file. Binning will be performed accorfing to this TSV file;
     :type tsv_res_fpath: str;
     :param sens: binning sensitivity;
     :type sens: str;
