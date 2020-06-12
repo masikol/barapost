@@ -38,7 +38,7 @@ If you are not sure how to do this, following links can help you:
 
 ## The workflow and what Barapost does
 
-1. **barapost-prober.py** -- this script sends several sequences (i.e.m only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "barapost-prober.py" saves accession of best hit(s) of each sequence from probing batch. Processing all sequences in this way takes too much time, what leads us to "barapost-local.py".
+1. **barapost-prober.py** -- this script sends several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "barapost-prober.py" saves accession of best hit(s) of each sequence from probing batch. Processing all sequences in this way takes too much time, what leads us to "barapost-local.py".
 
 2. **barapost-local.py** -- this script firstly downloads best hits "discovered" by "barapost-prober.py" from Genbank, then uses these downloaded sequences to create a database on local machine and finally classifies the major part of data using created database. Creating a database and "BLASTing" is performed by "BLAST+" toolkit.
 
