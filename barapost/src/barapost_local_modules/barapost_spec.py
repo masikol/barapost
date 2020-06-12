@@ -288,7 +288,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path):
         # end with
     # end if
 
-    if len(acc_dict) == 0:
+    if len(your_own_fasta_lst) == 0 and len(acc_dict) == 0:
         printl(logfile_path, err_fmt("no accession information found in file '{}'".format(acc_fpath)))
         platf_depend_exit(1)
     # end if

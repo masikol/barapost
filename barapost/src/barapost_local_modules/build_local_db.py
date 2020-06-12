@@ -345,27 +345,6 @@ Enter 'r' to remove all files in this directory and create the database from the
 
     local_fasta = retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path) # download fasta file
 
-    # 'lcl|ACCESSION...' entries can be given with '.1'
-    #   (or '.2', whatever) terminus by blastn.
-    # There is no '.1' terminus in taxonomy file.
-    # Therefore we will prune accessions in advance.
-    println(logfile_path, "{} - Formatting accessions...".format(getwt()))
-    corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
-    with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
-        for line in source_file:
-            if line.startswith('>'):
-                line = line.strip()
-                acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
-                acc = acc.partition('.')[0]
-                line = ' '.join( (acc, seq_name) ) + '\n'
-            # end if
-            dest_file.write(line)
-        # end for
-    # end with
-    os.unlink(local_fasta)
-    os.rename(corrected_path, local_fasta)
-    println(logfile_path, "\r{} - Formatting accessions... ok".format(getwt()))
-
     # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:
 
@@ -487,6 +466,27 @@ Enter 'r' to remove all files in this directory and create the database from the
             # end for
         # end with
     # end if
+
+    # 'lcl|ACCESSION...' entries can be given with '.1'
+    #   (or '.2', whatever) terminus by blastn.
+    # There is no '.1' terminus in taxonomy file.
+    # Therefore we will prune accessions in advance.
+    println(logfile_path, "\n{} - Formatting accessions...".format(getwt()))
+    corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
+    with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
+        for line in source_file:
+            if line.startswith('>'):
+                line = line.strip()
+                acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
+                acc = acc.partition('.')[0]
+                line = ' '.join( (acc, seq_name) ) + '\n'
+            # end if
+            dest_file.write(line)
+        # end for
+    # end with
+    os.unlink(local_fasta)
+    os.rename(corrected_path, local_fasta)
+    println(logfile_path, "\r{} - Formatting accessions... ok".format(getwt()))
 
     # Configure command line
     make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)

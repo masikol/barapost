@@ -3,12 +3,13 @@
 ## 2020-06-12 edition
 
 - README updated;
+- barapost-local: `-l` bug fixed;
 - minor renaming changes in source files;
 
 ## Version changes:
 
 - barapost-prober: `1.21.b --> 1.21.c`;
-- barapost-local `3.14.f --> 3.14.g`;
+- barapost-local `3.14.f --> 3.14.g --> 3.14.h`;
 - barapost-binning: `4.5.f --> 4.5.g`;
 
 ## 2020-06-11
