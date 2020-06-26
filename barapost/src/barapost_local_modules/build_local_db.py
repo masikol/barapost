@@ -431,6 +431,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                                     own_seq_counter += 1
                                     own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                                     own_def = "(_{}_)_".format(def_convert_func(assm_path)) + line[1:]
+                                    own_def = own_def.replace(' ', '_')
                                     tax_file[own_acc] = own_def
                                     line = ">" + "{} {}".format(own_acc, own_def)
                                 # end if
@@ -459,7 +460,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                             own_seq_counter += 1
                             own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                             save_own_seq_taxonomy(line[1:], own_acc, tax_file)
-                            line = ">" + own_acc + ' ' + line[1:]
+                            line = ">" + own_acc + ' ' + line[1:].replace(' ', '_')
                         # end if
                         fasta_db.write(line + '\n')
                     # end for
@@ -480,7 +481,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                 line = line.strip()
                 acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
                 acc = acc.partition('.')[0]
-                line = ' '.join( (acc, seq_name) ) + '\n'
+                line = ' '.join( (acc, seq_name.replace(' ', '_')) ) + '\n'
             # end if
             dest_file.write(line)
         # end for

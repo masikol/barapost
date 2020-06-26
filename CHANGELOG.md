@@ -2,11 +2,12 @@
 
 ## 2020-06-26 edition
 
-- barapost-local: fixed bug that would cause barapost-local not to found assembly files specified with `-l` option;
+- barapost-local: (`i`) fixed bug that would cause barapost-local not to found assembly files specified with `-l` option;
+- barapost-local: (`j`) fixed bug that would cause blastn not to accept `-l` fasta records with spaces in headers;
 
 ## Version changes:
 
-- barapost-local `3.14.h --> 3.14.i`;
+- barapost-local `3.14.h --> 3.14.i --> 3.14.j`;
 
 ## 2020-06-12 edition
 
