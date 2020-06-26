@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-06-26 edition
+
+- barapost-local: fixed bug that would cause barapost-local not to found assembly files specified with `-l` option;
+
+## Version changes:
+
+- barapost-local `3.14.h --> 3.14.i`;
+
 ## 2020-06-12 edition
 
 - README updated;

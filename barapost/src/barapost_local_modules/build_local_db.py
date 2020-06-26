@@ -330,7 +330,7 @@ Enter 'r' to remove all files in this directory and create the database from the
         # Get list of GI numbers.
         search_for_related_replicons(acc_dict, logfile_path)
 
-        printl(logfile_path, "\n{} - Completing taxonomy file...".format(getwt()))
+        printl(logfile_path, "{} - Completing taxonomy file...".format(getwt()))
         with shelve.open(taxonomy_path, 'c') as tax_file:
             for i, acc in enumerate(acc_dict.keys()):
                 if not acc in tax_exist_accs:
@@ -353,10 +353,10 @@ Enter 'r' to remove all files in this directory and create the database from the
         own_seq_counter = 0
 
         # Check if these files are assembly made by SPAdese or a5
-        spades_patt = r"NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
+        spades_patt = r">NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
         spades_counter = 0 # variable counts number of SPAdes assembly files
         spades_assms = list() # this list will contain paths to SPAdes assembly files
-        a5_patt = r"scaffold_[0-9]+" # this pattern will match sequence IDs generated y a5
+        a5_patt = r">scaffold_[0-9]+" # this pattern will match sequence IDs generated y a5
         a5_counter = 0 # variable counts number of a5 assembly files
         a5_assms = list() # this list will contain paths to a5 assembly files
 
@@ -406,9 +406,11 @@ Enter 'r' to remove all files in this directory and create the database from the
 
                 # Path conversion according to 'deduplication sum':
                 if dedpul_sum == len(assm_basenames):
-                    assm_lst = map(os.path.basename, assm_lst)
+                    def_convert_func = os.path.basename
+                    # assm_lst = map(os.path.basename, assm_lst)
                 else:
-                    assm_lst = map(os.path.abspath, assm_lst)
+                    def_convert_func = os.path.abspath
+                    # assm_lst = map(os.path.abspath, assm_lst)
                 # end if
 
                 # Add assembled sequences to database
@@ -428,7 +430,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                                 if line.startswith('>'):
                                     own_seq_counter += 1
                                     own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                                    own_def = "(_{}_)_".format(assm_path) + line[1:]
+                                    own_def = "(_{}_)_".format(def_convert_func(assm_path)) + line[1:]
                                     tax_file[own_acc] = own_def
                                     line = ">" + "{} {}".format(own_acc, own_def)
                                 # end if
@@ -440,7 +442,6 @@ Enter 'r' to remove all files in this directory and create the database from the
             # end if
         # end for
 
-        # No 'with open' here in order not to indent too much.
         with open(local_fasta, 'a') as fasta_db, shelve.open(taxonomy_path, 'c') as tax_file:
             for own_fasta_path in your_own_fasta_lst:
                 println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
