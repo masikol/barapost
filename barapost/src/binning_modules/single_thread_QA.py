@@ -26,10 +26,12 @@ def write_fastq_record(binned_file, fastq_record):
     :type fastq_record: dict<str: str>;
     """
 
-    binned_file.write(fastq_record["seq_id"]+'\n')
-    binned_file.write(fastq_record["seq"]+'\n')
-    binned_file.write(fastq_record["opt_id"]+'\n')
-    binned_file.write(fastq_record["qual_line"]+'\n')
+    if not binned_file is None:
+        binned_file.write(fastq_record["seq_id"]+'\n')
+        binned_file.write(fastq_record["seq"]+'\n')
+        binned_file.write(fastq_record["opt_id"]+'\n')
+        binned_file.write(fastq_record["qual_line"]+'\n')
+    # end if
 # end def write_fastq_record
 
 
@@ -40,15 +42,20 @@ def write_fasta_record(binned_file, fasta_record):
     :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
     :type fasta_record: dict<str: str>
     """
-    binned_file.write(fasta_record["seq_id"]+'\n')
-    binned_file.write(fasta_record["seq"]+'\n')
-
+    if not binned_file is None:
+        binned_file.write(fasta_record["seq_id"]+'\n')
+        binned_file.write(fasta_record["seq"]+'\n')
+    # end if
 # end def write_fasta_record
 
 
 def update_file_dict(srt_file_dict, new_fpath, logfile_path):
     try:
-        srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
+        if not new_fpath is None:
+            srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
+        else:
+            srt_file_dict[new_fpath] = None # handle no_trash
+        # end if
     except OSError as oserr:
         printl(logfile_path, err_fmt("error while opening one of result files"))
         printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
@@ -60,7 +67,7 @@ def update_file_dict(srt_file_dict, new_fpath, logfile_path):
 
 
 def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
-        min_qual, min_qlen, min_pident, min_coverage, logfile_path):
+        min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
     """
     Function for single-thread binning FASTQ and FASTA files.
 
@@ -78,6 +85,8 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
     :type min_pident: float (or None, if this filter is disabled);
     :param min_coverage: threshold for alignment coverage filter;
     :type min_coverage: float (or None, if this filter is disabled);
+    :param no_trash: loical value. True if user does NOT want to output trash files;
+    :type no_trash: bool;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
@@ -107,12 +116,20 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
     # Make filter for quality and length
     QL_filter = get_QL_filter(fq_fa_path, min_qual, min_qlen)
     # Configure path to trash file
-    QL_trash_fpath = get_QL_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen,)
+    if not no_trash:
+        QL_trash_fpath = get_QL_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen,)
+    else:
+        QL_trash_fpath = None
+    # end if
 
     # Make filter for identity and coverage
     align_filter = get_align_filter(min_pident, min_coverage)
     # Configure path to this trash file
-    align_trash_fpath = get_align_trash_fpath(fq_fa_path, outdir_path, min_pident, min_coverage)
+    if not no_trash:
+        align_trash_fpath = get_align_trash_fpath(fq_fa_path, outdir_path, min_pident, min_coverage)
+    else:
+        align_trash_fpath = None
+    # end if
 
     for fastq_rec in seq_records_generator(fq_fa_path):
 
@@ -129,19 +146,21 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
 
         # Apply filters
         if not QL_filter(vals_to_filter):
+            QL_seqs_fail += 1
             # Place this sequence to QL trash file
             if QL_trash_fpath not in srt_file_dict.keys():
                 srt_file_dict = update_file_dict(srt_file_dict, QL_trash_fpath, logfile_path)
             # end if
             write_fun(srt_file_dict[QL_trash_fpath], fastq_rec) # write current read to binned file
-            QL_seqs_fail += 1
+            
         elif not align_filter(vals_to_filter):
+            align_seqs_fail += 1
             # Place this sequence to align_trash file
             if align_trash_fpath not in srt_file_dict.keys():
                 srt_file_dict = update_file_dict(srt_file_dict, align_trash_fpath, logfile_path)
             # end if
             write_fun(srt_file_dict[align_trash_fpath], fastq_rec) # write current read to binned file
-            align_seqs_fail += 1
+            
         else:
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in
@@ -157,7 +176,7 @@ This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
     # end for
 
     # Close all binned files
-    for file_obj in srt_file_dict.values():
+    for file_obj in filter(lambda x: not x is None, srt_file_dict.values()):
         file_obj.close()
     # end for
 

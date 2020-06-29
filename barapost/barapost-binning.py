@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.5.g"
+__version__ = "4.6.a"
 # Year, month, day
-__last_update_date__ = "2020-06-12"
+__last_update_date__ = "2020-06-29"
 
 # |===== Check python interpreter version =====|
 
@@ -19,6 +19,8 @@ if sys.version_info.major < 3:
         raw_input("Press ENTER to exit:")
     # end if
     sys.exit(1)
+else:
+    print("\nPython {}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
 # end if
 
 from src.platform import platf_depend_exit
@@ -45,7 +47,8 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
  - filtering by alignment identity ('-i' option) is disabled;
  - filtering by alignment coverage ('-c' option) is disabled;
  - "FAST5 untwisting" is disaled;
- - number of CPU threads to use (`-t` option): 1;""")
+ - number of CPU threads to use (`-t` option): 1;
+ - barapost-binning generated trash file(s) (`-n` flag);""")
 # end if
 
     print("----------------------------------------------------------\n")
@@ -97,6 +100,9 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    Sequences, which align to best hit with lower coverage will be
      written to separate "align_trash" file.
    This filter is disabled by default;\n""")
+    print("""-n (--no-trash) --- flag option. If specified:
+   1) trash files will not be outputed;
+   2) sequences, which does not pass filters, won't be written anywhere;\n""")
 
     if "--help" in sys.argv[1:]:
         print("----------------------------------------------------------\n")
@@ -138,10 +144,10 @@ from re import search as re_search
 from src.printlog import err_fmt, printl, printn, getwt, get_full_time
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:i:c:ut:z:",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:i:c:ut:z:n",
         ["help", "version", "taxannot-resdir=", "indir=", "outdir=", "binning-sensitivity=",
          "min-qual=", "min-seq-len=", "min-pident=", "min-coverage=",
-         "untwist-fast5", "threads=", "gzip="])
+         "untwist-fast5", "threads=", "gzip=", "no-trash"])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
     platf_depend_exit(2)
@@ -167,6 +173,7 @@ min_coverage = None # minimum alignment coverage in percent
 untwist_fast5 = False # flag indicating whether to run 'FAST5-untwisting' or not
 n_thr = 1 # number of threads to launch
 compress = True # flag indicating whether to compress output files or not
+no_trash = False
 
 # Add positional arguments to ` and fast5_list
 for arg in args:
@@ -329,6 +336,9 @@ for opt, arg in opts:
 
         fq_fa_list.extend(list( filter(is_fastqa, glob("{}{}*".format(indir_path, os.sep))) ))
         fast5_list.extend(list( filter(is_fast5, glob("{}{}*".format(indir_path, os.sep))) ))
+
+    elif opt in ("-n", "--no_trash"):
+        no_trash = True
     # end if
 # end for
 
@@ -818,7 +828,7 @@ res_stats = list()
 if len(fast5_list) != 0:
     res_stats.extend(launch_single_thread_binning(fast5_list,
         FAST5_srt_module.bin_fast5_file, tax_annot_res_dir, sens,
-            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path))
 
     # Assign version attribute in FAST5 files to '2.0' -- multiFAST5
     from src.binning_modules.fast5 import assign_version_2
@@ -832,11 +842,11 @@ if len(fq_fa_list) != 0:
     if n_thr != 1: # in parallel
         res_stats.extend(launch_parallel_binning(fq_fa_list,
             QA_srt_module.bin_fastqa_file, tax_annot_res_dir, sens, n_thr,
-            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path))
     else: # in single thread
         res_stats.extend(launch_single_thread_binning(fq_fa_list,
             QA_srt_module.bin_fastqa_file, tax_annot_res_dir, sens,
-            min_qual, min_qlen, min_pident, min_coverage, logfile_path))
+            min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path))
     # end if
 # end if
 

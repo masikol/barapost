@@ -44,16 +44,18 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5, logfile_path):
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
-    try:
-        from_f5.copy(read_name, to_f5)
-    except Exception as verr:
-        printl(logfile_path, "\n\n ! - Error: {}".format( str(verr) ))
-        printl(logfile_path, "Reason is probably the following:")
-        printl(logfile_path, "  read that is copying to the result file is already in it.")
-        printl(logfile_path, "ID of the read: '{}'".format(read_name))
-        printl(logfile_path, "File: '{}'".format(to_f5.filename))
-        platf_depend_exit(1)
-    # end try
+    if not to_f5 is None: # handle no_trash
+        try:
+            from_f5.copy(read_name, to_f5)
+        except Exception as verr:
+            printl(logfile_path, "\n\n ! - Error: {}".format( str(verr) ))
+            printl(logfile_path, "Reason is probably the following:")
+            printl(logfile_path, "  read that is copying to the result file is already in it.")
+            printl(logfile_path, "ID of the read: '{}'".format(read_name))
+            printl(logfile_path, "File: '{}'".format(to_f5.filename))
+            platf_depend_exit(1)
+        # end try
+    # end if
 # end def copy_read_f5_2_f5
 
 
@@ -71,6 +73,12 @@ def copy_single_f5(from_f5, read_name, to_f5, logfile_path):
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
+
+    # Handle no_trash
+    if to_f5 is None:
+        return
+    # end if
+
     try:
         read_group = read_name
         to_f5.create_group(read_group) # create group in destination multi_FAST5 file
@@ -106,6 +114,7 @@ def copy_single_f5(from_f5, read_name, to_f5, logfile_path):
     # end try
 # end def copy_single_f5
 
+
 def assign_version_2(fast5_list):
     """ Assign version attribute to '2.0' -- multiFAST5"""
     for f5path in fast5_list:
@@ -118,7 +127,11 @@ def assign_version_2(fast5_list):
 
 def update_file_dict(srt_file_dict, new_fpath, logfile_path):
     try:
-        srt_file_dict[sys.intern(new_fpath)] = h5py.File(new_fpath, 'a')
+        if not new_fpath is None:
+            srt_file_dict[sys.intern(new_fpath)] = h5py.File(new_fpath, 'a')
+        else:
+            srt_file_dict[new_fpath] = None # handle no_trash
+        # end if
     except OSError as oserr:
         printl(logfile_path, err_fmt("error while opening one of result files"))
         printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))

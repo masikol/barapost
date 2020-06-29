@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.14.j"
+__version__ = "3.14.k"
 # Year, month, day
-__last_update_date__ = "2020-06-26"
+__last_update_date__ = "2020-06-29"
 
 # |===== Check python interpreter version =====|
 
@@ -19,6 +19,8 @@ if sys.version_info.major < 3:
         raw_input("Press ENTER to exit:")
     # end if
     sys.exit(1)
+else:
+    print("\nPython {}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
 # end if
 
 from src.platform import platf_depend_exit

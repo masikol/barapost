@@ -126,7 +126,8 @@ def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
 
 
 def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
-    saved_packet_size=None, saved_packet_mode=None, max_seq_len=float("inf")):
+    saved_packet_size=None, saved_packet_mode=None,
+    max_seq_len=float("inf"), probing_batch_size=float("inf")):
     """
     Generator yields fasta-formattedpackets of records from fastq file.
     This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
@@ -195,7 +196,8 @@ def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
 
             # Switch back to standart packet size
             # As Vorotos said, repeated assignment is the best check:
-            tmp_pack_size = packet_size
+            probing_batch_size -= tmp_pack_size
+            tmp_pack_size = min(packet_size, probing_batch_size)
             tmp_pack_mode = packet_mode
 
             if eof:

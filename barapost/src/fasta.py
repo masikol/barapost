@@ -41,7 +41,8 @@ def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
 
 
 def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
-    saved_packet_size=None, saved_packet_mode=None, max_seq_len=float("inf")):
+    saved_packet_size=None, saved_packet_mode=None,
+    max_seq_len=float("inf"), probing_batch_size=float("inf")):
     """
     Generator yields fasta-formattedpackets of records from fasta file.
     This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
@@ -166,8 +167,11 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
                 yield {"fasta": packet, "qual": qual_dict}
                 # Reset packet and switch back to standart packet size
                 # As Vorotos said, repeated assignment is the best check:
-                tmp_pack_size = packet_size
+
+                probing_batch_size -= tmp_pack_size
+                tmp_pack_size = min(packet_size, probing_batch_size)
                 tmp_pack_mode = packet_mode
+
                 qual_dict = dict()
                 if not next_id_line is None:
                     packet = next_id_line+'\n'

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.21.c"
+__version__ = "1.21.d"
 # Year, month, day
-__last_update_date__ = "2020-06-12"
+__last_update_date__ = "2020-06-29"
 
 # |===== Check python interpreter version =====|
 
@@ -19,6 +19,8 @@ if sys.version_info.major < 3:
         raw_input("Press ENTER to exit:")
     # end if
     sys.exit(1)
+else:
+    print("\nPython {}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
 # end if
 
 from src.platform import platf_depend_exit
@@ -229,6 +231,7 @@ for opt, arg in opts:
         # Switch 'send_all' to True in order to process all sequences
         if arg == "all":
             send_all = True
+            probing_batch_size = float("inf")
             continue
         # end if
         try:
@@ -549,7 +552,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Iterate over packets in current file
     for packet in packet_generator(fq_fa_path, packet_size, num_done_seqs, packet_mode,
-        saved_packet_size, saved_packet_mode, max_seq_len):
+        saved_packet_size, saved_packet_mode, max_seq_len, probing_batch_size):
 
         # Assumption that we need to submit current packet (that we cannot just request for results)
         send = True

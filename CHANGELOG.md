@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-06-29 edition
+- barapost-local: `-n` flag added, which cause the script not to output "trash" sequences;
+- all: scripts print Python interpreter version at startup;
+- prober: fixed bug that would cause prober incorrectly split probing batch into packets;
+
+## Version changes:
+
+- barapost-prober: `1.21.c --> 1.21.d`;
+- barapost-local `3.14.j --> 3.14.k`;
+- barapost-binning: `4.5.g --> 4.6.a`;
+
 ## 2020-06-26 edition
 
 - barapost-local: (`i`) fixed bug that would cause barapost-local not to found assembly files specified with `-l` option;

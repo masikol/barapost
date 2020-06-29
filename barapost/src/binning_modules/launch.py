@@ -9,7 +9,7 @@ from src.binning_modules.parallel_QA import init_paral_binning
 
 
 def launch_single_thread_binning(fpath_list, str_func, tax_annot_res_dir, sens,
-    min_qual, min_qlen, min_pident, min_coverage, logfile_path):
+    min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
     """
     Function launches single-thread binning, performed by finction 'srt_func'.
 
@@ -28,6 +28,8 @@ def launch_single_thread_binning(fpath_list, str_func, tax_annot_res_dir, sens,
     :type min_pident: float (or None, if this filter is disabled);
     :param min_coverage: threshold for alignment coverage filter;
     :type min_coverage: float (or None, if this filter is disabled);
+    :param no_trash: loical value. True if user does NOT want to output trash files;
+    :type no_trash: bool;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
@@ -36,7 +38,7 @@ def launch_single_thread_binning(fpath_list, str_func, tax_annot_res_dir, sens,
     res_stats = map(
         partial(str_func, tax_annot_res_dir=tax_annot_res_dir, sens=sens,
             min_qual=min_qual, min_qlen=min_qlen, min_pident=min_pident,
-            min_coverage=min_coverage, logfile_path=logfile_path),
+            min_coverage=min_coverage, no_trash = no_trash, logfile_path=logfile_path),
         fpath_list)
 
     return res_stats
@@ -44,7 +46,7 @@ def launch_single_thread_binning(fpath_list, str_func, tax_annot_res_dir, sens,
 
 
 def launch_parallel_binning(fpath_list, str_func, tax_annot_res_dir, sens, n_thr,
-    min_qual, min_qlen, min_pident, min_coverage, logfile_path):
+    min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
     """
     Function launches single-thread binning, performed by finction 'srt_func'.
 
@@ -65,6 +67,8 @@ def launch_parallel_binning(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
     :type min_pident: float (or None, if this filter is disabled);
     :param min_coverage: threshold for alignment coverage filter;
     :type min_coverage: float (or None, if this filter is disabled);
+    :param no_trash: loical value. True if user does NOT want to output trash files;
+    :type no_trash: bool;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
@@ -83,6 +87,7 @@ def launch_parallel_binning(fpath_list, str_func, tax_annot_res_dir, sens, n_thr
             min_qlen=min_qlen,
             min_pident=min_pident,
             min_coverage=min_coverage,
+            no_trash = no_trash,
             logfile_path=logfile_path),
         [(sublist,) for sublist in spread_files_equally(fpath_list, n_thr)])
 

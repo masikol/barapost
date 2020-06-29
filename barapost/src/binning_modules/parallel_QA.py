@@ -32,13 +32,14 @@ def write_fastq_record(binned_fpath, fastq_record):
     :type fastq_record: dict<str: str>;
     """
 
-    with open(binned_fpath, 'a') as binned_file:
-
-        binned_file.write(fastq_record["seq_id"]+'\n')
-        binned_file.write(fastq_record["seq"]+'\n')
-        binned_file.write(fastq_record["opt_id"]+'\n')
-        binned_file.write(fastq_record["qual_line"]+'\n')
-    # end with
+    if not binned_fpath is None:
+        with open(binned_fpath, 'a') as binned_file:
+            binned_file.write(fastq_record["seq_id"]+'\n')
+            binned_file.write(fastq_record["seq"]+'\n')
+            binned_file.write(fastq_record["opt_id"]+'\n')
+            binned_file.write(fastq_record["qual_line"]+'\n')
+        # end with
+    # end if
 # end def write_fastq_record
 
 
@@ -50,10 +51,12 @@ def write_fasta_record(binned_fpath, fasta_record):
     :type fasta_record: dict<str: str>
     """
 
-    with open(binned_fpath, 'a') as binned_file:
-        binned_file.write(fasta_record["seq_id"]+'\n')
-        binned_file.write(fasta_record["seq"]+'\n')
-    # end with
+    if not binned_fpath is None:
+        with open(binned_fpath, 'a') as binned_file:
+            binned_file.write(fasta_record["seq_id"]+'\n')
+            binned_file.write(fasta_record["seq"]+'\n')
+        # end with
+    # end if
 # end def write_fasta_record
 
 
@@ -77,7 +80,7 @@ def init_paral_binning(print_lock_buff, write_lock_buff):
 
 
 def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
-    min_qual, min_qlen, min_pident, min_coverage, logfile_path):
+    min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
     """
     Function for parallel binning FASTQ and FASTA files.
     Actually bins multiple files.
@@ -92,6 +95,8 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
     :type min_pident: float (or None, if this filter is disabled);
     :param min_coverage: threshold for alignment coverage filter;
     :type min_coverage: float (or None, if this filter is disabled);
+    :param no_trash: loical value. True if user does NOT want to output trash files;
+    :type no_trash: bool;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
@@ -121,12 +126,20 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
         # Make filter for quality and length
         QL_filter = get_QL_filter(fq_fa_path, min_qual, min_qlen)
         # Configure path to trash file
-        QL_trash_fpath = get_QL_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen,)
+        if not no_trash:
+            QL_trash_fpath = get_QL_trash_fpath(fq_fa_path, outdir_path, min_qual, min_qlen,)
+        else:
+            QL_trash_fpath = None
+        # end if
 
         # Make filter for identity and coverage
         align_filter = get_align_filter(min_pident, min_coverage)
         # Configure path to this trash file
-        align_trash_fpath = get_align_trash_fpath(fq_fa_path, outdir_path, min_pident, min_coverage)
+        if not no_trash:
+            align_trash_fpath = get_align_trash_fpath(fq_fa_path, outdir_path, min_pident, min_coverage)
+        else:
+            align_trash_fpath = None
+        # end if
 
         # Create an iterator that will yield records
         seq_records_iterator = iter(seq_records_generator(fq_fa_path))
