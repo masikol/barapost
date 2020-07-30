@@ -10,15 +10,19 @@ It is awful to sit in front of the computer for hours sending all these sequence
 
 "Barapost" toolkit is the thing that can do it for you and **save your time**.
 
+## Paper
+
+You can find paper describing the toolkit together with benchmark at [https://doi.org/10.1109/TCBB.2020.3009780](https://doi.org/10.1109/TCBB.2020.3009780). If you use Barapost in your research, it would be great if you could cite us.
+
 ## Getting started
 
 You can get "Barapost" in the following ways:
 
 Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git`
 
-Way 2: download ZIP archive (green button at the top right of that [page](https://github.com/masikol/barapost). Then "Clone or download" -> "Download ZIP").
+Way 2: download ZIP archive (green button "Code" at the top right of that [page](https://github.com/masikol/barapost). Then "Download ZIP".
 
-After that, you can find executable Python scripts in directory `barapost/barapost`. Scripts can be run in place.
+After that, you can find executable Python scripts in directory `barapost-master/barapost`. Scripts can be run in place.
 
 Or you can add this directory to your PATH variable so that you won't need to enter full script's path to run it -- just it's name, for example:
 
