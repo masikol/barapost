@@ -10,7 +10,7 @@ It is awful to sit in front of the computer for hours sending all these sequence
 
 "Barapost" toolkit is the thing that can do it for you and **save your time**.
 
-## Paper
+## How to cite
 
 You can find paper describing the toolkit together with benchmark at [https://doi.org/10.1109/TCBB.2020.3009780](https://doi.org/10.1109/TCBB.2020.3009780). If you use Barapost in your research, it would be great if you could cite us.
 
@@ -20,7 +20,7 @@ You can get "Barapost" in the following ways:
 
 Way 1: go to terminal and run `git clone https://github.com/masikol/barapost.git`
 
-Way 2: download ZIP archive (green button "Code" at the top right of that [page](https://github.com/masikol/barapost). Then "Download ZIP".
+Way 2: download ZIP archive (green button "Code" at the top right of this [page](https://github.com/masikol/barapost). Then "Download ZIP".
 
 After that, you can find executable Python scripts in directory `barapost-master/barapost`. Scripts can be run in place.
 
