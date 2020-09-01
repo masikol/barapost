@@ -1,5 +1,14 @@
 # "Barapost" changelog
 
+## 2020-09.01 edition.
+
+Small fix: removed code left from debug.
+
+## Version changes:
+
+- barapost-prober: `1.21.d --> 1.21.e`;
+- barapost-local `3.14.k --> 3.14.l`;
+
 ## 2020-06-29 edition
 - barapost-local: `-n` flag added, which cause the script not to output "trash" sequences;
 - all: scripts print Python interpreter version at startup;
