@@ -1,6 +1,18 @@
 # "Barapost" changelog
 
-## 2020-09.01 edition.
+## 2020-09-02 edition.
+
+- barapost-local: algorithm of searching for related replicons improved: it no longer tries to insanely download over 7000 transcripts (like for this [fungus](https://www.ncbi.nlm.nih.gov/nuccore?LinkName=biosample_nuccore&from_uid=7457167)). Instead, barapost now requests for GenBank records given ID of corresponding record in the Assembly database and downloads only complete genomes/chromosomes or at least scaffolds.
+- barapost-local: entertaining conda-like spinning thing added to indicate that the script is actually working while searching for related replicons.
+- barapost-local, barapost-binning: option renamed: `--taxannot-resdir --> --annot-resdir`. Much more convenient.
+
+
+## Version changes:
+
+- barapost-local: `3.14.l --> 3.15.a`;
+- barapost-binning: `4.6.a --> 4.6.b`;
+
+## 2020-09-01 edition.
 
 Small fix: removed code left from debug.
 

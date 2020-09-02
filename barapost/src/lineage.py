@@ -42,7 +42,7 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     try:
         taxid = re_search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
     except AttributeError:
-        print(err_fmt("taxonomy parsing error 115"))
+        printl(logfile_path, err_fmt("taxonomy parsing error 115"))
         print("Please, contact the developer.")
         platf_depend_exit(115)
     # end try

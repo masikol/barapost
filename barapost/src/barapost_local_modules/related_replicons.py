@@ -2,6 +2,7 @@
 # This module defines functions, which are necessary for searching for related replicons.
 
 import re
+import sys
 from xml.etree import ElementTree
 
 import socket
@@ -35,18 +36,34 @@ def _get_record_title(record_id, logfile_path):
     # Configure URL
     url = "/entrez/eutils/{}?db=nuccore&id={}".format(esummary, record_id)
 
-    # Send the request and get the response
-    summary = lingering_https_get_request(eutils_server, url, logfile_path,
-        "e-summary of nuccore record {}".format(record_id))
+    # Sometimes (I never figured out why) this XML arrives empty, and StopIteration emerges.
+    # So, if we just repeat this request, everything is going to be ok.
+    error = True
+    print_ok = False
+    while error:
+        # Send the request and get the response
+        summary = lingering_https_get_request(eutils_server, url, logfile_path,
+            "e-summary of nuccore record {}".format(record_id))
 
-    # Parse XML that we've got
-    root = ElementTree.fromstring(summary)
+        # Parse XML that we've got
+        root = ElementTree.fromstring(summary)
 
-    # Elements of our insterest are all named "Item",
-    #   but they have different tags.
-    # They are children of element "DocSum", which is
-    #   the first child of root
-    docsum = next(iter(root.getchildren()))
+        # Elements of our insterest are all named "Item",
+        #   but they have different tags.
+        # They are children of element "DocSum", which is
+        #   the first child of root
+        try:
+            docsum = next(iter(root.getchildren()))
+        except StopIteration:
+            println(logfile_path, "\nFailed to retrieve data for record {}. Trying again...".format(record_id))
+            print_ok = True # print this "ok" only after successful attepmt after fail
+        else:
+            if print_ok:
+                printl(logfile_path, "ok")
+            # end if
+            error = False
+        # end try
+    # end while
 
     record_title = None
     record_acc = None
@@ -84,7 +101,7 @@ class _NoAccError(Exception):
 
 def _is_redundant(nc_acc, accs, logfile_path):
     """
-    Function checks if "NC"-record is redundant (if it's non'RefSeq copy already exists in acc_dict).
+    Function checks if "NC-or-NW"-record is redundant (if it's non'RefSeq copy already exists in acc_dict).
 
     :param nc_acc: accession number of NC-record;
     :type nc_acc: str;
@@ -229,6 +246,13 @@ def _deduplicate_replicons(repl_list, src_acc, logfile_path):
     accs = tuple(map(lambda x: x[0], repl_list))
     # redundant_lst = list() # collection of accession that will be removed from 'dedupl_list'
 
+    # We will ntertain user -- show him/her this spinning thing (like conda does
+    #   indicating that the script is actually working.
+    krutiolka = ('|', '/', '-', '\\')
+    krut_i = 0
+    sys.stdout.write("\r {}".format(krutiolka[3]))
+    sys.stdout.flush()
+
     for acc, hit_def in repl_list:
 
         if acc.startswith("NZ_") and acc[3:] in accs:
@@ -238,10 +262,11 @@ def _deduplicate_replicons(repl_list, src_acc, logfile_path):
         elif "NZ_" + acc == src_acc:
             # Simple non-NZ GenBank records should also be ignored here
             pass
-        elif acc.startswith("NC_"):
-            # "NC"-records are no that simple:
+        elif acc.startswith("NC_") or acc.startswith("NW_"):
+            # "NC-or-NW"-records are no that simple:
             #   their numerical part is not identical to that from GenBank.
             # Therefore we need to check their equivalency by requesting NCBI site.
+            # Example: this fungus: https://www.ncbi.nlm.nih.gov/nuccore/1800250711
             gb_acc, redundant = _is_redundant(acc, accs, logfile_path)
             if redundant and acc == src_acc:
                 redund_tuples = filter(lambda x: x[0] == gb_acc, repl_list)
@@ -252,15 +277,20 @@ def _deduplicate_replicons(repl_list, src_acc, logfile_path):
             # 'Source' accession are also in repl_list. Get rid of them.
             dedupl_list.append( (acc, hit_def) )
         # end if
+
+        # Print this spinning thing
+        sys.stdout.write("\r {}".format(krutiolka[krut_i]))
+        sys.stdout.flush()
+        krut_i = krut_i + 1 if krut_i != 3 else 0
     # end for
 
     # Print what we've got
     if len(dedupl_list) != 0:
         for i, (acc, hit_def) in enumerate(dedupl_list):
-            printl(logfile_path, "  {}) {} - {}".format(i+1, acc, hit_def))
+            printl(logfile_path, "\r  {}) {} - {}".format(i+1, acc, hit_def))
         # end for
     else:
-        printl(logfile_path, "  It is the only replicon of this organism.")
+        printl(logfile_path, "\r  It is the only replicon of this organism.")
     # end if
 
     return dedupl_list
@@ -290,7 +320,9 @@ def _get_related_replicons(acc, acc_dict, logfile_path):
     eutils_server = "eutils.ncbi.nlm.nih.gov"
     elink = "elink.fcgi"
 
+    #
     # = Find BioSample ID =
+    #
 
     # Configure URL
     nuc2biosmp_url = "/entrez/eutils/{}?dbfrom=nuccore&db=biosample&id={}".format(elink, acc)
@@ -313,14 +345,46 @@ there is no BioSample page for this record.".format(acc))
     # Here we have BioSample ID
     biosmp_id = linkset.find("Link").find("Id").text
 
-    # = Find GIs in nuccore assotiated with this BioSample ID =
+    #
+    # = Find assembly assotiated with this BioSample ID =
+    #
+
+    # We will pass this BioSample ID through nuccore in order not to 
+    #   allow requesting for over 7k transcripts, like for this fungus:
+    #   https://www.ncbi.nlm.nih.gov/biosample/SAMN07457167
+    # After this, only scaffolds (nearly 130 sequences) will be downloaded.
 
     # Configure URL
-    biosmp2nuc_url = "/entrez/eutils/{}?dbfrom=biosample&db=nuccore&id={}".format(elink, biosmp_id)
+    biosmp2ass_url = "/entrez/eutils/{}?dbfrom=biosample&db=assembly&id={}".format(elink, biosmp_id)
 
     # Get XML with our links
-    text_link_to_nuc = lingering_https_get_request(eutils_server, biosmp2nuc_url,
-        logfile_path, "Nucleotide links assotiated with BioSample ID {}".format(biosmp_id))
+    text_link_to_ass = lingering_https_get_request(eutils_server, biosmp2ass_url,
+        logfile_path, "Assembly link assotiated with BioSample ID {}".format(biosmp_id))
+
+    # Parse this XML
+    root = ElementTree.fromstring(text_link_to_ass)
+    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+
+    # XML should contain element "LinkSetDb"
+    if linkset is None:
+        printl(logfile_path, """Cannot check replicons for '{}':
+  there is no assembly page for this record.""".format(acc))
+        return list()
+    # end if
+
+    # Here we have BioSample ID
+    ass_id = linkset.find("Link").find("Id").text
+
+    #
+    # = Find GIs in nuccore assotiated with this Assembly ID =
+    #
+
+    # Configure URL
+    ass2nuc_url = "/entrez/eutils/{}?dbfrom=assembly&db=nuccore&id={}".format(elink, ass_id)
+
+    # Get XML with our links
+    text_link_to_nuc = lingering_https_get_request(eutils_server, ass2nuc_url,
+        logfile_path, "Nucleotide links assotiated with assembly {}".format(ass_id))
 
     # Parse this XML
     root = ElementTree.fromstring(text_link_to_nuc)
@@ -329,9 +393,17 @@ there is no BioSample page for this record.".format(acc))
     # XML should contain element "LinkSetDb"
     if linkset is None:
         printl(logfile_path, """Cannot check replicons for '{}':
-  there is no BioSample page for this record.""".format(acc))
-        return list()
+  failed to find nuccore records for assembly {}.""".format(acc, ass_id))
+        print("Please, contact the developer.")
+        platf_depend_exit(1)
     # end if
+
+    # We will ntertain user -- show him/her this spinning thing (like conda does
+    #   indicating that the script is actually working.
+    krutiolka = ('|', '/', '-', '\\')
+    krut_i = 0
+    sys.stdout.write("\r {}".format(krutiolka[3]))
+    sys.stdout.flush()
 
     # Collect links
     for elem in linkset.iter():
@@ -341,6 +413,11 @@ there is no BioSample page for this record.".format(acc))
             # Get GI, title and accession:
             rel_gi = elem.text
             rel_def, rel_acc = _get_record_title(rel_gi, logfile_path)
+
+            # Print this spinning thing
+            sys.stdout.write("\r {}".format(krutiolka[krut_i]))
+            sys.stdout.flush()
+            krut_i = krut_i + 1 if krut_i != 3 else 0
 
             # If accession is new -- update list
             if not rel_acc in map(lambda x: x[0], repl_list):
@@ -381,10 +458,10 @@ def search_for_related_replicons(acc_dict, logfile_path):
             platf_depend_exit(1)
         else:
             related_repls = _deduplicate_replicons(related_repls, acc, logfile_path)
-            for rel_acc, rel_def in related_repls:
-                acc_dict[rel_acc] = rel_def
-            # end for
         # end try
+        for rel_acc, rel_def in related_repls:
+            acc_dict[rel_acc] = rel_def
+        # end for
     # end for
 
     if len(start_accs) != len(acc_dict): # there are some new replicons
