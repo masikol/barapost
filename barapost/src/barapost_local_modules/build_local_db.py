@@ -304,7 +304,7 @@ Enter 'r' to remove all files in this directory and create the database from the
 
     # It is a dictionary of accessions and record names.
     # Accessions are keys, record names are values.
-    acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, logfile_path)
+    acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path)
 
     if len(accs_to_download) != 0:
         verify_cl_accessions(accs_to_download, logfile_path, acc_dict)
