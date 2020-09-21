@@ -61,7 +61,7 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
                 printl(logfile_path, "\nData in classification file '{}' is broken. Reason:".format(tsv_res_fpath))
                 printl(logfile_path,  str(err) )
                 printl(logfile_path, "Starting from the beginning.")
-                rename_file_verbosely(tsv_res_fpath)
+                rename_file_verbosely(tsv_res_fpath, logfile_path)
                 return None
             # end try
         # end with

@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2020-09-21 edition.
+
+- barapost-binning: fixed bug that would cause barapost-binning to crash while renaming extant result directory;
+- barapost-local: minor cosmetical improvements;
+
+## Vesrion changes:
+
+- barapost-local: `3.15.b--> 3.15.c`;
+- barapost-binning: `4.6.b--> 4.6.c`;
+
 ## 2020-09-03 edition.
 
 - barapost-local: fixed `-s`-assitiated bug that would cause barapost-local to crash in absence of pre-created `-r` directory with `hits_to_download.tsv` file.

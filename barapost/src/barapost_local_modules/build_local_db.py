@@ -214,7 +214,7 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
         acc_dict[acc] = name
         sys.stdout.write("\r{}/{}".format(i+1, len(accs_to_download)))
     # end for
-    println(logfile_path, "\n{} - OK.".format(getwt()))
+    println(logfile_path, "\n{} - OK.\n".format(getwt()))
 # end def verify_cl_accessions
 
 
@@ -251,9 +251,13 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
                 # If db directory is empty -- break and build a database
                 break
             else:
-                printl(logfile_path, "\nDatabase exists in following directory:")
+                printl(logfile_path, "\nDatabase directory is not empty:")
                 printl(logfile_path, "  '{}'".format(os.path.abspath(db_dir)))
-                reply = input("""\nPress ENTER to use existing database.
+                printl(logfile_path, "Here is it's content:")
+                for i, fname in enumerate(os.listdir(os.path.abspath(db_dir))):
+                    printl(logfile_path, " {}. '{}'".format(i+1, fname))
+                # end for
+                reply = input("""\nPress ENTER to start classification using existing database.
 Enter 'r' to remove all files in this directory and create the database from the beginning:>>""")
 
                 if reply == "":

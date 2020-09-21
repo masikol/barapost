@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.15.b"
+__version__ = "3.15.c"
 # Year, month, day
-__last_update_date__ = "2020-09-03"
+__last_update_date__ = "2020-09-21"
 
 # |===== Check python interpreter version =====|
 
@@ -73,7 +73,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-l (--local-fasta-to-db) --- your own (local) FASTA file that will be included in
    downloaded database, which "barapost-local.py" creates;\n""")
     print("""-s (--accession) --- accession(s) of GenBank record to download and
-   include in database. Multiple accession should be separated by comma without whitespaces;""")
+   include in database. Multiple accession should be separated by comma without whitespaces;\n""")
     print("-t (--threads) --- number of CPU threads to use;")
 
     if "--help" in sys.argv[1:]:

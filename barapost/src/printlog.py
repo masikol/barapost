@@ -21,7 +21,7 @@ def get_full_time():
     Function returns current time HH:MM:SS (YYYY-mm-dd HH:MM:SS).
     The first HH:MM:SS is from 'getwt'.
     """
-    return getwt() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(time())))
+    return getwt() + " ({})".format(strftime("%Y-%m-%d %H:%M:%S", localtime(time())))
 # end def get_full_time
 
 

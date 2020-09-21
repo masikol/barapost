@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.6.b"
+__version__ = "4.6.c"
 # Year, month, day
-__last_update_date__ = "2020-09-02"
+__last_update_date__ = "2020-09-21"
 
 # |===== Check python interpreter version =====|
 
@@ -572,7 +572,7 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
     while invalid_reply:
         reply = input("""Press ENTER to overwrite all old sequence-containing files
    or enter 'r' to rename old directory and to write current results to a new one
-   or enter 'a' to append new data to the existing one:>>""")
+   or enter 'a' to append new sequences to existing data:>>""")
 
         if reply == "":
             invalid_reply = False
@@ -586,14 +586,27 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
             invalid_reply = False
 
             printl(logfile_path, "You have chosen to rename old directory.")
+
+            # Save log
+            with open(logfile_path, 'rb') as logfile:
+                log_text = logfile.read()
+            # end with
+
             from src.filesystem import rename_file_verbosely
             rename_file_verbosely(outdir_path, logfile_path)
+
+            # Create new dir
+            os.makedirs(outdir_path)
+
+            # Restore log
+            with open(logfile_path, 'wb') as logfile:
+                logfile.write(log_text)
+            # end with
         elif reply == 'a':
             invalid_reply = False
         else:
             print("Invalid reply: '{}'".format(reply))
         # end if
-        printl(logfile_path)
     # end while
 # end if
 
