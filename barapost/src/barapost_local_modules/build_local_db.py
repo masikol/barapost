@@ -9,6 +9,7 @@ from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 from time import sleep
 from glob import glob
 from threading import Thread, Event
+from gzip import open as open_as_gzip
 
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
@@ -35,11 +36,10 @@ for directory in os.environ["PATH"].split(os.pathsep):
 
 if not gzip_util_found:
     from shutil import copyfileobj as shutil_copyfileobj
-    from gzip import open as open_as_gzip
 # end if
 
 
-def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
+def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
     """
     Function downloads set of records from Genbank according to accessions passed to it.
     Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
@@ -48,18 +48,17 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
     :type acc_dict: dict<str: tuple<str, str, int>>;
     :param db_dir: path to directory in which downloaded FASTA file will be placed;
     :type db_dir: str;
+    :param local_fasta: path to file with reference sequences to be included in database;
+    :type local_fasta: str;
     :param logfile_path: path to log file;
     :type logfile_path: str;
-
-    Returns path to downloaded FASTA file of 'str'.
     """
 
-    local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
     tmp_fasta = os.path.join(db_dir, "tmp.fasta") # path to file with current chunk (see below "100 accession numbers...")
 
     accessions = tuple(set(acc_dict.keys()))
     if len(accessions) == 0: # just in case
-        return local_fasta
+        return
     # end if
 
     # 100 accession numbers in order not to make too long URL
@@ -173,8 +172,6 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path):
         os.unlink(tmp_fasta)
         i += max_accnum # go to next chunk
     # end while
-
-    return local_fasta
 # end def retrieve_fastas_by_acc
 
 
@@ -216,6 +213,46 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
     # end for
     println(logfile_path, "\n{} - OK.\n".format(getwt()))
 # end def verify_cl_accessions
+
+
+def add_lambda_phage(local_fasta, logfile_path):
+    """
+    Function adds control sequence of nanopore lambda phase DNA-CS
+       to 'local_fasta'.
+
+    :param local_fasta: path to file with reference sequences to be included in database;
+    :type local_fasta: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
+    """
+
+    println(logfile_path, "\nAdding lambda phage control sequence...")
+
+    # sys.path[0] is directory containing the script that was used to invoke the Python interpreter.
+    # We will use it to get path to file with lambda's sequence.
+    lambda_fpath = os.path.join(
+        os.path.dirname(sys.path[0]),
+        "lambda_control",
+        "nanopore_lambda_DNA-CS_control.fasta.gz")
+
+    # Check file existance
+    if not os.path.exists(lambda_fpath):
+        printl(logfile_path, err_fmt("cannot find lambda phage control sequence: '{}'".format(lambda_fpath)))
+        sys.exit(1)
+    # end if
+
+    # Read lambda's sequence
+    with open_as_gzip(lambda_fpath, 'rb') as lambda_file:
+        lambda_fasta = lambda_file.read()
+    # end with
+
+    # Write it to db fasta file
+    with open(local_fasta, 'wb') as db_fasta_file:
+        db_fasta_file.write(lambda_fasta)
+    # end with
+
+    printl(logfile_path, " ok")
+# end def add_lambda
 
 
 def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path):
@@ -347,7 +384,11 @@ Enter 'r' to remove all files in this directory and create the database from the
         printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
     # end if
 
-    local_fasta = retrieve_fastas_by_acc(acc_dict, db_dir, logfile_path) # download fasta file
+    local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
+
+    add_lambda_phage(local_fasta, logfile_path) # add lambda phage control sequence
+
+    retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path) # download main fasta data from GenBank
 
     # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:

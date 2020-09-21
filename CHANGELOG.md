@@ -2,12 +2,13 @@
 
 ## 2020-09-21 edition.
 
+- barapost-local now in advance adds sequence of nanopore lambda phage control sequence (DNA-CS) to reference database;
 - barapost-binning: fixed bug that would cause barapost-binning to crash while renaming extant result directory;
 - barapost-local: minor cosmetical improvements;
 
 ## Vesrion changes:
 
-- barapost-local: `3.15.b--> 3.15.c`;
+- barapost-local: `3.15.b--> 3.15.c --> 3.16.a`;
 - barapost-binning: `4.6.b--> 4.6.c`;
 
 ## 2020-09-03 edition.
