@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.21.e"
+__version__ = "1.21.f"
 # Year, month, day
-__last_update_date__ = "2020-09-01"
+__last_update_date__ = "2020-10-23"
 
 # |===== Check python interpreter version =====|
 
@@ -424,7 +424,10 @@ if user_email != "":
     printl(logfile_path, " - Your email: {}".format(user_email))
 # end if
 printl(logfile_path, " - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
-printl(logfile_path, " - Packet forming mode: {};".format(packet_mode))
+
+mode_comment = "number of sequences" if packet_mode == 0 else "sum of sequences' lengths"
+printl(logfile_path, " - Packet forming mode: {} ({});".format(packet_mode,mode_comment))
+del mode_comment
 
 if packet_mode == 0:
     tmp_str = "sequences"

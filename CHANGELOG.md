@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2020-10-23 edition.
+
+- barapost-prober: fixed a bug that would cause prober to stop after the first iteration if `-c 1` is specified.
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.e --> 1.21.f`
+
 ## 2020-09-21 edition.
 
 - barapost-local now in advance adds sequence of nanopore lambda phage control sequence (DNA-CS) to reference database;

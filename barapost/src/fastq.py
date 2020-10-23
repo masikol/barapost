@@ -196,7 +196,12 @@ def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
 
             # Switch back to standart packet size
             # As Vorotos said, repeated assignment is the best check:
-            probing_batch_size -= tmp_pack_size
+            if packet_mode == 0:
+                probing_batch_size -= tmp_pack_size
+            else:
+                probing_batch_size -= len(packet['qual'])
+            # end if
+
             tmp_pack_size = min(packet_size, probing_batch_size)
             tmp_pack_mode = packet_mode
 

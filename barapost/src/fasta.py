@@ -168,8 +168,13 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
                 # Reset packet and switch back to standart packet size
                 # As Vorotos said, repeated assignment is the best check:
 
-                probing_batch_size -= tmp_pack_size
-                tmp_pack_size = min(packet_size, probing_batch_size)
+                if packet_mode == 0:
+                    tmp_pack_size = min(packet_size, probing_batch_size)
+                    probing_batch_size -= tmp_pack_size
+                else:
+                    probing_batch_size -= len(qual_dict)
+                # end if
+
                 tmp_pack_mode = packet_mode
 
                 qual_dict = dict()
