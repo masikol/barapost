@@ -5,6 +5,14 @@ import urllib.request
 from src.printlog import getwt, printn
 from src.platform import platf_depend_exit
 
+try:
+    import ssl
+except ImportError:
+    pass
+else:
+    ssl._create_default_https_context = ssl._create_unverified_context
+# end try
+
 def check_connection(url):
     """
     Function checks if url is available.

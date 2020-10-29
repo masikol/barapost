@@ -29,15 +29,28 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
     """
 
     error = True
+
+    # We can get spurious 404 or sth due to instability of NCBI servers work.
+    # Let's give it 3 attempts (with 15 sec spans in between), and if all them are unsuccessful -- teminate execution.
+    attempt_i = 0
+    max_attempts = 3
+
     while error:
         try:
-            conn = http.client.HTTPSConnection(server, timeout=10) # create connection
+            conn = http.client.HTTPSConnection(server, timeout=30) # create connection
             conn.request("GET", url) # ask for if there areresults
             response = conn.getresponse() # get the resonse
 
             if response.code != 200:
-                printl(logfile_path, "Request failed with status code {}: {}".format(response.code, response.reason))
-                platf_depend_exit(1)
+                if attempt_i < max_attempts and "ncbi.nlm.nih.gov" in server:
+                    printl(logfile_path, "Error {}: {}.".format(response.code, response.reason))
+                    printl(logfile_path, "It may be due to instable work of NCBI servers.")
+                    printl(logfile_path, "{} attempts to connect left, waiting 15 sec...".format(max_attempts - attempt_i))
+                    attempt_i += 1
+                else:
+                    printl(logfile_path, "Request failed with status code {}: {}".format(response.code, response.reason))
+                    platf_depend_exit(1)
+                # end if
             # end if
 
             resp_content = str(response.read(), "utf-8") # get response text

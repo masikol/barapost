@@ -2,6 +2,15 @@
 
 ## 2020-10-23 edition.
 
+- increased durability of prober and barapost-local to instability of NCBI servers.
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.f --> 1.21.g`
+- barapost-barapost: `3.16.a --> 3.16.b`
+
+## 2020-10-23 edition.
+
 - barapost-prober: fixed a bug that would cause prober to stop after the first iteration if `-c 1` is specified.
 
 ## Vesrion changes:
