@@ -112,7 +112,7 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
         new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
         tsv_res_fpath = get_res_tsv_fpath(new_dpath)
         resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
-            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
+            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"), logfile_path)
 
         # Configure path to trash file
         if is_fastq(fq_fa_path):
@@ -199,19 +199,17 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
             to_write.clear()
         # end while
 
-        # Write the rest of 'uneven' data to output files:
-        if len(to_write) != 0:
-            with write_lock:
+        with write_lock:
+            # Write the rest of 'uneven' data to output files:
+            if len(to_write) != 0:
                 for record, fpath in to_write.values():
                     write_fun(fpath, record)
                 # end for
-            # end with
-        # end if
-
-        printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(fq_fa_path)))
-        printn(" Working...")
+            # end if
+            printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(fq_fa_path)))
+            printn(" Working...")
+        # end with
     # end for
-
 
     return (seqs_pass, QL_seqs_fail, align_seqs_fail)
 # end def bin_fastqa_file

@@ -56,7 +56,7 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
     new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
-        os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
+        os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"), logfile_path)
 
     # Make filter for quality and length
     QL_filter = get_QL_filter(f5_path, min_qual, min_qlen)

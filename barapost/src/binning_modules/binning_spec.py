@@ -191,19 +191,20 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                         if assm_path is not None:
                             if sens[0] != "species":
                                 # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
-                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), node_or_scaff, assmblr_name, "assembly") ))
+                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), assmblr_name, "assembly",
+                                    node_or_scaff) ))
                             else:
                                 # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), node_or_scaff,
-                                    node_scaff_num, assmblr_name, "assembly") ))
+                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), assmblr_name, "assembly",
+                                    node_or_scaff, node_scaff_num) ))
                             # end if
                         else:
                             if sens[0] != "species":
                                 # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
-                                best_hit_annots.append(node_or_scaff + assmblr_name + "_assembly_")
+                                best_hit_annots.append(assmblr_name + "_assembly_" + node_or_scaff)
                             else:
                                 # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (node_or_scaff, node_scaff_num, assmblr_name + "assembly")))
+                                best_hit_annots.append('_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num)))
                             # end if
                         # end if
                     # end if
@@ -230,7 +231,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
 # end def format_taxonomy_name
 
 
-def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
+def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
     """
     Function returns dictionary, where keys are sequence (i.e. sequences meant to be binned) IDs,
         and values are corresponding hit names.

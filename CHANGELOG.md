@@ -3,11 +3,14 @@
 ## 2020-10-30 edition.
 
 - barapost-local: fixed bug that would cause barapost-binning to exit with `taxonomy error 994` on lambda phage sequence.
+- barapost-binning: naming of output files named after SPAdes or a5 assembly file was changed: assembler name now goes after contig name;
+- barapost-local: fixed a bug that would cause BLAST+ to be unable to create a database due to non-ASCII characters in fasta titles of reference sequences;
+- barapost-binnging: fixed messed stdout on parallel binning;
 
 ## Vesrion changes:
 
-- barapost-barapost: `3.16.b --> 3.16.c`
-- barapost-binning: `4.6.c --> 4.6.d`
+- barapost-barapost: `3.16.b --> 3.16.c --> 3.16.d`
+- barapost-binning: `4.6.c --> 4.6.d --> 4.6.e`
 
 ## 2020-10-29 edition.
 

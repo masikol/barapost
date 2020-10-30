@@ -253,6 +253,7 @@ def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
         db_fasta_file.write(lambda_fasta)
     # end with
 
+    # Save lambda's taxonomy
     with shelve.open(taxonomy_path, 'c') as tax_file:
         tax_file["LAMBDA"] = "Lambda phage nanopore control"
     # end with
@@ -532,7 +533,9 @@ Enter 'r' to remove all files in this directory and create the database from the
                 line = line.strip()
                 acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
                 acc = acc.partition('.')[0]
-                line = ' '.join( (acc, seq_name.replace(' ', '_')) ) + '\n'
+                seq_name = seq_name.replace(' ', '_') # remove spaces
+                seq_name = re.sub(r'[^\x00-\x7F]+', '_', seq_name) # remove non-ascii chars
+                line = ' '.join( (acc, seq_name) ) + '\n'
             # end if
             dest_file.write(line)
         # end for

@@ -130,7 +130,7 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
 
         read_names = index_f5_2_tsv[f5_path][tsv_path]
         resfile_lines = configure_resfile_lines(tsv_path, sens,
-            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"))
+            os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"), logfile_path)
 
         for read_name in read_names:
             try:
