@@ -195,8 +195,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                                     node_or_scaff) ))
                             else:
                                 # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), assmblr_name, "assembly",
-                                    node_or_scaff, node_scaff_num) ))
+                                best_hit_annots.append('_'.join( (node_or_scaff, node_scaff_num, assm_path.replace(os.sep, '_'),
+                                    assmblr_name, "assembly") ))
                             # end if
                         else:
                             if sens[0] != "species":
@@ -204,7 +204,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                                 best_hit_annots.append(assmblr_name + "_assembly_" + node_or_scaff)
                             else:
                                 # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num)))
+                                best_hit_annots.append('_'.join((node_or_scaff, node_scaff_num, (assmblr_name + "assembly"))))
                             # end if
                         # end if
                     # end if
