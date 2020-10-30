@@ -215,13 +215,15 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
 # end def verify_cl_accessions
 
 
-def add_lambda_phage(local_fasta, logfile_path):
+def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
     """
     Function adds control sequence of nanopore lambda phase DNA-CS
        to 'local_fasta'.
 
     :param local_fasta: path to file with reference sequences to be included in database;
     :type local_fasta: str;
+    :param taxonomy_path: path to taxonomy file;
+    :type taxonomy_path: str;
     :param logfile_path: path to log file;
     :type logfile_path: str;
     """
@@ -249,6 +251,10 @@ def add_lambda_phage(local_fasta, logfile_path):
     # Write it to db fasta file
     with open(local_fasta, 'wb') as db_fasta_file:
         db_fasta_file.write(lambda_fasta)
+    # end with
+
+    with shelve.open(taxonomy_path, 'c') as tax_file:
+        tax_file["LAMBDA"] = "Lambda phage nanopore control"
     # end with
 
     printl(logfile_path, " ok")
@@ -386,7 +392,7 @@ Enter 'r' to remove all files in this directory and create the database from the
 
     local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
 
-    add_lambda_phage(local_fasta, logfile_path) # add lambda phage control sequence
+    add_lambda_phage(local_fasta, taxonomy_path, logfile_path) # add lambda phage control sequence
 
     retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path) # download main fasta data from GenBank
 

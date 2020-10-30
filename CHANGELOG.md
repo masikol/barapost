@@ -1,6 +1,15 @@
 # "Barapost" changelog
 
-## 2020-10-23 edition.
+## 2020-10-30 edition.
+
+- barapost-local: fixed bug that would cause barapost-binning to exit with `taxonomy error 994` on lambda phage sequence.
+
+## Vesrion changes:
+
+- barapost-barapost: `3.16.b --> 3.16.c`
+- barapost-binning: `4.6.c --> 4.6.d`
+
+## 2020-10-29 edition.
 
 - increased durability of prober and barapost-local to instability of NCBI servers.
 
