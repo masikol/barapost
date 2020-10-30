@@ -131,11 +131,11 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
         try:
             taxonomy = tax_file[acc]
         except KeyError:
-            printl("taxonomy file error 994")
-            printl("Cant find taxonomy for reference sequence '{}'".format(acc))
-            printl("It's annotation: '{}'".format(annotation))
-            printl("Probably you should run \"barapost-local.py\" once again and rebuild the database --")
-            printl("  \"barapost-local.py\" will make taxonomy file consistent.")
+            printl(logfile_path, "taxonomy file error 994")
+            printl(logfile_path, "Cant find taxonomy for reference sequence '{}'".format(acc))
+            printl(logfile_path, "It's annotation: '{}'".format(annotation))
+            printl(logfile_path, "Probably you should run \"barapost-local.py\" once again and rebuild the database --")
+            printl(logfile_path, "  \"barapost-local.py\" will make taxonomy file consistent.")
             platf_depend_exit(1)
         # end try
 
@@ -191,19 +191,19 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                         if assm_path is not None:
                             if sens[0] != "species":
                                 # Return only path and "NODE" in case of SPAdes and "scaffold" in case of a5
-                                best_hit_annots.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff) ))
+                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), node_or_scaff, assmblr_name, "assembly") ))
                             else:
                                 # Return path and "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (assmblr_name, "assembly", assm_path.replace(os.sep, '_'), node_or_scaff,
-                                    node_scaff_num) ))
+                                best_hit_annots.append('_'.join( (assm_path.replace(os.sep, '_'), node_or_scaff,
+                                    node_scaff_num, assmblr_name, "assembly") ))
                             # end if
                         else:
                             if sens[0] != "species":
                                 # Return only "NODE" in case of SPAdes and "scaffold" in case of a5
-                                best_hit_annots.append(assmblr_name + "_assembly_" + node_or_scaff)
+                                best_hit_annots.append(node_or_scaff + assmblr_name + "_assembly_")
                             else:
                                 # Return "NODE_<N>" in case of SPAdes and "scaffold_<N>" in case of a5
-                                best_hit_annots.append('_'.join( (assmblr_name + "assembly", node_or_scaff, node_scaff_num )))
+                                best_hit_annots.append('_'.join( (node_or_scaff, node_scaff_num, assmblr_name + "assembly")))
                             # end if
                         # end if
                     # end if

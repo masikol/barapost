@@ -88,8 +88,8 @@ def remove_tmp_files(*paths):
             try:
                 os.unlink(path)
             except OSError as oserr:
-                printl(err_fmt("cannot remove file '{}'").format(path))
-                printl( str(oserr) )
+                printl(logfile_path, err_fmt("cannot remove file '{}'").format(path))
+                printl(logfile_path, str(oserr) )
                 platf_depend_exit(1)
             # end try
         # end if
@@ -117,8 +117,8 @@ def create_result_directory(fq_fa_path, outdir_path):
         try:
             os.makedirs(new_dpath)
         except OSError as oserr:
-            printl(err_fmt("can't create result directory"))
-            printl( str(oserr) )
+            printl(logfile_path, err_fmt("can't create result directory"))
+            printl(logfile_path, str(oserr) )
             platf_depend_exit(1)
         # end try
     # end if

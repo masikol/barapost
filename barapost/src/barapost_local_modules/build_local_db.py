@@ -397,7 +397,7 @@ Enter 'r' to remove all files in this directory and create the database from the
         # It is necessary for not allowing duplicated accessions.
         own_seq_counter = 0
 
-        # Check if these files are assembly made by SPAdese or a5
+        # Check if these files are assembly made by SPAdes or a5
         spades_patt = r">NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
         spades_counter = 0 # variable counts number of SPAdes assembly files
         spades_assms = list() # this list will contain paths to SPAdes assembly files
