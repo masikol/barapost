@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.6.e"
+__version__ = "4.6.f"
 # Year, month, day
-__last_update_date__ = "2020-10-30"
+__last_update_date__ = "2020-11-13"
 
 # |===== Check python interpreter version =====|
 
@@ -933,7 +933,7 @@ if util_found:
 
         for fpath in fpaths:
             try:
-                if not os.system("{} {}".format(gzip_util, fpath)) == 0:
+                if not os.system("{} '{}'".format(gzip_util, fpath)) == 0:
                     raise OSError("Gzip error")
                 # end if
             except OSError as oserr:

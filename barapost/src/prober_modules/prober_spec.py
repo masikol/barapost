@@ -182,12 +182,12 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                     for line in local_files_filtered:
                         vals = line.split('\t')
                         acc = sys.intern(vals[0].strip())
-                        if len(vals) == 3:
-                            acc_dict[acc] = [ vals[1].strip(), int(vals[2].strip()) ]
-                        elif len(vals) == 4: # backward compatibility
-                            acc_dict[acc] = [ vals[2].strip(), int(vals[3].strip()) ]
+                        if len(vals) == 1:
+                            acc_dict[acc] = [ "No definition of the sequence provided", 1 ]
+                        elif len(vals) == 2:
+                            acc_dict[acc] = [ vals[1].strip(), 1 ]
                         else:
-                            raise IndexError
+                            acc_dict[acc] = [ vals[1].strip(), int(vals[2].strip()) ]
                         # end if
                     # end for
                 # end with
@@ -195,17 +195,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
             except Exception as err:
                 printl(logfile_path, "\nData in accession file '{}' not found or broken. Reason:".format(acc_fpath))
                 printl( logfile_path, ' ' + str(err) )
-
-                # If the reason is known -- print erroneous lines
-                if isinstance(err, IndexError):
-                    printl(logfile_path, "Here are numbers of improper lines:")
-                    for i, line in enumerate(lines):
-                        if line.count('\t') != 3:
-                            printl(logfile_path, str(i+1) + ": '{}'".format(line))
-                        # end if
-                    # end for
-                    printl(logfile_path)
-                # end if
+                printl(logfile_path, "Invalid line: '{}'".format(line))
 
                 # Ask a user if he/she wants to start from the beginning or to quit
                 error = True
@@ -226,7 +216,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                     # end if
                 # end while
             else:
-                printl(logfile_path, "\nHere are Genbank records encountered during previous run:")
+                printl(logfile_path, "\nHere are Genbank records encountered during previous run(s):")
                 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
                     s_letter = "s" if other_info[1] > 1 else ""
                     printl(logfile_path, " {} hit{} - {}, '{}'".format(other_info[1], s_letter, acc, other_info[0]))

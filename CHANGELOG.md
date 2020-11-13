@@ -1,5 +1,17 @@
 # "Barapost" changelog
 
+## 2020-11-13 edition.
+
+- barapost-local, barapost-prober: made parsing file `hits_to_download` less prone to errors;
+- barapost-binning: fized a bug that would cause gzip to fail to compress some files dure to naming errors, such as brackets of plus-characters (+) in file names;
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.g --> 1.21.h`
+- barapost-local: `3.16.d --> 3.16.e`
+- barapost-binning: `4.6.e --> 4.6.f`
+
+
 ## 2020-10-30 edition.
 
 - barapost-local: fixed bug that would cause barapost-binning to exit with `taxonomy error 994` on lambda phage sequence.

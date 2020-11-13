@@ -256,16 +256,12 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_
                         try:
                             line_splt = line.split('\t')
 
-                            if len(line_splt) == 3:
-                                if re.match(r"[0-9]+", line_splt[-1]) is None:
-                                    name = line_splt[-1]
-                                else:
-                                    name = line_splt[1]
-                                # end if
-                            elif len(line_splt) == 4: # backward compatibility
-                                name = line_splt[2]
-                            else:
+                            if len(line_splt) == 0:
                                 raise IndexError
+                            elif len(line_splt) == 1: # just accession
+                                name = "No definition of the sequence provided"
+                            elif len(line_splt):
+                                name = line_splt[1]
                             # end if
                             acc = sys.intern(line_splt[0].partition('.')[0])
                             # gi = line_splt[1]
