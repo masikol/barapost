@@ -151,7 +151,7 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
 
         # Get number of seqeunces to pass to each thread
         file_part_size = num_seqs // n_thr
-        if num_seqs // n_thr != 0:
+        if num_seqs % n_thr != 0:
             file_part_size += 1
         # end if
 

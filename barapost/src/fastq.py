@@ -12,7 +12,7 @@ FASTQ_LINES_PER_READ = 4
 
 # Function for getting Q value from Phred33 character:
 substr_phred33 = lambda q_symb: ord(q_symb) - 33
-# List of propabilities corresponding to indices (index is Q, value is the propability):
+# List of probabilities corresponding to indices (index is Q, value is the propability):
 q2p_map = [10 ** (-q/10) for q in range(128)] # 127 -- max value of a signed byte
 # Function for accessing propabilities by Q:
 qual2prop = lambda q: q2p_map[q]
@@ -166,47 +166,45 @@ def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
 
         # Here goes check for saved packet size and mode:
         if not saved_packet_size is None:
-            tmp_pack_size = saved_packet_size
+            wrk_pack_size = saved_packet_size
         else:
-            tmp_pack_size = packet_size
+            wrk_pack_size = packet_size
         # end if
 
         if not saved_packet_mode is None:
-            tmp_pack_mode = saved_packet_mode
+            wrk_pack_mode = saved_packet_mode
         else:
-            tmp_pack_mode = packet_mode
+            wrk_pack_mode = packet_mode
+        # end if
+
+        if wrk_pack_mode == 0:
+            form_packet = form_packet_numseqs
+        else:
+            form_packet = form_packet_totalbp
         # end if
 
         # Process all remaining sequences with standart packet size:
         while not eof:
 
-            if tmp_pack_mode == 0:
-                form_packet = form_packet_numseqs
-            else:
-                form_packet = form_packet_totalbp
-            # end if
+            packet, eof = form_packet(fastq_file, wrk_pack_size, fmt_func, max_seq_len)
 
-            packet, eof = form_packet(fastq_file, tmp_pack_size, fmt_func, max_seq_len)
-
-            if packet["fasta"] == "":
+            if eof or packet["fasta"] == "":
                 return
             # end if
 
             yield packet
 
-            # Switch back to standart packet size
-            # As Vorotos said, repeated assignment is the best check:
             if packet_mode == 0:
-                probing_batch_size -= tmp_pack_size
+                probing_batch_size -= wrk_pack_size
+                wrk_pack_size = min(packet_size, probing_batch_size)
             else:
                 probing_batch_size -= len(packet['qual'])
             # end if
 
-            tmp_pack_size = min(packet_size, probing_batch_size)
-            tmp_pack_mode = packet_mode
-
-            if eof:
-                return
+            # Switch back to standart packet size
+            # As Vorotos said, repeated assignment is the best check:
+            if wrk_pack_mode != packet_mode:
+                wrk_pack_mode = packet_mode
             # end if
         # end while
     # end with

@@ -80,7 +80,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
         next_id_line = pass_processed_seqs(fasta_file, num_done_seqs, fmt_func)
 
         if next_id_line == "":
-            yield {"fasta": "", "names": list()}
+            yield {"fasta": "", "qual": dict()}
         # end if
 
         packet = ""
@@ -98,28 +98,26 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
         # end if
         packet += line+'\n' # add recently read line
 
-        qual_dict = dict() # {<seq_id>: '-'}, as soon as fasta file is being processed
-        eof = False
-
         # Here goes check for saved packet size and mode:
         if not saved_packet_size is None:
-            tmp_pack_size = saved_packet_size
+            wrk_pack_size = saved_packet_size
         else:
-            tmp_pack_size = packet_size
+            wrk_pack_size = packet_size
         # end if
 
         if not saved_packet_mode is None:
-            tmp_pack_mode = saved_packet_mode
+            wrk_pack_mode = saved_packet_mode
         else:
-            tmp_pack_mode = packet_mode
+            wrk_pack_mode = packet_mode
         # end if
 
+        eof = False
         while not eof: # till the end of file
 
             counter = 0 # variable for counting sequences within packet
             seqlen = 0
 
-            while counter < tmp_pack_size:
+            while counter < wrk_pack_size:
 
                 line = get_next_line()
                 if line.startswith('>'):
@@ -155,9 +153,8 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
             names = filter(lambda l: True if l.startswith('>') else False, packet.splitlines())
             names = map(lambda l: l.replace('>', ''), names)
 
-            for name in names:
-                qual_dict[name] = '-' # there is no quality info in fasta files
-            # end for
+            # {<seq_id>: '-'}, as soon as it is a fasta file
+            qual_dict = {name: '-' for name in names}
 
             if max_seq_len < float("inf"): # prune sequences
                 packet = prune_seqs(packet, max_seq_len)
@@ -165,19 +162,20 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
 
             if packet != "":
                 yield {"fasta": packet, "qual": qual_dict}
-                # Reset packet and switch back to standart packet size
-                # As Vorotos said, repeated assignment is the best check:
 
                 if packet_mode == 0:
-                    tmp_pack_size = min(packet_size, probing_batch_size)
-                    probing_batch_size -= tmp_pack_size
+                    probing_batch_size -= wrk_pack_size
+                    wrk_pack_size = min(packet_size, probing_batch_size)
                 else:
                     probing_batch_size -= len(qual_dict)
                 # end if
 
-                tmp_pack_mode = packet_mode
+                # Switch back to standart packet size
+                # As Vorotos said, repeated assignment is the best check:
+                if wrk_pack_mode != packet_mode:
+                    wrk_pack_mode = packet_mode
+                # end if
 
-                qual_dict = dict()
                 if not next_id_line is None:
                     packet = next_id_line+'\n'
                 # end if

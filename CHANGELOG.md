@@ -1,9 +1,19 @@
 # "Barapost" changelog
 
+## 2020-11-16 edition.
+
+- barapost-prober: fixed error that would cause prober to compose packets improperly with `-c 1` specified if fastq file is being processed;
+- barapost-local: fixed a bug that would cause barapost-local to improperly spread sequences among threads;
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.h --> 1.21.i`
+- barapost-local: `3.16.e --> 3.16.f`
+
 ## 2020-11-13 edition.
 
 - barapost-local, barapost-prober: made parsing file `hits_to_download` less prone to errors;
-- barapost-binning: fized a bug that would cause gzip to fail to compress some files dure to naming errors, such as brackets of plus-characters (+) in file names;
+- barapost-binning: fixed a bug that would cause gzip to fail to compress some files dure to naming errors, such as brackets of plus-characters (+) in file names;
 
 ## Vesrion changes:
 
