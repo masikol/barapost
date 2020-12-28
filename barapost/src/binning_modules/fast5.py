@@ -5,7 +5,7 @@ import sys
 import h5py
 
 from src.platform import platf_depend_exit
-from src.printlog import printl
+from src.printlog import printl, err_fmt
 from src.fmt_readID import fmt_read_id
 from re import search as re_search
 

@@ -148,7 +148,7 @@ def _handle_result(align_xml_text, packet, taxonomy_path,
     # Update summary information
     seqs_processed[0] += len( packet["qual"] )
     pack_to_send[0] += 1
-    remove_tmp_files(tmp_fpath)
+    remove_tmp_files([tmp_fpath], logfile_path)
 
 # end def _handle_result
 

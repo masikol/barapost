@@ -11,15 +11,15 @@ from src.platform import platf_depend_exit
 from src.printlog import printl, err_fmt
 
 
-def get_res_tsv_fpath(new_dpath):
+def get_res_tsv_fpath(new_dpath, logfile_path):
     """
     Function returns current TSV file. Binning will be performed according to this file.
 
     :param new_dpath: current result directory;
     :type new_dpath: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
-
-    brpst_resfile_patt = r".*classification\.tsv$"
 
     is_similar_to_tsv_res = lambda f: True if f == "classification.tsv" else False
 
@@ -102,7 +102,7 @@ def find_rank_for_filename(sens, taxonomy):
 chars_excl_from_filename = ("/", "\\", ":", "*", "+", "?", "\"", "<", ">", "(", ")", "|", " ", ";")
 
 
-def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
+def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
     """
     Function formats taxonomy name according to chosen sensibiliry of binning.
     :param hit_acc: accession(s) of best hit(s);
@@ -114,6 +114,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
     :type sens: str;
     :param tax_file: taxonomy file instance;
     :type tax_file: shelve.DbfilenameShelf;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
 
     Returns formatted hit name of 'str' type;
     """
@@ -182,8 +184,9 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file):
                             assmblr_name = "a5"
                         # There cannot be enything else
                         else:
-                            print(err_fmt("signature of sequence ID from assembly not recognized: '{}'".format(hit_name)))
-                            platf_depend_exit(1)
+                            printl(logfile_path, err_fmt("signature of sequence ID from assembly not recognized: error 85"))
+                            printl(logfile_path, "Please, contact the developer.")
+                            platf_depend_exit(85)
                         # end if
 
                         # Include file path to binned file name
@@ -242,9 +245,26 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
     :type sens: str;
     :parm taxonomy_path: path to taxonomy file;
     :type taxonomy_file: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     resfile_lines = dict()
+
+    # Check if there is no "db type is dbm.gnu, but the module is not available"
+    try:
+        with shelve.open(taxonomy_path, 'r') as tax_file:
+            pass
+        # end with
+    except Exception as err:
+        printl(logfile_path, "Cannot open taxonomy file.")
+        str_err = str(err)
+        printl(logfile_path, str_err)
+        if "dbm.gnu" in str_err and "module is not" in str_err:
+            printl(logfile_path, "Installing `python3-gdbm` should solve this problem.")
+        # end if
+        platf_depend_exit(1)
+    # end try
 
     with open(tsv_res_fpath, 'r') as brpst_resfile, shelve.open(taxonomy_path, 'r') as tax_file:
 
@@ -311,7 +331,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
                 # end if
             # end try
 
-            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_file),
+            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_file, logfile_path),
                 quality, query_len, pident, coverage]
 
             line = brpst_resfile.readline().strip() # get next line
@@ -357,20 +377,3 @@ def get_checkstr(fast5_fpath):
         return filename_payload
     # end try
 # end def get_checkstr
-
-
-def update_file_dict(srt_file_dict, new_fpath):
-    try:
-        if new_fpath.endswith(".fast5"):
-            srt_file_dict[sys.intern(new_fpath)] = h5py.File(new_fpath, 'a')
-        else:
-            srt_file_dict[sys.intern(new_fpath)] = open(new_fpath, 'a')
-        # end if
-    except OSError as oserr:
-        printl(logfile_path, err_fmt("error while opening one of result files"))
-        printl(logfile_path, "Errorneous file: '{}'".format(new_fpath))
-        printl(logfile_path,  str(oserr) )
-        platf_depend_exit(1)
-    # end try
-    return srt_file_dict
-# end def update_file_dict

@@ -4,7 +4,7 @@
 
 import os
 import h5py
-import multiprocessing as mp
+from glob import glob
 
 from shelve import open as open_shelve
 
@@ -101,7 +101,7 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
         except RuntimeError as runterr:
             with print_lock:
                 printl(logfile_path, err_fmt("FAST5 file is broken"))
-                printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+                printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
                 printl(logfile_path, "Reason: {}".format( str(runterr) ))
                 printl(logfile_path, "Omitting this file...\n")
             # end with

@@ -77,10 +77,14 @@ def rename_file_verbosely(file, logfile_path):
     # end try
 # end def rename_file_verbosely
 
-def remove_tmp_files(*paths):
+def remove_tmp_files(paths, logfile_path):
     """
     Function removes files passed to it.
-    Actually, passed arguments are paths ('str') to files meant to be removed.
+
+    :param paths: an array-like collection of apth of files;
+    :type paths: list<str>;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     for path in paths:
@@ -97,7 +101,7 @@ def remove_tmp_files(*paths):
 # end def remove_tmp_files
 
 
-def create_result_directory(fq_fa_path, outdir_path):
+def create_result_directory(fq_fa_path, outdir_path, logfile_path):
     """
     Function creates a result directory named according
         to how source FASTQ or FASTA file is named.
@@ -106,6 +110,8 @@ def create_result_directory(fq_fa_path, outdir_path):
     :type fq_fa_path: str;
     :param outdir_path: path to directory in which result_directory will be created;
     :type outdir_path: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
 
     Returns 'str' path to the recently created result directory.
     """

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.1.c"
+__version__ = "1.1.d"
 # Year, month, day
-__last_update_date__ = "2019-12-07"
+__last_update_date__ = "2020-12-28"
 
 # |===== Check python interpreter version =====|
 
@@ -411,5 +411,5 @@ if total_nlost_reads != 0:
 print(final_verdict)
 
 end_time = time()
-print( '\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + "- Task is completed!\n")
+print( '\n'+get_work_time() + " ({}) ".format(strftime("%Y-%m-%d %H:%M:%S", localtime(end_time))) + " - Task is completed!\n")
 platf_depend_exit(0)

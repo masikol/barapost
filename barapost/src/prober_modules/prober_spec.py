@@ -7,9 +7,9 @@ import shelve
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from re import search as re_search
 
-from src.printlog import printl, err_fmt, println, getwt
+from src.printlog import printl, println, getwt
 from src.platform import platf_depend_exit
-from src.filesystem import OPEN_FUNCS, rename_file_verbosely, is_gzipped
+from src.filesystem import rename_file_verbosely
 
 from src.lineage import find_lineage
 
@@ -90,7 +90,6 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(infile_path) # get rid of absolute path
     fasta_hname = re_search(r"(.*)\.(m)?f(ast)?a", fasta_hname).group(1) # get rid of '.fasta' extention
-    how_to_open = OPEN_FUNCS[ is_gzipped(infile_path) ]
 
     # Form path to temporary file
     tmp_fpath = "{}_{}_temp.txt".format(os.path.join(new_dpath, fasta_hname), blast_algorithm)
@@ -330,7 +329,7 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, logfile_path, taxonom
 
             if chck_h is None:
                 # If there is no hit for current sequence
-                printl(logfile_path, "\n '{}' -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
+                printl(logfile_path, "\n{} -- No significant similarity found;\n    Query length - {};".format(query_name, query_len))
                 result_tsv_lines.append('\t'.join( (query_name, "No significant similarity found", "-", query_len,
                     "-", "-", "-", "-", str(avg_quality), str(accuracy)) ))
             else:

@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 # This module defines functions, which download and format organisms' lineages.
 
-import os
 import sys
-from time import sleep
 from re import search as re_search, findall as re_findall
 
 from src.lingering_https_get_request import lingering_https_get_request
 
-from src.printlog import err_fmt
+from src.printlog import err_fmt, printl
 from src.platform import platf_depend_exit
 
 
@@ -131,7 +129,7 @@ def download_lineage(hit_acc, hit_def, tax_file, logfile_path):
     # Save taxonomy
     tax_file[sys.intern(hit_acc)] = lineage
 
-    return get_str_to_print(lineage, hit_acc)
+    return get_str_to_print(lineage, hit_acc, logfile_path)
 # end def download_lineage
 
 
@@ -158,14 +156,14 @@ def find_lineage(hit_acc, hit_def, tax_file, logfile_path):
         lineage = download_lineage(hit_acc, hit_def, tax_file, logfile_path)
     else:
         # If hit is not new -- simply retrieve it from taxonomy file
-        lineage = get_str_to_print(tax_file[sys.intern(hit_acc)], hit_acc)
+        lineage = get_str_to_print(tax_file[sys.intern(hit_acc)], hit_acc, logfile_path)
     # end if
 
     return lineage
 # end def find_lineage
 
 
-def get_str_to_print(lineage, hit_acc):
+def get_str_to_print(lineage, hit_acc, logfile_path):
     """
     Funciton forms taxonomy string meant to be printed to conslole
       or written to classification file.
@@ -177,6 +175,8 @@ def get_str_to_print(lineage, hit_acc):
     :type lineage: tuple<tuple<str>>;
     :param hit acc: accession of reference sequence;
     :type hit acc: str;
+    :param logfile_path: path to log file;
+    :type logfile_path: str;
     """
 
     if isinstance(lineage, tuple):

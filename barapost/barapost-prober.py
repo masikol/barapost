@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.21.i"
+__version__ = "1.21.j"
 # Year, month, day
-__last_update_date__ = "2020-11-16"
+__last_update_date__ = "2020-12-28"
 
 # |===== Check python interpreter version =====|
 
@@ -134,7 +134,7 @@ if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
 import os
 from re import search as re_search
 from glob import glob
-from src.printlog import getwt, get_full_time, printl, err_fmt
+from src.printlog import get_full_time, printl, err_fmt
 
 # Get command line arguments
 import getopt
@@ -357,9 +357,8 @@ del bname, same_bnames
 fq_fa_list.sort()
 print() # just print new line
 
-from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS # for gzip handling
-from src.filesystem import remove_tmp_files, create_result_directory
-from src.filesystem import is_gzipped, is_fastq, is_fasta
+from src.filesystem import create_result_directory
+from src.filesystem import is_fastq, is_fasta
 from src.platform import get_logfile_path
 from src.check_connection import check_connection
 
@@ -383,7 +382,7 @@ if not os.path.isdir(outdir_path):
     try:
         os.makedirs(outdir_path)
     except OSError as oserr:
-        print(err_fmt("unable to create result directory '{}'".format(outdir)))
+        print(err_fmt("unable to create result directory '{}'".format(outdir_path)))
         print( str(oserr) )
         platf_depend_exit(1)
     # end try
@@ -498,7 +497,7 @@ stop = False
 for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Create the result directory with the name of FASTQ of FASTA file being processed:
-    new_dpath = create_result_directory(fq_fa_path, outdir_path)
+    new_dpath = create_result_directory(fq_fa_path, outdir_path, logfile_path)
 
     # "hname" means human readable name (i.e. without file path and extention)
     infile_hname = os.path.basename(fq_fa_path)
@@ -624,5 +623,5 @@ printl(logfile_path, """\nYou can edit this file before running 'barapost-local.
   modify list of sequences that will be downloaded from Genbank
   and used as local (i.e. on your local computer) database by 'barapost-local.py'.""")
 
-printl(logfile_path, '\n' + get_full_time() + "- Task is completed\n")
+printl(logfile_path, '\n' + get_full_time() + " - Task is completed\n")
 platf_depend_exit(0)

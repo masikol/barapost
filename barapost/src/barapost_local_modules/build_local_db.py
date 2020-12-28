@@ -5,7 +5,7 @@ import os
 import sys
 import re
 import shelve
-from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
+from subprocess import Popen as sp_Popen
 from time import sleep
 from glob import glob
 from threading import Thread, Event
@@ -287,7 +287,7 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
 
     try:
         os.makedirs(db_dir)
-    except OSError as err:
+    except OSError:
         #If this directory exists
 
         while True:

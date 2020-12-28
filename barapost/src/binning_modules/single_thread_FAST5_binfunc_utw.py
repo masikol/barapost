@@ -4,9 +4,8 @@ import h5py
 
 import os
 import sys
-from glob import glob
 
-from src.binning_modules.binning_spec import *
+from src.binning_modules.binning_spec import configure_resfile_lines
 from src.binning_modules.fast5 import update_file_dict
 from src.binning_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
 
@@ -15,7 +14,6 @@ from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
-from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
 
 from shelve import open as open_shelve
@@ -92,14 +90,12 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
         # end for
     except RuntimeError as runterr:
         printl(logfile_path, err_fmt("FAST5 file is broken"))
-        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
         printl(logfile_path, "Reason: {}".format( str(runterr) ))
         printl(logfile_path, "Omitting this file...\n")
         # Return zeroes -- inc_val won't be incremented and this file will be omitted
         return (0, 0, 0)
     # end try
-
-    num_reads = len(from_f5) # get number of reads in it
 
     # singleFAST5 and multiFAST5 files should be processed in different ways
     # "Raw" group always in singleFAST5 root and never in multiFAST5 root

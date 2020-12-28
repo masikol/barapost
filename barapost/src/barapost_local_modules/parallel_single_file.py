@@ -3,17 +3,16 @@
 #   processing in "few-files" mode.
 
 import os
-import shelve
 import multiprocessing as mp
 from re import search as re_search
 
 from src.fasta import fasta_packets, fasta_packets_from_str
 from src.fastq import fastq_packets
 
-from src.printlog import getwt, printl, printn, println
+from src.printlog import getwt, printl, println
 from src.write_classification import write_classification
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped, is_fastq
-from src.filesystem import get_curr_res_dpath, create_result_directory, remove_tmp_files
+from src.filesystem import create_result_directory, remove_tmp_files
 
 from src.barapost_local_modules.barapost_spec import look_around, launch_blastn, parse_align_results_xml
 
@@ -80,7 +79,8 @@ def process_part_of_file(data, tsv_res_path, packet_size, tax_annot_res_dir,
         # end with
     # end for
 
-    remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
+    query_fpath = os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid()))
+    remove_tmp_files([query_fpath], logfile_path)
 # end def process_part_of_file
 
 
@@ -111,7 +111,7 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
 
     for i, fq_fa_path in enumerate(fq_fa_list):
         # Create the result directory with the name of FASTQ of FASTA file being processed:
-        new_dpath = create_result_directory(fq_fa_path, tax_annot_res_dir)
+        new_dpath = create_result_directory(fq_fa_path, tax_annot_res_dir, logfile_path)
 
         # "hname" means human readable name (i.e. without file path and extention)
         infile_hname = os.path.basename(fq_fa_path)

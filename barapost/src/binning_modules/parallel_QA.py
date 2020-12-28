@@ -8,9 +8,8 @@
 
 import os
 import sys
-import multiprocessing as mp
 
-from src.binning_modules.binning_spec import *
+from src.binning_modules.binning_spec import get_res_tsv_fpath, configure_resfile_lines
 
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
@@ -110,7 +109,7 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
     for fq_fa_path in fq_fa_lst:
 
         new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
-        tsv_res_fpath = get_res_tsv_fpath(new_dpath)
+        tsv_res_fpath = get_res_tsv_fpath(new_dpath, logfile_path)
         resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
             os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"), logfile_path)
 

@@ -7,7 +7,7 @@ import os
 import sys
 from glob import glob
 
-from src.binning_modules.binning_spec import *
+from src.binning_modules.binning_spec import get_checkstr, get_res_tsv_fpath, configure_resfile_lines
 from src.binning_modules.fast5 import update_file_dict
 from src.binning_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_single_f5
 
@@ -16,7 +16,6 @@ from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
 from src.printlog import printl, printn, getwt, err_fmt
-from src.filesystem import get_curr_res_dpath, is_fastq
 from src.fmt_readID import fmt_read_id
 
 
@@ -54,7 +53,7 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
     srt_file_dict = dict()
 
     new_dpath = glob("{}{}*{}*".format(tax_annot_res_dir, os.sep, get_checkstr(f5_path)))[0]
-    tsv_res_fpath = get_res_tsv_fpath(new_dpath)
+    tsv_res_fpath = get_res_tsv_fpath(new_dpath, logfile_path)
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens,
         os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy"), logfile_path)
 
@@ -92,7 +91,7 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
         # end for
     except RuntimeError as runterr:
         printl(logfile_path, err_fmt("FAST5 file is broken"))
-        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
         printl(logfile_path, "Reason: {}".format( str(runterr) ))
         printl(logfile_path, "Omitting this file...\n")
         # Return zeroes -- inc_val won't be incremented and this file will be omitted

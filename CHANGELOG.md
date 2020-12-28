@@ -1,5 +1,16 @@
 # "Barapost" changelog
 
+## 2020-12-28 edition.
+
+- Added handling of error "db type is dbm.gnu, but the module is not available" and suggestion for fixing;
+- A little bit of refactoring;
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.i --> 1.21.j`
+- barapost-local: `3.16.f --> 3.16.g`
+- barapost-binning: `4.6.f --> 4.6.g`
+
 ## 2020-11-16 edition.
 
 - barapost-prober: fixed error that would cause prober to compose packets improperly with `-c 1` specified if fastq file is being processed;

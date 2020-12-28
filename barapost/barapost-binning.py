@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.6.f"
+__version__ = "4.6.g"
 # Year, month, day
-__last_update_date__ = "2020-11-13"
+__last_update_date__ = "2020-12-28"
 
 # |===== Check python interpreter version =====|
 
@@ -902,7 +902,7 @@ fastqa_res_files = tuple(filter(is_fastqa, glob(os.path.join(outdir_path, '*')))
 
 # Exit now if there is nothing to compress
 if len(fastqa_res_files) == 0 or not compress:
-    printl(logfile_path, '\n'+ get_full_time() + "- Task is completed!\n")
+    printl(logfile_path, '\n'+ get_full_time() + " - Task is completed!\n")
     platf_depend_exit(0)
 # end if
 

@@ -2,19 +2,15 @@
 # Module defines finctions that are "miscallaneous" for barapost.
 
 import os
-import sys
-import shelve
-from glob import glob
 import re
+import sys
 
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
 
-from src.printlog import printl, err_fmt, getwt
+from src.printlog import printl, err_fmt
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
-from src.check_connection import check_connection
-from src.lingering_https_get_request import lingering_https_get_request
 
 
 def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
@@ -55,8 +51,6 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
             try:
                 lines = res_file.readlines()
                 num_done_reads = len(lines) - 1 # the first line is a head
-                last_line = lines[-1]
-                last_seq_id = last_line.split('\t')[0]
             except Exception as err:
                 printl(logfile_path, "\nData in classification file '{}' is broken. Reason:".format(tsv_res_fpath))
                 printl(logfile_path,  str(err) )
@@ -203,8 +197,6 @@ def parse_align_results_xml(xml_text, qual_dict, logfile_path):
                 gaps = hsp.find("Hsp_gaps").text # get number of gaps
 
                 evalue = hsp.find("Hsp_evalue").text # get e-value
-                pident_ratio = round( float(pident) / int(align_len) * 100, 2)
-                gaps_ratio = round( float(gaps) / int(align_len) * 100, 2)
             # end for
 
             # Divide annotations and accessions with '&&'
@@ -267,13 +259,10 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_
                             # gi = line_splt[1]
                             acc_dict[acc] = name
 
-                        except IndexError as inderr:
-                            printl(logfile_path, err_fmt("invalid data in file '{}'!".format(acc_fpath)))
-                            printl(logfile_path, "Here is that invalid line:\n   '{}'".format(line))
-                            platf_depend_exit(1)
                         except Exception as err:
                             printl(logfile_path, err_fmt("invalid data in file '{}'!".format(acc_fpath)))
-                            printl(logfile_path, "Maybe, you have written path to file that does not exist or not a FASTA file.")
+                            printl(logfile_path, "Here is that invalid line:\n   '{}'".format(line))
+                            printl(logfile_path, str(err))
                             platf_depend_exit(1)
                         # end try
                     else:

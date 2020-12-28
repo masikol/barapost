@@ -34,7 +34,6 @@ def verify_taxids(taxid_list, logfile_path):
         printl(logfile_path, "Verifying TaxIDs:")
         for taxid in taxid_list:
             println(logfile_path, "   {} - ".format(taxid))
-            tax_url = "https://ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid)
             try:
                 tax_resp = lingering_https_get_request("www.ncbi.nlm.nih.gov",
                     "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid),

@@ -2,12 +2,11 @@
 # This module defines functions necessary for barapost-local.py to perform single-thread work.
 
 import os
-import shelve
 from re import search as re_search
 
-from src.printlog import getwt, printl, printn, println
+from src.printlog import getwt, printl, println
 from src.write_classification import write_classification
-from src.filesystem import get_curr_res_dpath, create_result_directory
+from src.filesystem import create_result_directory
 from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS, FORMATTING_FUNCS
 
 from src.fasta import fasta_packets
@@ -44,7 +43,7 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
     for i, fq_fa_path in enumerate(fq_fa_list):
 
         # Create the result directory with the name of FASTQ of FASTA file being processed:
-        new_dpath = create_result_directory(fq_fa_path, tax_annot_res_dir)
+        new_dpath = create_result_directory(fq_fa_path, tax_annot_res_dir, logfile_path)
 
         # "hname" means human readable name (i.e. without file path and extention)
         infile_hname = os.path.basename(fq_fa_path)
@@ -98,5 +97,6 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
         println(logfile_path, "\r{} - File #{}/{} ({}) is processed.\nWorking...".format(getwt(), i+1, nfiles, os.path.basename(fq_fa_path)))
     # end for
 
-    remove_tmp_files( os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid())) )
+    query_fpath = os.path.join(queries_tmp_dir, "query{}_tmp.fasta".format(os.getpid()))
+    remove_tmp_files([query_fpath], logfile_path)
 # end def process

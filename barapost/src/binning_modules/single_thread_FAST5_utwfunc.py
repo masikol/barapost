@@ -5,12 +5,13 @@
 import os
 import h5py
 
+from glob import glob
 from shelve import open as open_shelve
 
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
 from src.binning_modules.fast5 import fast5_readids
-from src.printlog import printl, printn, getwt, err_fmt
+from src.printlog import printl, err_fmt
 
 index_name = "fast5_to_tsvtaxann_idx"
 
@@ -81,7 +82,7 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
         # end for
     except RuntimeError as runterr:
         printl(logfile_path, err_fmt("FAST5 file is broken"))
-        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(fpath)))
+        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
         printl(logfile_path, "Reason: {}".format( str(runterr) ))
         printl(logfile_path, "Omitting this file...\n")
         return

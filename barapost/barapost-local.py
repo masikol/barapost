@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.16.f"
+__version__ = "3.16.g"
 # Year, month, day
-__last_update_date__ = "2020-11-16"
+__last_update_date__ = "2020-12-28"
 
 # |===== Check python interpreter version =====|
 
@@ -110,7 +110,7 @@ if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
 import os
 from glob import glob
 from re import search as re_search
-from src.printlog import getwt, get_full_time, printn, printl, println, err_fmt
+from src.printlog import getwt, get_full_time, printn, printl, err_fmt
 
 import getopt
 

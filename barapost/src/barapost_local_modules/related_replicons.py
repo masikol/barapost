@@ -10,7 +10,7 @@ import http.client
 from time import sleep
 
 from src.platform import platf_depend_exit
-from src.printlog import printl, printn, println, err_fmt, getwt
+from src.printlog import printl, println, getwt
 from src.lingering_https_get_request import lingering_https_get_request
 
 
