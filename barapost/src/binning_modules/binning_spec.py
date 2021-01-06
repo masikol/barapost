@@ -259,7 +259,8 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
     except Exception as err:
         printl(logfile_path, "Cannot open taxonomy file.")
         str_err = str(err)
-        printl(logfile_path, str_err)
+        printl(logfile_path, "If you will report this problem to the develper, \
+  here is more info about the bug for him: {}".format(str_err))
         if "dbm.gnu" in str_err and "module is not" in str_err:
             printl(logfile_path, "Installing `python3-gdbm` should solve this problem.")
         # end if
