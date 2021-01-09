@@ -19,7 +19,7 @@ def _get_record_title(record_id, logfile_path):
     Function retrieves title (aka definition) and accession
       of a GenBank record by given accession or GI number.
 
-    :param record_id: accession of GI number of the record;
+    :param record_id: accession or GI number of the record;
     :type record_idi: str;
     :param logfile_path: path to log file;
     :type logfile_path: str;
@@ -101,7 +101,7 @@ class _NoAccError(Exception):
 
 def _is_redundant(nc_acc, accs, logfile_path):
     """
-    Function checks if "NC-or-NW"-record is redundant (if it's non'RefSeq copy already exists in acc_dict).
+    Function checks if "NC-or-NW"-record is redundant (if it's non-RefSeq copy already exists in acc_dict).
 
     :param nc_acc: accession number of NC-record;
     :type nc_acc: str;
@@ -114,28 +114,27 @@ def _is_redundant(nc_acc, accs, logfile_path):
     summary = lingering_https_get_request("www.ncbi.nlm.nih.gov", "/nuccore/{}?report=genbank&log$=seqview".format(nc_acc),
         logfile_path, "summary", nc_acc)
 
-    ident_label = "Identical GenBank Sequence"
-
     try:
-
         # Find link to Identical GenBank Record
-        if not ident_label in summary:
+
+        # Firstly, get GI number of NC seqeunce:
+        get_gi_url = "/nuccore/{}?report=gilist&log$=seqview&format=text".format(nc_acc)
+        nc_gi_text = lingering_https_get_request("www.ncbi.nlm.nih.gov", get_gi_url, logfile_path,
+            "GI of {}".format(nc_acc), nc_acc)
+        nc_gi_text = nc_gi_text.replace('\n', '')
+        nc_gi_re = re.search(r"\<pre\>([0-9]+).*\</pre\>", nc_gi_text)
+        if nc_gi_re is None:
             raise _NoIdentLabelError("Error 771. Accession: {}. Please, contact the developer.".format(nc_acc))
         # end if
 
-        pattern = r"\<a class=\"brieflinkpopperctrl\" href=\"(/nuccore\?LinkName=nuccore_nuccore_rsgb&amp;from_uid=[0-9]+)\".*\>{}\</a\>".format(ident_label)
-        link_re = re.search(pattern, summary)
-
-        if link_re is None:
-            raise _NoIdentLabelError("Error 772. Accession: {}. Please, contact the developer.".format(nc_acc))
-        # end if
-        link = link_re.group(1)
+        nc_gi = nc_gi_re.group(1)
 
         # Retrieve identical GenBank sequence accession number.
         # NCBI redirects these requests and provides necessary location in headers.
         # So, we'll follow thin link.
-        redirect_text = _ling_https_getreq_handl_301("www.ncbi.nlm.nih.gov", link,
-            logfile_path, "link to {}".format(ident_label.lower()), nc_acc)
+        identical_gb_link = "/nuccore?LinkName=nuccore_nuccore_rsgb&from_uid={}".format(nc_gi)
+        redirect_text = _ling_https_getreq_handl_301("www.ncbi.nlm.nih.gov", identical_gb_link,
+            logfile_path, "link to identical genbank sequence", nc_acc)
 
         # Get accession number from the response text
         pattern = r"\<pre\>(.*).*\</pre\>"
@@ -394,7 +393,7 @@ there is no BioSample page for this record.".format(acc))
     if linkset is None:
         printl(logfile_path, """Cannot check replicons for '{}':
   failed to find nuccore records for assembly {}.""".format(acc, ass_id))
-        print("Please, contact the developer.")
+        printl(logfile_path, "Please, contact the developer.")
         platf_depend_exit(1)
     # end if
 
@@ -454,7 +453,7 @@ def search_for_related_replicons(acc_dict, logfile_path):
             related_repls = _get_related_replicons(acc, acc_dict, logfile_path)
         except AttributeError:
             print("\nParsing error: cannot find replicons related to {}.".format(acc))
-            print("Please, contact the developer")
+            printl(logfile_path, "Please, contact the developer")
             platf_depend_exit(1)
         else:
             related_repls = _deduplicate_replicons(related_repls, acc, logfile_path)

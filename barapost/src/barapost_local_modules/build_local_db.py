@@ -4,12 +4,11 @@
 import os
 import sys
 import re
-import shelve
-from subprocess import Popen as sp_Popen
-from time import sleep
 from glob import glob
+from time import sleep
 from threading import Thread, Event
 from gzip import open as open_as_gzip
+from subprocess import Popen as sp_Popen
 
 import urllib.request
 from src.lingering_https_get_request import lingering_https_get_request
@@ -17,9 +16,9 @@ from src.lingering_https_get_request import lingering_https_get_request
 from src.barapost_local_modules.barapost_spec import configure_acc_dict
 from src.barapost_local_modules.related_replicons import search_for_related_replicons
 
+import src.taxonomy as taxonomy
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
-from src.lineage import download_lineage, save_own_seq_taxonomy
 from src.printlog import printl, printn, println, err_fmt, getwt
 from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
@@ -71,7 +70,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
 
         curr_accessions = accessions[i: i + max_accnum] # slice chunk
 
-        accs_del_comma = ','.join(curr_accessions) # GI numbers must be separated by comma in url
+        accs_del_comma = ','.join(curr_accessions) # accessions must be separated by comma in url
         # E-utilities provide a possibility to download records from Genbank by accessions.
         retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
 
@@ -90,7 +89,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
         if util_found:
             # If we have wget -- just use it
 
-            wget_cmd = 'wget "{}" -O {}'.format(retrieve_url, tmp_fasta)
+            wget_cmd = 'wget --no-check-certificate "{}" -O {}'.format(retrieve_url, tmp_fasta)
             pipe = sp_Popen(wget_cmd, shell=True)
             pipe.communicate()
             if pipe.returncode != 0:
@@ -228,7 +227,7 @@ def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
     :type logfile_path: str;
     """
 
-    println(logfile_path, "\nAdding lambda phage control sequence...")
+    println(logfile_path, "\n{} - Adding lambda phage control sequence...".format(getwt()))
 
     # sys.path[0] is directory containing the script that was used to invoke the Python interpreter.
     # We will use it to get path to file with lambda's sequence.
@@ -254,12 +253,10 @@ def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
     # end with
 
     # Save lambda's taxonomy
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_file["LAMBDA"] = "Lambda phage nanopore control"
-    # end with
+    taxonomy.save_taxonomy_directly(taxonomy_path, "LAMBDA", "Lambda-phage-nanopore-control")
 
     printl(logfile_path, " ok")
-# end def add_lambda
+# end def add_lambda_phage
 
 
 def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path):
@@ -283,7 +280,7 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
 
     db_dir = os.path.join(tax_annot_res_dir, "local_database") # path to directory in which database will be placed
     # Path to DBM taxonomy file
-    taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy","taxonomy")
+    taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy.tsv")
 
     try:
         os.makedirs(db_dir)
@@ -335,11 +332,6 @@ Enter 'r' to remove all files in this directory and create the database from the
                         os.unlink(file)
                     # end for
 
-                    # # Empty taxonomy file (WHY???)
-                    # with shelve.open(taxonomy_path, 'n') as tax_file:
-                    #     pass
-                    # # end with
-
                     # Break from the loop in order to build a database
                     break
                 else:
@@ -359,9 +351,7 @@ Enter 'r' to remove all files in this directory and create the database from the
     # end if
 
     # Retrieve already existing taxonomy data from taxonomy file
-    with shelve.open(taxonomy_path, 'c') as tax_file:
-        tax_exist_accs = tuple( tax_file.keys() )
-    # end with
+    tax_exist_accs = taxonomy.get_tax_keys(taxonomy_path)
 
     # If accession file does not exist and execution has reached here -- everything is OK --
     #    we are building a database from user's files only.
@@ -372,24 +362,21 @@ Enter 'r' to remove all files in this directory and create the database from the
   will be downloaded from Genbank for further taxonomic classification
   on your local machine:\n""")
         for i, acc in enumerate(acc_dict.keys()):
-            printl(logfile_path, " {}. {} - '{}'".format(i+1, acc, acc_dict[acc]))
+            printl(logfile_path, " {}. {} - `{}`".format(i+1, acc, acc_dict[acc]))
         # end for
 
-        # Get list of GI numbers.
         search_for_related_replicons(acc_dict, logfile_path)
 
         printl(logfile_path, "{} - Completing taxonomy file...".format(getwt()))
-        with shelve.open(taxonomy_path, 'c') as tax_file:
-            for i, acc in enumerate(acc_dict.keys()):
-                if not acc in tax_exist_accs:
-                    download_lineage(acc, acc_dict[acc][1], tax_file, logfile_path)
-                # end if
-                printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
-                # Accessions can be of different length
-            # end for
-        # end with
-        printl(logfile_path, "\n{} - Taxonomy file is consistent.".format(getwt()))
+        for i, acc in enumerate(acc_dict.keys()):
+            if not acc in tax_exist_accs:
+                taxonomy.find_taxonomy(acc, acc_dict[acc][1], taxonomy_path, logfile_path)
+            # end if
+            # Accessions can be of different length
+            printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
+        # end for
     # end if
+    print()
 
     local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
 
@@ -466,7 +453,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                 # end if
 
                 # Add assembled sequences to database
-                with open (local_fasta, 'a') as fasta_db, shelve.open(taxonomy_path, 'c') as tax_file:
+                with open (local_fasta, 'a') as fasta_db:
                     for assm_path in assm_lst:
                         println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
 
@@ -484,7 +471,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                                     own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                                     own_def = "(_{}_)_".format(def_convert_func(assm_path)) + line[1:]
                                     own_def = own_def.replace(' ', '_')
-                                    tax_file[own_acc] = own_def
+                                    taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, own_def)
                                     line = ">" + "{} {}".format(own_acc, own_def)
                                 # end if
                                 fasta_db.write(line + '\n')
@@ -495,7 +482,7 @@ Enter 'r' to remove all files in this directory and create the database from the
             # end if
         # end for
 
-        with open(local_fasta, 'a') as fasta_db, shelve.open(taxonomy_path, 'c') as tax_file:
+        with open(local_fasta, 'a') as fasta_db:
             for own_fasta_path in your_own_fasta_lst:
                 println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
 
@@ -511,7 +498,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                         if line.startswith('>'):
                             own_seq_counter += 1
                             own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                            save_own_seq_taxonomy(line[1:], own_acc, tax_file)
+                            taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, line[1:])
                             line = ">" + own_acc + ' ' + line[1:].replace(' ', '_')
                         # end if
                         fasta_db.write(line + '\n')

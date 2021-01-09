@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.21.j"
+__version__ = "1.22.a"
 # Year, month, day
-__last_update_date__ = "2020-12-28"
+__last_update_date__ = "2021-01-09"
 
 # |===== Check python interpreter version =====|
 
@@ -388,16 +388,6 @@ if not os.path.isdir(outdir_path):
     # end try
 # end if
 
-# Configure path to file, which will contain info about what GenBank records to download
-acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
-
-# Configure path to taxonomy directory
-taxonomy_dir = os.path.join(outdir_path, "taxonomy")
-if not os.path.isdir(taxonomy_dir):
-    os.makedirs(taxonomy_dir)
-# end if
-taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
-
 #                       |===== Proceed =====|
 
 check_connection("https://blast.ncbi.nlm.nih.gov")
@@ -407,14 +397,12 @@ logfile_path = get_logfile_path("prober", outdir_path)
 printl(logfile_path, "\n |=== barapost-prober.py (version {}) ===|\n".format(__version__))
 printl(logfile_path, get_full_time() + "- Start working\n")
 
+from src.prober_modules.prober_spec import look_around
 from src.prober_modules.networking import verify_taxids
+from src.prober_modules.kernel import submit, retrieve_ready_job
 
 # Make sure that TaxIDs specified by user actually exist
 organisms = verify_taxids(taxid_list, logfile_path)
-
-from src.prober_modules.prober_spec import look_around
-from src.prober_modules.kernel import submit, retrieve_ready_job
-
 
 # Print information about the run
 printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
@@ -457,6 +445,22 @@ with open(logfile_path, 'a') as logfile: # write paths to all input files to log
 # end with
 
 printl(logfile_path, '-'*30)
+
+
+import src.legacy_taxonomy_handling as legacy_taxonomy_handling
+
+# Configure path to file, which will contain info about what GenBank records to download
+acc_fpath = os.path.join(outdir_path, "hits_to_download.tsv")
+
+# Configure path to taxonomy directory
+taxonomy_dir = os.path.join(outdir_path, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy.tsv")
+
+# Check if there is legacy taxonomy file and, if so, reformat it to new (TSV) format
+legacy_taxonomy_handling.check_deprecated_taxonomy(outdir_path, logfile_path)
 
 
 # Dictionary of accessions and record names.

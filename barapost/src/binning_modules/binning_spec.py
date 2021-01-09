@@ -2,11 +2,11 @@
 # Module defines finctions that are "miscallaneous" for barapost-binning.
 
 import os
+import re
 import sys
-import shelve
 from glob import glob
-from re import search as re_search
 
+import src.taxonomy as taxonomy
 from src.platform import platf_depend_exit
 from src.printlog import printl, err_fmt
 
@@ -102,7 +102,7 @@ def find_rank_for_filename(sens, taxonomy):
 chars_excl_from_filename = ("/", "\\", ":", "*", "+", "?", "\"", "<", ">", "(", ")", "|", " ", ";")
 
 
-def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
+def format_taxonomy_name(hit_acc, hit_def, sens, tax_dict, logfile_path):
     """
     Function formats taxonomy name according to chosen sensibiliry of binning.
     :param hit_acc: accession(s) of best hit(s);
@@ -112,8 +112,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
     :param sens: sensibility returned by 'get_classif_sensibility()' function.
         It's value can be one of the following strings: "genus", "species";
     :type sens: str;
-    :param tax_file: taxonomy file instance;
-    :type tax_file: shelve.DbfilenameShelf;
+    :param tax_dict: taxonomy dictionary returned by function 'src.taxonomy.get_tax_dict';
+    :type tax_dict: dict;
     :param logfile_path: path to log file;
     :type logfile_path: str;
 
@@ -131,7 +131,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
 
         # Get taxonomy
         try:
-            taxonomy = tax_file[acc]
+            taxonomy = tax_dict[acc]
         except KeyError:
             printl(logfile_path, "taxonomy file error 994")
             printl(logfile_path, "Cant find taxonomy for reference sequence '{}'".format(acc))
@@ -156,8 +156,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
         elif isinstance(taxonomy, str):
 
             # Check if hit is a sequence from SPAdes or a5 assembly:
-            spades_match_obj = re_search(spades_patt, annotation)
-            a5_match_obj = re_search(a5_patt, annotation)
+            spades_match_obj = re.search(spades_patt, annotation)
+            a5_match_obj = re.search(a5_patt, annotation)
 
             if not spades_match_obj is None or not a5_match_obj is None:
 
@@ -168,7 +168,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
 
                         # Find path to file with assembly:
                         try:
-                            assm_path = re_search(path_patt, annotation).group(1)
+                            assm_path = re.search(path_patt, annotation).group(1)
                         except AttributeError:
                             assm_path = None
                         # end
@@ -218,8 +218,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_file, logfile_path):
             # end if
         else:
             # Execution must not reach here
-            print("\nFatal error 8754.")
-            print("Please, contact the developer -- it is his fault.")
+            printl(logfile_path, "\nFatal error 8754.")
+            printl(logfile_path, "Please, contact the developer -- it is his fault.")
             platf_depend_exit(1)
         # end if
     # end for
@@ -251,23 +251,9 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
 
     resfile_lines = dict()
 
-    # Check if there is no "db type is dbm.gnu, but the module is not available"
-    try:
-        with shelve.open(taxonomy_path, 'r') as tax_file:
-            pass
-        # end with
-    except Exception as err:
-        printl(logfile_path, "Cannot open taxonomy file.")
-        str_err = str(err)
-        printl(logfile_path, "If you will report this problem to the develper, \
-  here is more info about the bug for him: {}".format(str_err))
-        if "dbm.gnu" in str_err and "module is not" in str_err:
-            printl(logfile_path, "Installing `python3-gdbm` should solve this problem.")
-        # end if
-        platf_depend_exit(1)
-    # end try
+    tax_dict = taxonomy.get_tax_dict(taxonomy_path)
 
-    with open(tsv_res_fpath, 'r') as brpst_resfile, shelve.open(taxonomy_path, 'r') as tax_file:
+    with open(tsv_res_fpath, 'r') as brpst_resfile:
 
         brpst_resfile.readline() # pass the head of the table
         line = brpst_resfile.readline().strip() # get the first informative line
@@ -332,7 +318,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
                 # end if
             # end try
 
-            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_file, logfile_path),
+            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict, logfile_path),
                 quality, query_len, pident, coverage]
 
             line = brpst_resfile.readline().strip() # get next line
@@ -371,7 +357,7 @@ def get_checkstr(fast5_fpath):
 
     try:
         # I'll lower the 40-character barrier down to 30 just in case.
-        filename_payload = re_search(r"([a-zA-Z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
+        filename_payload = re.search(r"([a-zA-Z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
     except AttributeError:
         return os.path.basename(fast5_fpath).replace(".fast5", "")
     else:

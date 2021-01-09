@@ -41,7 +41,7 @@ def verify_taxids(taxid_list, logfile_path):
                 tax_name = re_search(r"Taxonomy browser \((.+?)\)", tax_resp).group(1)
             except AttributeError:
                 printl(logfile_path, "\aError: TaxID not found")
-                print("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
+                printl(logfile_path, "Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
                 platf_depend_exit(1)
             except OSError as oserr:
                 printl(logfile_path, err_fmt("something is wrong with connection:"))

@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2021-01-09 edition.
+
+- Replaced DBM taxanomy files with plain TSV keping backward capability;
+
+## Vesrion changes:
+
+- barapost-prober: `1.21.j --> 1.22.a`
+- barapost-local: `3.16.g --> 3.17.a`
+- barapost-binning: `4.6.g --> 4.7.a`
+
 ## 2020-12-28 edition.
 
 - Added handling of error "db type is dbm.gnu, but the module is not available" and suggestion for fixing;

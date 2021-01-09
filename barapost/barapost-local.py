@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "3.16.g"
+__version__ = "3.17.a"
 # Year, month, day
-__last_update_date__ = "2020-12-28"
+__last_update_date__ = "2021-01-09"
 
 # |===== Check python interpreter version =====|
 
@@ -383,14 +383,6 @@ printl(logfile_path, "\n |=== barapost-local.py (version {}) ===|\n".format(__ve
 printl(logfile_path,  get_full_time() + "- Start working\n")
 
 
-# Form paths to auxiliary files:
-taxonomy_dir = os.path.join(tax_annot_res_dir, "taxonomy")
-if not os.path.isdir(taxonomy_dir):
-    os.makedirs(taxonomy_dir)
-# end if
-taxonomy_path = os.path.join(taxonomy_dir, "taxonomy")
-
-
 #                       |===== Proceed =====|
 
 printl(logfile_path, " - Logging to '{}'".format(logfile_path))
@@ -440,6 +432,19 @@ if blast_algorithm != "dc-megablast" and len(glob(os.path.join(tax_annot_res_dir
 else:
     use_index = "false"
 # end if
+
+
+import src.legacy_taxonomy_handling as legacy_taxonomy_handling
+
+# Form path to taxonomy file:
+taxonomy_dir = os.path.join(tax_annot_res_dir, "taxonomy")
+if not os.path.isdir(taxonomy_dir):
+    os.makedirs(taxonomy_dir)
+# end if
+taxonomy_path = os.path.join(taxonomy_dir, "taxonomy.tsv")
+
+# Check if there is legacy taxonomy file and, if so, reformat it to new (TSV) format
+legacy_taxonomy_handling.check_deprecated_taxonomy(tax_annot_res_dir, logfile_path)
 
 
 from src.barapost_local_modules.build_local_db import build_local_db
