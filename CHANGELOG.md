@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2021-01-11 edition.
+
+- barapost-binning. Taxonomy recovering added: now if barapost-binning fails to find taxonomy for a sequence in `taxonomy.tsv`, it is able to recover it and continue binning;
+
+## Vesrion changes:
+
+- barapost-binning: `4.7.a --> 4.7.b`
+
 ## 2021-01-09 edition.
 
 - Replaced DBM taxanomy files with plain TSV keping backward capability;

@@ -6,7 +6,7 @@ import re
 import sys
 from glob import glob
 
-import src.taxonomy as taxonomy
+import src.taxonomy
 from src.platform import platf_depend_exit
 from src.printlog import printl, err_fmt
 
@@ -102,6 +102,11 @@ def find_rank_for_filename(sens, taxonomy):
 chars_excl_from_filename = ("/", "\\", ":", "*", "+", "?", "\"", "<", ">", "(", ")", "|", " ", ";")
 
 
+class NoTaxonomyError(Exception):
+    pass
+# end class NoTaxonomyError
+
+
 def format_taxonomy_name(hit_acc, hit_def, sens, tax_dict, logfile_path):
     """
     Function formats taxonomy name according to chosen sensibiliry of binning.
@@ -133,12 +138,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_dict, logfile_path):
         try:
             taxonomy = tax_dict[acc]
         except KeyError:
-            printl(logfile_path, "taxonomy file error 994")
-            printl(logfile_path, "Cant find taxonomy for reference sequence '{}'".format(acc))
-            printl(logfile_path, "It's annotation: '{}'".format(annotation))
-            printl(logfile_path, "Probably you should run \"barapost-local.py\" once again and rebuild the database --")
-            printl(logfile_path, "  \"barapost-local.py\" will make taxonomy file consistent.")
-            platf_depend_exit(1)
+            raise NoTaxonomyError()
         # end try
 
         # If it is beautiful tuple-formatted taxonomy -- find rank name for filename
@@ -251,7 +251,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
 
     resfile_lines = dict()
 
-    tax_dict = taxonomy.get_tax_dict(taxonomy_path)
+    tax_dict = src.taxonomy.get_tax_dict(taxonomy_path)
 
     with open(tsv_res_fpath, 'r') as brpst_resfile:
 
@@ -318,8 +318,24 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path):
                 # end if
             # end try
 
-            resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict, logfile_path),
-                quality, query_len, pident, coverage]
+            try:
+                resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict, logfile_path),
+                    quality, query_len, pident, coverage]
+            except NoTaxonomyError:
+                printl(logfile_path, "\nCan't find taxonomy for reference sequence '{}'".format(hit_acc))
+                printl(logfile_path, "Trying to recover taxonomy.")
+
+                # Recover
+                src.taxonomy.recover_taxonomy(hit_acc, hit_name, taxonomy_path, logfile_path)
+                printl(logfile_path, "Taxonomy for {} is recovered.\n".format(hit_acc))
+
+                # Update tax_dict
+                tax_dict = src.taxonomy.get_tax_dict(taxonomy_path)
+
+                # Format again -- with new tax_dict
+                resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict, logfile_path),
+                    quality, query_len, pident, coverage]
+            # end try
 
             line = brpst_resfile.readline().strip() # get next line
         # end while

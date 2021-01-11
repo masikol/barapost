@@ -3,11 +3,13 @@
 
 import re
 import os
+import glob
 
 from src.lingering_https_get_request import lingering_https_get_request
 
 from src.printlog import err_fmt, printl
 from src.platform import platf_depend_exit
+from src.filesystem import is_fasta, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 
 ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
@@ -288,6 +290,10 @@ def get_tax_dict(taxonomy_path):
     # :param taxonomy_path: path to TSV file with taxonomy;
     # :type taxonomy_path: str;
 
+    if not os.path.exists(taxonomy_path):
+        init_tax_file(taxonomy_path)
+    # end if
+
     tax_dict = dict()
     with open(taxonomy_path, 'r') as tax_file:
         tax_file.readline() # pass header
@@ -346,6 +352,10 @@ def save_taxonomy_directly(taxonomy_path, acc, taxonomy_str):
         init_tax_file(taxonomy_path)
     # end if
 
+    if len(_tax_accs) == 0:
+        fill_tax_accs(taxonomy_path)
+    # end if
+
     # Do not add redundant taxonomy line
     if not acc in _tax_accs:
         with open(taxonomy_path, 'a') as tax_file:
@@ -354,3 +364,63 @@ def save_taxonomy_directly(taxonomy_path, acc, taxonomy_str):
         _tax_accs.append(acc)
     # end if
 # end def def save_taxonomy_directly
+
+
+def recover_taxonomy(acc, hit_def, taxonomy_path, logfile_path):
+    # Function recovers missing taxonomy by given accession.
+    #
+    # :param acc: accession of taxonomy entry to recover;
+    # :type acc: str;
+    # :param hit_def: name of this sequence;
+    # :type hit_def: sre;
+    # :param taxonomy_path: path to TSV file with taxonomy;
+    # :type taxonomy_path: str;
+    # :param logfile_path: path to log file;
+    # :type logfile_path: str;
+
+
+    if acc == "LAMBDA":
+        # If we are missing lambda phage taxonomy -- just add it
+        save_taxonomy_directly(taxonomy_path, acc, "Lambda-phage-nanopore-control")
+    elif acc.startswith("OWN_SEQ_"):
+        # If sequence is an "own seq" -- check fasta file
+
+        # Get necessary title line from `local_seq_set.fasta`
+        # Firstly find fasta file (it may be compressed)
+        classif_dir = os.path.dirname(os.path.dirname(taxonomy_path))
+        db_dir = os.path.join(classif_dir, "local_database")
+        db_files = glob.glob("{}{}*".format(db_dir, os.sep))
+        try:
+            local_fasta = next(iter(filter(is_fasta, db_files)))
+        except StopIteration as err:
+            printl(logfile_path, "\nError: cannot recover taxonomy for following sequence:")
+            printl(logfile_path, " `{} - {}`.".format(acc, hit_def))
+            printl(logfile_path, "You can solve this problem by yourself (it's pretty simple).")
+            printl(logfile_path, "Just add taxonomy line for {} to file `{}`".format(acc, taxonomy_path))
+            printl(logfile_path, "  and run the program again.")
+            platf_depend_exit(1)
+        # end try
+
+        # Find our line startingg with `acc`
+        how_to_open = OPEN_FUNCS[is_gzipped(local_fasta)]
+        fmt_func = FORMATTING_FUNCS[is_gzipped(local_fasta)]
+        if is_gzipped(local_fasta):
+            search_for = b">" + bytes(acc, 'ascii') + b" "
+        else:
+            search_for = ">{} ".format(acc)
+        # end if
+
+        with how_to_open(local_fasta) as fasta_file:
+            for line in fasta_file:
+                if line.startswith(search_for):
+                    seq_name = fmt_func(line).partition(' ')[2] # get name of the sequence
+                    save_taxonomy_directly(taxonomy_path, acc, seq_name)
+                    break
+                # end if
+            # end for
+        # end with
+    else:
+        # Try to find taxonomy in NCBI
+        download_taxonomy(acc, hit_def, taxonomy_path, logfile_path)
+    # end if
+# end def check_taxonomy_consistensy

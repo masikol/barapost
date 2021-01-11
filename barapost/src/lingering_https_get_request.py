@@ -7,6 +7,14 @@ from time import sleep
 from src.printlog import printl
 from src.platform import platf_depend_exit
 
+try:
+    import ssl
+except ImportError:
+    pass
+else:
+    ssl._create_default_https_context = ssl._create_unverified_context
+# end try
+
 
 def lingering_https_get_request(server, url, logfile_path, request_for=None, acc=None):
     """
@@ -48,6 +56,7 @@ def lingering_https_get_request(server, url, logfile_path, request_for=None, acc
                     printl(logfile_path, "{} attempts to connect left, waiting 15 sec...".format(max_attempts - attempt_i))
                     attempt_i += 1
                 else:
+                    printl(logfile_path, "Cannot find {} for {}.".format(request_for, acc))
                     printl(logfile_path, "Request failed with status code {}: {}".format(response.code, response.reason))
                     platf_depend_exit(1)
                 # end if
