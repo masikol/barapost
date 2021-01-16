@@ -21,12 +21,9 @@ prop2qual = lambda p: round(-10 * log(p, 10), 2)
 
 
 def get_read_avg_qual(qual_str):
-    """
-    Function calculates mean quality of a single read.
-
-    :param qual_str: read's quality line in Phred33;
-    :type qual_str: str;
-    """
+    # Function calculates mean quality of a single read.
+    # :param qual_str: read's quality line in Phred33;
+    # :type qual_str: str;
 
     quals = map(substr_phred33, qual_str) # get Qs
     err_props = map(qual2prop, quals) # convert Qs to propabilities
@@ -36,17 +33,15 @@ def get_read_avg_qual(qual_str):
 
 
 def form_packet_numseqs(fastq_file, packet_size, fmt_func, max_seq_len):
-    """
-    Function reads lines from 'fastq_file' and composes a packet of 'packet_size' sequences.
-
-    :param fastq_file: file instance from which to read;
-    :type fastq_file: _io.TextIOWrapper or gzip.File;
-    :param packet_size: number of sequences to retrive from file;
-    :type packet_size: int;
-    :param fmt_func: formating functio nfrom FORMMATING_FUNCS tuple;
-    :param max_seq_len: maximum length of a sequence proessed;
-    :type max_seq_len: int (None if pruning is disabled);
-    """
+    # Function reads lines from 'fastq_file' and composes a packet of 'packet_size' sequences.
+    #
+    # :param fastq_file: file instance from which to read;
+    # :type fastq_file: _io.TextIOWrapper or gzip.File;
+    # :param packet_size: number of sequences to retrive from file;
+    # :type packet_size: int;
+    # :param fmt_func: formating functio nfrom FORMMATING_FUNCS tuple;
+    # :param max_seq_len: maximum length of a sequence proessed;
+    # :type max_seq_len: int (None if pruning is disabled);
 
     packet = ""
     qual_dict = dict() # {<seq_id>: <read_quality>}
@@ -79,17 +74,15 @@ def form_packet_numseqs(fastq_file, packet_size, fmt_func, max_seq_len):
 
 
 def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
-    """
-    Function reads lines from 'fastq_file' and composes a packet of 'packet_size' base pairs.
+    # Function reads lines from 'fastq_file' and composes a packet of 'packet_size' base pairs.
 
-    :param fastq_file: file instance from which to read;
-    :type fastq_file: _io.TextIOWrapper or gzip.File;
-    :param packet_size: number of base pairs to retrive from file;
-    :type packet_size: int;
-    :param fmt_func: formating functio nfrom FORMMATING_FUNCS tuple;
-    :param max_seq_len: maximum length of a sequence proessed;
-    :type max_seq_len: int (None if pruning is disabled);
-    """
+    # :param fastq_file: file instance from which to read;
+    # :type fastq_file: _io.TextIOWrapper or gzip.File;
+    # :param packet_size: number of base pairs to retrive from file;
+    # :type packet_size: int;
+    # :param fmt_func: formating functio nfrom FORMMATING_FUNCS tuple;
+    # :param max_seq_len: maximum length of a sequence proessed;
+    # :type max_seq_len: int (None if pruning is disabled);
 
     packet = ""
     qual_dict = dict() # {<seq_id>: <read_quality>}
@@ -128,28 +121,26 @@ def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
 def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
     saved_packet_size=None, saved_packet_mode=None,
     max_seq_len=float("inf"), probing_batch_size=float("inf")):
-    """
-    Generator yields fasta-formattedpackets of records from fastq file.
-    This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
-      to 'pass_processed_files'.
+    # Generator yields fasta-formattedpackets of records from fastq file.
+    # This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
+    #   to 'pass_processed_files'.
 
-    :param fastq: path to fastq file;
-    :type fastq: str;
-    :param packet_size: number of sequences to align in one request ('blastn' launching);
-    :type packet_size: int;
-    :param num_done_seqs: number of sequnces in current file that have been already processed;
-    :type num_done_seqs: int;
-    :param packet_mode: packet mode (see -c option);
-    :type packet_mode: int;
-    :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
-      It will be None, if no tmp file was in classification directory;
-    :type saved_packet_size: int;
-    :param saved_packet_mode: mode used whilst formig the last sent packet from tmp file.
-      Necessary for resumption. It will be None, if no tmp file was in classification directory;
-    :type saved_packet_mode: int;
-    :param max_seq_len: maximum length of a sequence proessed;
-    :type max_seq_len: int (float("inf") if pruning is disabled);
-    """
+    # :param fastq: path to fastq file;
+    # :type fastq: str;
+    # :param packet_size: number of sequences to align in one request ('blastn' launching);
+    # :type packet_size: int;
+    # :param num_done_seqs: number of sequnces in current file that have been already processed;
+    # :type num_done_seqs: int;
+    # :param packet_mode: packet mode (see -c option);
+    # :type packet_mode: int;
+    # :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
+    #   It will be None, if no tmp file was in classification directory;
+    # :type saved_packet_size: int;
+    # :param saved_packet_mode: mode used whilst formig the last sent packet from tmp file.
+    #   Necessary for resumption. It will be None, if no tmp file was in classification directory;
+    # :type saved_packet_mode: int;
+    # :param max_seq_len: maximum length of a sequence proessed;
+    # :type max_seq_len: int (float("inf") if pruning is disabled);
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fastq) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fastq) ]

@@ -19,8 +19,6 @@ if sys.version_info.major < 3:
         raw_input("Press ENTER to exit:")
     # end if
     sys.exit(1)
-else:
-    print("\nPython {}.{}.{}".format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
 # end if
 
 from src.platform import platf_depend_exit
@@ -36,37 +34,37 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
   in NCBI Nucleotide database using BLAST web service.\n""")
 
     if "--help" in sys.argv[1:]: # print more detailed help message
-        print("""Processing entire data set with "barapost-prober.py" is not expedient,
+        print("""Processing entire data set with `barapost-prober.py` is not expedient,
   since servers are in public use and handling a request can linger for a long time.""")
         print("""Therefore the main goal of this script is to submit a relatively small
   probing batch (see `-b` option) of sequences to NCBI BLAST service and discover,
   what Genbank records can be downloaded and used as reference sequences in a database
   stored on local machine. Further classification will be performed by "barapost-local.py" on local machine.""")
-        print("This script processes FASTQ and FASTA (as well as '.fastq.gz' and '.fasta.gz') files.")
+        print("This script processes FASTQ and FASTA (as well as `.fastq.gz` and `.fasta.gz`) files.")
         print("----------------------------------------------------------\n")
         print("Default parameters:\n")
         print("""- if no input files are specified, "barapost-prober.py" processes
    all FASTQ and FASTA files in working directory;""")
-        print("""- algorithm (see '-a' option): '0' (zero, i.e. megaBlast);""")
-        print("""- packet forming mode (see '-c' option): '0' (zero);""")
-        print("""- packet size: (see '-p' option):
-   100 sequences for packet forming mode '0',
-   20,000 base pairs for packet forming mode '1';""")
-        print("""- probing batch size (see '-b' option): 200 sequences;""")
-        print("""- database slices (see '-g' option): whole 'nr/nt' database, i.e. no slices;""")
-        print("""- output directory ('-o' option): directory named 'barapost_result'
+        print("""- algorithm (see `-a` option): `0` (zero, i.e. megaBlast);""")
+        print("""- packet forming mode (see `-c` option): `0` (zero);""")
+        print("""- packet size: (see `-p` option):
+   100 sequences for packet forming mode `0`,
+   20,000 base pairs for packet forming mode `1`;""")
+        print("""- probing batch size (see `-b` option): 200 sequences;""")
+        print("""- database slices (see `-g` option): whole `nr/nt` database, i.e. no slices;""")
+        print("""- output directory (`-o` option): directory named `barapost_result`
    nested in working directory;""")
-        print("""- prober sends no email information ('-e' option) to NCBI;""")
+        print("""- prober sends no email information (`-e` option) to NCBI;""")
         print("""- prober sends sequences intact
-   (i.e. does not prune them before submission (see '-x' option));""")
+   (i.e. does not prune them before submission (see `-x` option));""")
         print("----------------------------------------------------------\n")
     # end if
 
-    print("""Files that you want 'barapost-prober.py' to process should be specified as
-  positional arguments (see EXAMPLE #2 in detailed (--help) help message).\n""")
+    print("""Files that you want `barapost-prober.py` to process should be specified as
+  positional arguments (see EXAMPLE #2 in detailed (`--help`) help message).\n""")
     print("OPTIONS:\n")
     print("""-h (--help) --- show help message.
-   '-h' -- brief, '--help' -- full;\n""")
+   `-h` -- brief, `--help` -- full;\n""")
     print("-v (--version) --- show version;\n")
     print("""-d (--indir) --- directory which contains FASTQ of FASTA files meant to be processed.
    I.e. all FASTQ and FASTA files in this direcory will be processed;\n""")
@@ -86,17 +84,17 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-a (--algorithm) --- BLASTn algorithm to use for alignment.
    Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn.
    Default is 0 (megaBlast);\n""")
-    print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. 'nr/nt' database slices.
+    print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. `nr/nt` database slices.
    Functionality of this option is totally equal to "Organism" text boxes on this BLASTn page:
-    'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome'.
+    `https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome`.
    Format of value (see EXAMPLES #4 and #5 below.):
      <organism1_taxid>,<organism2_taxid>...
    Spaces are NOT allowed.
-   Default value is full 'nr/nt' database, i.e. no slices.
-   You can find your Taxonomy IDs here: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi';\n""")
+   Default value is full `nr/nt` database, i.e. no slices.
+   You can find your Taxonomy IDs here: `https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi`;\n""")
     print("""-b (--probing-batch-size) --- total number of sequences that will be submitted to BLAST server
-   during 'barapost-prober.py' run.
-   You can specify '-b all' to process all your sequeces by 'barapost-prober.py'.
+   during `barapost-prober.py` run.
+   You can specify `-b all` to process all your sequeces by `barapost-prober.py`.
    Value: positive integer number.
    Default value is 200;\n""")
     print("""-e (--email) --- your email. Please, specify your email when you run "barapost-prober.py",
@@ -132,9 +130,8 @@ if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
 # end if
 
 import os
-from re import search as re_search
+import re
 from glob import glob
-from src.printlog import get_full_time, printl, err_fmt
 
 # Get command line arguments
 import getopt
@@ -149,30 +146,30 @@ except getopt.GetoptError as gerr:
     platf_depend_exit(2)
 # end try
 
-is_fq_or_fa = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
+is_fq_or_fa = lambda f: True if not re.search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
 
 # Default values:
 fq_fa_list = list() # list of paths to file meant to be processed
-indir_path = None # path to '-d' directory
+indir_path = None # path to `-d` directory
 outdir_path = "barapost_result"
 packet_size = 100
 probing_batch_size = 200
-send_all = False # it will be True if '-b all' is specified
+send_all = False # it will be True if `-b all` is specified
 blast_algorithm = "megaBlast"
 taxid_list = list() # list of TaxIDs to perform database slices
 user_email = ""
 max_seq_len = float("inf") # maximum length of a sequence sent to NCBI
-packet_mode = 0 # mode of packet forming. 'numseqs' is default
+packet_mode = 0 # mode of packet forming. `numseqs` is default
 
 # Add positional arguments to fq_fa_list
 for arg in args:
     if not is_fq_or_fa(arg):
-        print(err_fmt("invalid positional argument: '{}'".format(arg)))
+        print("Argument error: invalid positional argument: `{}`".format(arg))
         print("Only FAST(A/Q) files can be specified without an option in command line.")
         platf_depend_exit(1)
     # end if
     if not os.path.exists(arg):
-        print(err_fmt("File '{}' does not exist!".format(arg)))
+        print("Argument error: file `{}` does not exist!".format(arg))
         platf_depend_exit(1)
     # end if
     fq_fa_list.append( os.path.abspath(arg) )
@@ -191,8 +188,8 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("packet size (-p option) must be integer number > 1"))
-            print("Your value: '{}'".format(arg))
+            print("Argument error: packet size (`-p` option) must be integer number > 1")
+            print("Your value: `{}`".format(arg))
             platf_depend_exit(1)
         # end try
 
@@ -205,8 +202,8 @@ for opt, arg in opts:
                 packet_size = 20000 # default for mode 1
             # end if
         else:
-            print(err_fmt("packet forming mode (-c option) must be 0 or 1."))
-            print("Your value: '{}'".format(arg))
+            print("Argument error: packet forming mode (`-c` option) must be 0 or 1.")
+            print("Your value: `{}`".format(arg))
             platf_depend_exit(1)
         # end if
 
@@ -222,8 +219,8 @@ for opt, arg in opts:
                 # end if
             # end for
         except ValueError:
-            print(err_fmt("TaxID should be a positive integer number!\a"))
-            print("Your value: '{}'".format(arg))
+            print("Argument error: TaxID should be a positive integer number!\a")
+            print("Your value: `{}`".format(arg))
             platf_depend_exit(1)
         # end try
 
@@ -240,14 +237,14 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("probing batch size ('-b' option) must be positive integer number!"))
+            print("Argument error: probing batch size (`-b` option) must be positive integer number!")
             print("Your value: {}".format(arg))
             platf_depend_exit(1)
         # end try
 
     elif opt in ("-e", "--email"):
-        if re_search(r"^.+@.+\..+$", arg) is None:
-            print("Your email doesn't look like an email: '{}'".format(arg))
+        if re.search(r"^.+@.+\..+$", arg) is None:
+            print("Your email doesn't look like an email: `{}`".format(arg))
             print("""Please check it and, if you are sure that your email is right,
   but prober still refuses it  -- contact the developer.""")
             platf_depend_exit(1)
@@ -262,27 +259,27 @@ for opt, arg in opts:
                 raise ValueError
             # end if
         except ValueError:
-            print(err_fmt("maximum sequence length must be a positive interger number!"))
-            print("Your value: '{}'".format(arg))
+            print("Argument error: maximum sequence length must be a positive interger number!")
+            print("Your value: `{}`".format(arg))
             platf_depend_exit(1)
         # end try
 
     elif opt in ("-d", "--indir"):
         if not os.path.isdir(arg):
-            print(err_fmt("directory '{}' does not exist!".format(arg)))
+            print("Argument error: directory `{}` does not exist!".format(arg))
             platf_depend_exit(1)
         # end if
         
         indir_path = os.path.abspath(arg)
 
-        # Add all fastq and fasta files from '-d' directory to fq_fa_list
+        # Add all fastq and fasta files from `-d` directory to fq_fa_list
         fq_fa_list.extend(list( filter(is_fq_or_fa, glob("{}{}*".format(indir_path, os.sep))) ))
 
     elif opt in ("-a", "--algorithm"):
         if not arg in ("0", "1", "2"):
-            print(err_fmt("invalid value specified by '-a' option!"))
+            print("Argument error: invalid value specified by `-a` option!")
             print("Available values: 0 for megaBlast, 1 for discoMegablast, 2 for blastn")
-            print("Your value: '{}'".format(arg))
+            print("Your value: `{}`".format(arg))
             platf_depend_exit(1)
         # end if
         blast_algorithm = ("megaBlast", "discoMegablast", "blastn")[int(arg)]
@@ -294,8 +291,8 @@ for opt, arg in opts:
 if len(fq_fa_list) == 0:
     # If input directory was specified -- exit
     if not indir_path is None:
-        print(err_fmt("""no input FASTQ or FASTA files specified
-  or there is no FASTQ and FASTA files in the input directory.\n"""))
+        print("""Error: no input FASTQ or FASTA files specified
+  or there is no FASTQ and FASTA files in the input directory.\n""")
         platf_depend_exit(1)
     
     # If input directory was not specified -- look for FASTQ files in working directory
@@ -342,10 +339,10 @@ for path in fq_fa_list:
     bname = os.path.basename(path)
     same_bnames = tuple(filter(lambda f: os.path.basename(f) == bname, fq_fa_list))
     if len(same_bnames) != 1:
-        print(err_fmt("input files must have different names"))
+        print("Error: input files must have different names")
         print("List of files having same name:")
         for path in same_bnames:
-            print("'{}'".format(path))
+            print("`{}`".format(path))
         # end for
         platf_depend_exit(1)
     # end if
@@ -357,10 +354,32 @@ del bname, same_bnames
 fq_fa_list.sort()
 print() # just print new line
 
+# Create output directory
+if not os.path.isdir(outdir_path):
+    try:
+        os.makedirs(outdir_path)
+    except OSError as oserr:
+        print("Error: unable to create result directory `{}`".format(outdir_path))
+        print( str(oserr) )
+        platf_depend_exit(1)
+    # end try
+# end if
+
+
 from src.filesystem import create_result_directory
 from src.filesystem import is_fastq, is_fasta
 from src.platform import get_logfile_path
 from src.check_connection import check_connection
+
+from src.printlog import get_full_time, printlog_info, printlog_error, log_info
+import logging
+logging.basicConfig(filename=get_logfile_path("prober", outdir_path),
+    format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO, filemode='w')
+log_info(sys.platform)
+log_info(sys.implementation)
+log_info(sys.version)
+
 
 # If there are any fastq input files -- import fastq record generator
 if any(filter(is_fastq, fq_fa_list)):
@@ -376,44 +395,32 @@ if packet_mode == 0:
     # Make packet size consistent with probing batch size
     packet_size = min(packet_size, probing_batch_size)
 # end if
-
-# Create output directory
-if not os.path.isdir(outdir_path):
-    try:
-        os.makedirs(outdir_path)
-    except OSError as oserr:
-        print(err_fmt("unable to create result directory '{}'".format(outdir_path)))
-        print( str(oserr) )
-        platf_depend_exit(1)
-    # end try
-# end if
-
 #                       |===== Proceed =====|
 
 check_connection("https://blast.ncbi.nlm.nih.gov")
 
-logfile_path = get_logfile_path("prober", outdir_path)
-
-printl(logfile_path, "\n |=== barapost-prober.py (version {}) ===|\n".format(__version__))
-printl(logfile_path, get_full_time() + "- Start working\n")
+print("|=== barapost-prober.py (version {}) ===|\n".format(__version__))
+log_info("barapost-prober.py (version {})".format(__version__))
+print(get_full_time() + "- Start working\n")
+log_info("Start working.")
 
 from src.prober_modules.prober_spec import look_around
 from src.prober_modules.networking import verify_taxids
 from src.prober_modules.kernel import submit, retrieve_ready_job
 
 # Make sure that TaxIDs specified by user actually exist
-organisms = verify_taxids(taxid_list, logfile_path)
+organisms = verify_taxids(taxid_list)
 
 # Print information about the run
-printl(logfile_path, " - Output directory: '{}';".format(outdir_path))
-printl(logfile_path, " - Logging to '{}'".format(logfile_path))
+printlog_info(" - Output directory: `{}`;".format(outdir_path))
+printlog_info(" - Logging to `{}`".format(logging.getLoggerClass().root.handlers[0].baseFilename))
 if user_email != "":
-    printl(logfile_path, " - Your email: {}".format(user_email))
+    printlog_info(" - Your email: <{}>".format(user_email))
 # end if
-printl(logfile_path, " - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
+printlog_info(" - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
 
 mode_comment = "number of sequences" if packet_mode == 0 else "sum of sequences' lengths"
-printl(logfile_path, " - Packet forming mode: {} ({});".format(packet_mode,mode_comment))
+printlog_info(" - Packet forming mode: {} ({});".format(packet_mode,mode_comment))
 del mode_comment
 
 if packet_mode == 0:
@@ -421,30 +428,32 @@ if packet_mode == 0:
 else:
     tmp_str = "base pairs"
 # end if
-printl(logfile_path, " - Packet size: {} {};".format(packet_size, tmp_str))
+printlog_info(" - Packet size: {} {};".format(packet_size, tmp_str))
 del tmp_str
 
 if max_seq_len < float("inf"):
-    printl(logfile_path, " - Maximum length of a sequence to submit: {} bp;".format(max_seq_len))
+    printlog_info(" - Maximum length of a sequence to submit: {} bp;".format(max_seq_len))
 # end if
-printl(logfile_path, " - BLAST algorithm: {};".format(blast_algorithm))
-printl(logfile_path, " - Database: nr/nt;")
+printlog_info(" - BLAST algorithm: {};".format(blast_algorithm))
+printlog_info(" - Database: nr/nt;")
 if len(organisms) > 0:
     for db_slice in organisms:
-        printl(logfile_path, "   {};".format(db_slice))
+        printlog_info("   {};".format(db_slice))
     # end for
 # end if
 
 s_letter = '' if len(fq_fa_list) == 1 else 's'
-printl(logfile_path, "\n {} file{} will be processed.".format( len(fq_fa_list), s_letter))
-with open(logfile_path, 'a') as logfile: # write paths to all input files to log file
-    logfile.write("Here they are:\n")
-    for i, path in enumerate(fq_fa_list):
-        logfile.write("    {}. '{}'\n".format(i+1, path))
-    # end for
-# end with
-
-printl(logfile_path, '-'*30)
+print()
+printlog_info("{} file{} will be processed.".format( len(fq_fa_list), s_letter))
+# Write paths to all input files to log file
+if len(fq_fa_list) != 1:
+    log_info("Here they are:")
+else:
+    log_info("Here it is:")
+for i, path in enumerate(fq_fa_list):
+    log_info("    {}. `{}`".format(i+1, path))
+# end for
+printlog_info('-'*30)
 
 
 import src.legacy_taxonomy_handling as legacy_taxonomy_handling
@@ -460,7 +469,7 @@ if not os.path.isdir(taxonomy_dir):
 taxonomy_path = os.path.join(taxonomy_dir, "taxonomy.tsv")
 
 # Check if there is legacy taxonomy file and, if so, reformat it to new (TSV) format
-legacy_taxonomy_handling.check_deprecated_taxonomy(outdir_path, logfile_path)
+legacy_taxonomy_handling.check_deprecated_taxonomy(outdir_path)
 
 
 # Dictionary of accessions and record names.
@@ -501,16 +510,16 @@ stop = False
 for i, fq_fa_path in enumerate(fq_fa_list):
 
     # Create the result directory with the name of FASTQ of FASTA file being processed:
-    new_dpath = create_result_directory(fq_fa_path, outdir_path, logfile_path)
+    new_dpath = create_result_directory(fq_fa_path, outdir_path)
 
     # "hname" means human readable name (i.e. without file path and extention)
     infile_hname = os.path.basename(fq_fa_path)
-    infile_hname = re_search(r"(.+)\.(m)?f(ast)?(a|q)(\.gz)?$", infile_hname).group(1) # remove extention
+    infile_hname = re.search(r"(.+)\.(m)?f(ast)?(a|q)(\.gz)?$", infile_hname).group(1) # remove extention
 
     # Look around and check if there are results of previous runs of this script
     # If 'look_around' returns None -- there is no data from previous run
     previous_data = look_around(outdir_path, new_dpath, fq_fa_path,
-        blast_algorithm, acc_dict, probing_batch_size, logfile_path)
+        blast_algorithm, acc_dict, probing_batch_size)
 
     if previous_data is None: # If there is no data from previous run
         num_done_seqs = 0 # no sequences were processed
@@ -566,18 +575,16 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         # If current packet has been already send, we can try just to request for results
         if not saved_RID is None:
             send = retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-                blast_algorithm, user_email, organisms,
-                acc_dict, out_of_n)
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
             saved_RID = None
         # end if
 
         # Submit current packet to BLAST server
         if send:
             submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-                blast_algorithm, user_email, organisms,
-                acc_dict, out_of_n)
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
         # end if
 
         if not send_all and seqs_processed[0] >= probing_batch_size: # probing batch is processed -- finish work
@@ -596,13 +603,15 @@ for i, fq_fa_path in enumerate(fq_fa_list):
 glob_seqs_processed += seqs_processed[0]
 str_about_prev_runs = ", including previous run(s)" if glob_seqs_processed > seqs_processed[0] else ""
 
-printl(logfile_path, '-'*20+'\n')
+printlog_info('-'*20)
+print()
 space_sep_num = "{:,}".format(glob_seqs_processed).replace(',', ' ')
-printl(logfile_path, " {} sequences have been processed{}\n".format(space_sep_num,
+printlog_info(" {} sequences have been processed{}".format(space_sep_num,
     str_about_prev_runs))
+print()
 
-printl(logfile_path, "Here are Genbank records that can be used for further annotation by 'barapost-local.py'.")
-printl(logfile_path, "They are sorted by their occurence in probing batch:")
+printlog_info("Here are Genbank records that can be used for further annotation by `barapost-local.py`.")
+printlog_info("They are sorted by their occurence in probing batch:")
 
 # Print accessions and record names sorted by occurence
 # "-x[1][2]:": minus because we need descending order, [1] -- get tuple of "other information",
@@ -610,7 +619,7 @@ printl(logfile_path, "They are sorted by their occurence in probing batch:")
 for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
     s_letter = "s" if other_info[1] > 1 else ""
     space_sep_num = "{:,}".format(other_info[1]).replace(',', ' ')
-    printl(logfile_path, " {} hit{} - {}, '{}'".format(space_sep_num,
+    printlog_info(" {} hit{} - {}, `{}`".format(space_sep_num,
         s_letter, acc, other_info[0]))
 # end for
 
@@ -618,14 +627,16 @@ for acc, other_info in sorted(acc_dict.items(), key=lambda x: -x[1][1]):
 unkn_num = glob_seqs_processed - sum( map(lambda x: x[1], acc_dict.values()) )
 if unkn_num > 0:
     s_letter = "s" if unkn_num > 1 else ""
-    printl(logfile_path, " {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
+    printlog_info(" {} sequence{} - No significant similarity found".format(unkn_num, s_letter))
 # end if
 
-printl(logfile_path, """\nThey are saved in following file:
-  '{}'""".format(acc_fpath))
-printl(logfile_path, """\nYou can edit this file before running 'barapost-local.py' in order to
+print("""They are saved in following file:
+  `{}`\n""".format(acc_fpath))
+log_info("They are saved in following file: `{}`".format(acc_fpath))
+print("""You can edit this file before running `barapost-local.py` in order to
   modify list of sequences that will be downloaded from Genbank
-  and used as local (i.e. on your local computer) database by 'barapost-local.py'.""")
+  and used as local (i.e. on your local computer) database by `barapost-local.py`.""")
 
-printl(logfile_path, '\n' + get_full_time() + " - Task is completed\n")
+print('\n' + get_full_time() + " - Task is completed.\n")
+log_info("Task is completed.")
 platf_depend_exit(0)

@@ -7,7 +7,7 @@ import glob
 
 from src.lingering_https_get_request import lingering_https_get_request
 
-from src.printlog import err_fmt, printl
+from src.printlog import printlog_error, printlog_error_time
 from src.platform import platf_depend_exit
 from src.filesystem import is_fasta, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
@@ -39,7 +39,7 @@ def init_tax_file(taxonomy_path):
 
     with open(taxonomy_path, 'w') as tax_file:
         tax_file.write("{}\t{}\n".format("#ACCESSION",
-            "TAXONOMY: superkingdom;phylum;class;order;family;genus;species"))
+            "TAXONOMY: {}".format(';'.join(ranks))))
     # end with
 # end def init_tax_file
 
@@ -68,7 +68,7 @@ def fill_tax_accs(taxonomy_path):
 # end def fill_tax_accs
 
 
-def download_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
+def download_taxonomy(hit_acc, hit_def, taxonomy_path):
     # Function retrieves taxonomy of a hit from NCBI.
     # Moreover, it saves this taxonomy in file ``taxonomy_tsv:
     #     <accession>\t<taxonomy_str>
@@ -79,25 +79,23 @@ def download_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
     # :type hit_def: str;
     # :param taxonomy_path: path to TSV file with taxonomy;
     # :type taxonomy_path: str;
-    # :param logfile_path: path to log file;
-    # :type logfile_path: str;
 
     # Get TaxID of the organism from GenBank summary:
     gb_summary = lingering_https_get_request("www.ncbi.nlm.nih.gov",
-        "/nuccore/{}".format(hit_acc), logfile_path, "GenBank summary", hit_acc)
+        "/nuccore/{}".format(hit_acc), "GenBank summary", hit_acc)
 
     try:
         taxid = re.search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
     except AttributeError:
-        printl(logfile_path, err_fmt("taxonomy parsing error 115-{}".format(hit_acc)))
-        printl(logfile_path, "Please, contact the developer.")
+        printlog_error_time("Error: taxonomy parsing error 115-{}".format(hit_acc))
+        printlog_error("Please, contact the developer.")
         platf_depend_exit(115)
     # end try
 
     # Get taxonomy page of the organism
     taxonomy_url = "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
     taxonomy_text = lingering_https_get_request("www.ncbi.nlm.nih.gov",
-        taxonomy_url, logfile_path, "taxonomy", hit_acc)
+        taxonomy_url, "taxonomy", hit_acc)
 
     # This pattern will match taxonomic names along with their ranks
     tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z].+?)\</a\>"
@@ -184,7 +182,7 @@ def download_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
 # end def download_taxonomy
 
 
-def find_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
+def find_taxonomy(hit_acc, hit_def, taxonomy_path):
     # Function returns taxonomy if it is already in taxonomy file
     #   and downloads it from NCBI Taxnomomy otherwise.
     #
@@ -194,9 +192,6 @@ def find_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
     # :type hit_def: str;
     # :param taxonomy_path: path to TSV file with taxonomy;
     # :type taxonomy_path: str;
-    # :param logfile_path: path to log file;
-    # :type logfile_path: str;
-
 
     if len(_tax_accs) == 0:
         fill_tax_accs(taxonomy_path)
@@ -208,7 +203,7 @@ def find_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path):
     # end if
 
     # If we've got a new accession -- download taxonomy
-    download_taxonomy(hit_acc, hit_def, taxonomy_path, logfile_path)
+    download_taxonomy(hit_acc, hit_def, taxonomy_path)
 # end def find_taxonomy
 
 
@@ -366,7 +361,7 @@ def save_taxonomy_directly(taxonomy_path, acc, taxonomy_str):
 # end def def save_taxonomy_directly
 
 
-def recover_taxonomy(acc, hit_def, taxonomy_path, logfile_path):
+def recover_taxonomy(acc, hit_def, taxonomy_path):
     # Function recovers missing taxonomy by given accession.
     #
     # :param acc: accession of taxonomy entry to recover;
@@ -375,9 +370,6 @@ def recover_taxonomy(acc, hit_def, taxonomy_path, logfile_path):
     # :type hit_def: sre;
     # :param taxonomy_path: path to TSV file with taxonomy;
     # :type taxonomy_path: str;
-    # :param logfile_path: path to log file;
-    # :type logfile_path: str;
-
 
     if acc == "LAMBDA":
         # If we are missing lambda phage taxonomy -- just add it
@@ -393,11 +385,11 @@ def recover_taxonomy(acc, hit_def, taxonomy_path, logfile_path):
         try:
             local_fasta = next(iter(filter(is_fasta, db_files)))
         except StopIteration as err:
-            printl(logfile_path, "\nError: cannot recover taxonomy for following sequence:")
-            printl(logfile_path, " `{} - {}`.".format(acc, hit_def))
-            printl(logfile_path, "You can solve this problem by yourself (it's pretty simple).")
-            printl(logfile_path, "Just add taxonomy line for {} to file `{}`".format(acc, taxonomy_path))
-            printl(logfile_path, "  and run the program again.")
+            printlog_error_time("Error: cannot recover taxonomy for following sequence:")
+            printlog_error(" `{} - {}`.".format(acc, hit_def))
+            printlog_error("You can solve this problem by yourself (it's pretty simple).")
+            printlog_error("Just add taxonomy line for {} to file `{}`".format(acc, taxonomy_path))
+            printlog_error("  and run the program again.")
             platf_depend_exit(1)
         # end try
 
@@ -421,6 +413,6 @@ def recover_taxonomy(acc, hit_def, taxonomy_path, logfile_path):
         # end with
     else:
         # Try to find taxonomy in NCBI
-        download_taxonomy(acc, hit_def, taxonomy_path, logfile_path)
+        download_taxonomy(acc, hit_def, taxonomy_path)
     # end if
 # end def check_taxonomy_consistensy

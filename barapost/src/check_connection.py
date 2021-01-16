@@ -25,13 +25,13 @@ def check_connection(url):
         status_code = urllib.request.urlopen(url).getcode()
         # Just in case
         if status_code != 200:
-            print('\n' + getwt() + " - '{}' is not available.".format(url))
+            print('\n' + getwt() + " - `{}` is not available.".format(url))
             print("Check your internet connection.\a")
             print("Status code: {}".format(status_code))
             platf_depend_exit(-2)
         # end if
     except OSError as err:
-        print('\n' + getwt() + " - '{}' is not available.".format(url))
+        print('\n' + getwt() + " - `{}` is not available.".format(url))
         print("Check your internet connection.\a")
         print( str(err) )
 

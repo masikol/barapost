@@ -16,21 +16,18 @@ def _prune(seq, value):
 
 
 def prune_seqs(packet, value):
-    """
-    Function prunes all sequences in fasta-formatted string.
-    Function prunes sequences from both ends.
-
-    :param packet: FASTA data;
-    :type packet: str;
-    :param value: length of resulting sequence;
-    :type value: int;
-    """
+    # Function prunes all sequences in fasta-formatted string.
+    # Function prunes sequences from both ends.
+    # :param packet: FASTA data;
+    # :type packet: str;
+    # :param value: length of resulting sequence;
+    # :type value: int;
 
     lines = packet.splitlines()
     packet = ""
 
     if value < 1:
-        raise ValueError("Invalid value of parameter 'value': it must be > 1")
+        raise ValueError("Invalid value of parameter `value`: it must be > 1")
     # end if
 
     # Get indices of ID lines in fasta-formatted string

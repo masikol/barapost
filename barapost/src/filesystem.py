@@ -2,10 +2,10 @@
 # This module defines finctions and other objects, which interact with file system.
 
 import os
-from re import search as re_search
+import re
 from gzip import open as open_as_gzip
 from src.platform import platf_depend_exit
-from src.printlog import printl, err_fmt, getwt
+from src.printlog import printlog_info, printlog_error, printlog_error_time
 
 # For opening plain text and gzipped files
 OPEN_FUNCS = (open, open_as_gzip)
@@ -19,19 +19,17 @@ FORMATTING_FUNCS = (
 
 is_gzipped = lambda file: True if file.endswith(".gz") else False
 
-is_fastq = lambda f: True if not re_search(r".+\.f(ast)?q(\.gz)?$", f) is None else False
-is_fasta = lambda f: True if not re_search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None else False
+is_fastq = lambda f: True if not re.search(r".+\.f(ast)?q(\.gz)?$", f) is None else False
+is_fasta = lambda f: True if not re.search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None else False
 is_fast5 = lambda f: f.endswith(".fast5")
 
 
-def rename_file_verbosely(file, logfile_path):
+def rename_file_verbosely(file):
     """
     Function verbosely renames file (as well as directory) given to it.
 
     :param file: path to file (directory) meant to be renamed;
     :type file: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
     """
 
     if not os.path.exists(file):
@@ -43,48 +41,47 @@ def rename_file_verbosely(file, logfile_path):
     
     # Function can rename directories
     if os.path.isdir(file):
-        is_analog = lambda f: not re_search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
+        is_analog = lambda f: not re.search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
         word = "directory"
         name_itself = file
         ext = ""
     else:
-        is_analog = lambda f: re_search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
+        is_analog = lambda f: re.search(r"(.*)\..*$", os.path.basename(file)).group(1) in f
         word = "file"
-        name_itself = re_search(r"(.*)\..*$", file).group(1)
-        ext = re_search(r".*(\..*)$", file).group(1)
+        name_itself = re.search(r"(.*)\..*$", file).group(1)
+        ext = re.search(r".*(\..*)$", file).group(1)
     # end if
 
     # Count files in 'pardir' that have analogous names as 'file' has:
     num_analog_files = len( list(filter(is_analog, os.listdir(pardir))) )
 
-    if re_search(r"_old_[0-9]+", file) is None:
+    if re.search(r"_old_[0-9]+", file) is None:
         # Append "_old_<number>"
         new_name = name_itself + "_old_" + str(num_analog_files) + ext
     else:
         # Merely substitute new number
-        new_name = file.replace(re_search(r"_old_([0-9]+)", file).group(1),
+        new_name = file.replace(re.search(r"_old_([0-9]+)", file).group(1),
             str(num_analog_files+1))
     # end if
 
     try:
-        printl(logfile_path, '\n' + getwt() + " - Renaming old {}:".format(word))
-        printl(logfile_path, "  '{}' --> '{}'".format(file, new_name))
+        print()
+        printlog_info(" - Renaming old {}:".format(word))
+        printlog_info("  `{}` --> `{}`".format(file, new_name))
         os.rename(file, new_name)
     except Exception as err:
-        print("\n {} '{}' cannot be renamed:".format( word, str(file)) )
-        print( str(err) + '\n')
+        printlog_error_time("Error: {} `{}` cannot be renamed:".format( word, str(file)) )
+        printlog_error( str(err) )
         platf_depend_exit(1)
     # end try
 # end def rename_file_verbosely
 
-def remove_tmp_files(paths, logfile_path):
+def remove_tmp_files(*paths):
     """
     Function removes files passed to it.
 
     :param paths: an array-like collection of apth of files;
     :type paths: list<str>;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
     """
 
     for path in paths:
@@ -92,8 +89,8 @@ def remove_tmp_files(paths, logfile_path):
             try:
                 os.unlink(path)
             except OSError as oserr:
-                printl(logfile_path, err_fmt("cannot remove file '{}'").format(path))
-                printl(logfile_path, str(oserr) )
+                printlog_error_time("Error: cannot remove file `{}`").format(path)
+                printlog_error(str(oserr) )
                 platf_depend_exit(1)
             # end try
         # end if
@@ -101,30 +98,26 @@ def remove_tmp_files(paths, logfile_path):
 # end def remove_tmp_files
 
 
-def create_result_directory(fq_fa_path, outdir_path, logfile_path):
-    """
-    Function creates a result directory named according
-        to how source FASTQ or FASTA file is named.
+def create_result_directory(fq_fa_path, outdir_path):
+    # Function creates a result directory named according
+    #     to how source FASTQ or FASTA file is named.
 
-    :param fq_fa_path: path to source FASTQ or FASTA file;
-    :type fq_fa_path: str;
-    :param outdir_path: path to directory in which result_directory will be created;
-    :type outdir_path: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
+    # :param fq_fa_path: path to source FASTQ or FASTA file;
+    # :type fq_fa_path: str;
+    # :param outdir_path: path to directory in which result_directory will be created;
+    # :type outdir_path: str;
 
-    Returns 'str' path to the recently created result directory.
-    """
+    # Returns 'str' path to the recently created result directory.
 
     # dpath means "directory path"
     new_dpath = os.path.join(outdir_path, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)(\.gz)?$", new_dpath).group(1) # get rid of extention
+    new_dpath = re.search(r"(.*)\.(m)?f(ast)?(a|q)(\.gz)?$", new_dpath).group(1) # get rid of extention
     if not os.path.exists(new_dpath):
         try:
             os.makedirs(new_dpath)
         except OSError as oserr:
-            printl(logfile_path, err_fmt("can't create result directory"))
-            printl(logfile_path, str(oserr) )
+            printlog_error_time("Error: can't create result directory: `{}`".format(new_dpath))
+            printlog_error(str(oserr) )
             platf_depend_exit(1)
         # end try
     # end if
@@ -148,7 +141,7 @@ def get_curr_res_dpath(fq_fa_path, tax_annot_res_dir):
 
     # dpath means "directory path"
     new_dpath = os.path.join(tax_annot_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path
-    new_dpath = re_search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
+    new_dpath = re.search(r"(.*)\.(m)?f(ast)?(a|q)", new_dpath).group(1) # get rid of extention
 
     return new_dpath
 # end def get_curr_res_dir

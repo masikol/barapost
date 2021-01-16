@@ -3,7 +3,7 @@
 
 import os
 
-from src.printlog import printl
+from src.printlog import printlog_info
 from src.filesystem import remove_tmp_files
 
 from src.prune_seqs import prune_seqs
@@ -14,43 +14,38 @@ from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_t
 from src.fasta import fasta_packets_from_str
 
 def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-        blast_algorithm, user_email, organisms,
-        acc_dict, out_of_n):
-    """
-    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
-    :type packet: dict;
-    :param packet_size: size of the packet (see option '-c' for definition);
-    :type packet_size: int;
-    :param packet_mode: packet forming mode (see option '-c' for definition);
-    :type packet_mode: int;
-    :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
-    :type pack_to_send: list<int>;
-    :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
-    :type seqs_processed: list<int>;
-    :param fq_fa_path: path to current input file;
-    :type fq_fa_path: str;
-    :param tmp_fpath: path to current temporary file;
-    :type tmp_fpath: str;
-    :param taxonomy_path: path to taxonomt file;
-    :type taxonomy_path: str;
-    :param tsv_res_path: path to current classification file;
-    :type tsv_res_path: str;
-    :param acc_fpath: path to file 'hits_to_download.tsv';
-    :type acc_fpath: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    :param blast_algorithm: BLAST algorithm to use (see option '-a');
-    :type blast_algorithm: str;
-    :param user_email: user email ot send with request;
-    :type user_email: str;
-    :param organisms: list of strings performing 'nt' database slices;
-    :type organisms: list<str>;
-    :param acc_dict: accession dictionary for writing to 'hits_to_download.tsv';
-    :type acc_dict: dict<str: (str, int)>;
-    :param out_of_n: dictionary for printing how many packets left;
-    :type out_of_n: dict<str: str, str: int>;
-    """
+        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+    # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
+    # :type packet: dict;
+    # :param packet_size: size of the packet (see option `-c` for definition);
+    # :type packet_size: int;
+    # :param packet_mode: packet forming mode (see option `-c` for definition);
+    # :type packet_mode: int;
+    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :type pack_to_send: list<int>;
+    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :type seqs_processed: list<int>;
+    # :param fq_fa_path: path to current input file;
+    # :type fq_fa_path: str;
+    # :param tmp_fpath: path to current temporary file;
+    # :type tmp_fpath: str;
+    # :param taxonomy_path: path to taxonomt file;
+    # :type taxonomy_path: str;
+    # :param tsv_res_path: path to current classification file;
+    # :type tsv_res_path: str;
+    # :param acc_fpath: path to file `hits_to_download.tsv`;
+    # :type acc_fpath: str;
+    # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
+    # :type blast_algorithm: str;
+    # :param user_email: user email ot send with request;
+    # :type user_email: str;
+    # :param organisms: list of strings performing `nt` database slices;
+    # :type organisms: list<str>;
+    # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
+    # :type acc_dict: dict<str: (str, int)>;
+    # :param out_of_n: dictionary for printing how many packets left;
+    # :type out_of_n: dict<str: str, str: int>;
 
     # Number of sequnces in packet to be splitted:
     pack_len = len(packet["qual"])
@@ -58,7 +53,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
     if pack_len > 1:
         # Split current packet into two (of equal number of sequences) and resubmit them one-by-one
 
-        printl(logfile_path, "Splitting current packet into two and submitting each of them one-by-one.")
+        printlog_info("Splitting current packet into two and submitting each of them one-by-one.")
 
         # Update this dictionary to print how many packets left
         if not out_of_n["npacks"] is None:
@@ -82,15 +77,14 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
 
             # Submit subpacket
             submit(splitted_packet, new_pack_size_0, 0, pack_to_send, seqs_processed,
-                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-                blast_algorithm, user_email, organisms,
-                acc_dict, out_of_n)
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
         # end for
     else:
         # Prune the only sequence in packet and resend it
 
-        printl(logfile_path, "Current packet contains only one sequence.")
-        printl(logfile_path, "prober will prune this sequence twofold and resubmit it.")
+        printlog_info("Current packet contains only one sequence.")
+        printlog_info("prober will prune this sequence twofold and resubmit it.")
 
         # Calculate new length for this sequence
         old_seq = map(str.strip, packet["fasta"].splitlines()[1:]) # generator of stripped sequence-sontaining lines
@@ -103,103 +97,91 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         packet["fasta"] = prune_seqs(packet["fasta"], new_len)
 
         submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-            fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-            blast_algorithm, user_email, organisms,
-            acc_dict, out_of_n)
+            fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+            blast_algorithm, user_email, organisms, acc_dict, out_of_n)
     # end if
 # end def _split_and_resubmit
 
 
 def _handle_result(align_xml_text, packet, taxonomy_path,
-    tsv_res_path, acc_dict, acc_fpath, seqs_processed, pack_to_send,
-    tmp_fpath, logfile_path):
-    """
-    :param align_xml_text: XML text with results of alignment;
-    :type align_xml_text: str;
-    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
-    :type packet: dict;
-    :param taxonomy_path: path to taxonomt file;
-    :type taxonomy_path: str;
-    :param tsv_res_path: path to current classification file;
-    :type tsv_res_path: str;
-    :param acc_dict: accession dictionary for writing to 'hits_to_download.tsv';
-    :type acc_dict: dict<str: (str, int)>;
-    :param acc_fpath: path to file 'hits_to_download.tsv';
-    :type acc_fpath: str;
-    :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
-    :type seqs_processed: list<int>;
-    :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
-    :type pack_to_send: list<int>;
-    :param tmp_fpath: path to current temporary file;
-    :type tmp_fpath: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
+    tsv_res_path, acc_dict, acc_fpath, seqs_processed, pack_to_send, tmp_fpath):
+    # :param align_xml_text: XML text with results of alignment;
+    # :type align_xml_text: str;
+    # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
+    # :type packet: dict;
+    # :param taxonomy_path: path to taxonomt file;
+    # :type taxonomy_path: str;
+    # :param tsv_res_path: path to current classification file;
+    # :type tsv_res_path: str;
+    # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
+    # :type acc_dict: dict<str: (str, int)>;
+    # :param acc_fpath: path to file `hits_to_download.tsv`;
+    # :type acc_fpath: str;
+    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :type seqs_processed: list<int>;
+    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :type pack_to_send: list<int>;
+    # :param tmp_fpath: path to current temporary file;
+    # :type tmp_fpath: str;
 
     # Get result tsv lines
     result_tsv_lines = parse_align_results_xml(align_xml_text,
-        packet["qual"], acc_dict, logfile_path, taxonomy_path)
+        packet["qual"], acc_dict, taxonomy_path)
 
     # Write classification to TSV file
     write_classification(result_tsv_lines, tsv_res_path)
-    # Write accessions and names of hits to TSV file 'hits_to_download.tsv'
+    # Write accessions and names of hits to TSV file `hits_to_download.tsv
     write_hits_to_download(acc_dict, acc_fpath)
 
     # Update summary information
     seqs_processed[0] += len( packet["qual"] )
     pack_to_send[0] += 1
-    remove_tmp_files([tmp_fpath], logfile_path)
+    remove_tmp_files(tmp_fpath)
 
 # end def _handle_result
 
 
 def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-        blast_algorithm, user_email, organisms,
-        acc_dict, out_of_n):
-    """
-    :param saved_RID: saved Request ID from previous run;
-    :type saved_RID: str;
-    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
-    :type packet: dict;
-    :param packet_size: size of the packet (see option '-c' for definition);
-    :type packet_size: int;
-    :param packet_mode: packet forming mode (see option '-c' for definition);
-    :type packet_mode: int;
-    :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
-    :type pack_to_send: list<int>;
-    :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
-    :type seqs_processed: list<int>;
-    :param fq_fa_path: path to current input file;
-    :type fq_fa_path: str;
-    :param tmp_fpath: path to current temporary file;
-    :type tmp_fpath: str;
-    :param taxonomy_path: path to taxonomt file;
-    :type taxonomy_path: str;
-    :param tsv_res_path: path to current classification file;
-    :type tsv_res_path: str;
-    :param acc_fpath: path to file 'hits_to_download.tsv';
-    :type acc_fpath: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    :param blast_algorithm: BLAST algorithm to use (see option '-a');
-    :type blast_algorithm: str;
-    :param user_email: user email ot send with request;
-    :type user_email: str;
-    :param organisms: list of strings performing 'nt' database slices;
-    :type organisms: list<str>;
-    :param acc_dict: accession dictionary for writing to 'hits_to_download.tsv';
-    :type acc_dict: dict<str: (str, int)>;
-    :param out_of_n: dictionary for printing how many packets left;
-    :type out_of_n: dict<str: str, str: int>;
-    """
-
+        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+    # :param saved_RID: saved Request ID from previous run;
+    # :type saved_RID: str;
+    # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
+    # :type packet: dict;
+    # :param packet_size: size of the packet (see option `-c` for definition);
+    # :type packet_size: int;
+    # :param packet_mode: packet forming mode (see option `-c` for definition);
+    # :type packet_mode: int;
+    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :type pack_to_send: list<int>;
+    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :type seqs_processed: list<int>;
+    # :param fq_fa_path: path to current input file;
+    # :type fq_fa_path: str;
+    # :param tmp_fpath: path to current temporary file;
+    # :type tmp_fpath: str;
+    # :param taxonomy_path: path to taxonomt file;
+    # :type taxonomy_path: str;
+    # :param tsv_res_path: path to current classification file;
+    # :type tsv_res_path: str;
+    # :param acc_fpath: path to file `hits_to_download.tsv`;
+    # :type acc_fpath: str;
+    # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
+    # :type blast_algorithm: str;
+    # :param user_email: user email ot send with request;
+    # :type user_email: str;
+    # :param organisms: list of strings performing `nt` database slices;
+    # :type organisms: list<str>;
+    # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
+    # :type acc_dict: dict<str: (str, int)>;
+    # :param out_of_n: dictionary for printing how many packets left;
+    # :type out_of_n: dict<str: str, str: int>;
 
     resume_rtoe = 0 # we will not sleep at the very beginning of resumption
 
     # Get BLAST XML response
     align_xml_text, error = wait_for_align(saved_RID, resume_rtoe,
-        pack_to_send, os.path.basename(fq_fa_path), logfile_path)
+        pack_to_send, os.path.basename(fq_fa_path))
 
     if error.code == 0:
         # OK -- results are retrieved.
@@ -207,7 +189,7 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
 
         _handle_result(align_xml_text, packet, taxonomy_path,
             tsv_res_path, acc_dict, acc_fpath, seqs_processed, pack_to_send,
-            tmp_fpath, logfile_path)
+            tmp_fpath)
 
         return False
     elif error.code == 2:
@@ -216,9 +198,8 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
         # Then resend the request.
 
         _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-            fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-            blast_algorithm, user_email, organisms,
-            acc_dict, out_of_n)
+            fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+            blast_algorithm, user_email, organisms, acc_dict, out_of_n)
         return False
     else:
         return True
@@ -227,46 +208,42 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
 
 
 def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-        blast_algorithm, user_email, organisms,
-        acc_dict, out_of_n):
-    """
-    :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
-    :type packet: dict;
-    :param packet_size: size of the packet (see option '-c' for definition);
-    :type packet_size: int;
-    :param packet_mode: packet forming mode (see option '-c' for definition);
-    :type packet_mode: int;
-    :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
-    :type pack_to_send: list<int>;
-    :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
-    :type seqs_processed: list<int>;
-    :param fq_fa_path: path to current input file;
-    :type fq_fa_path: str;
-    :param tmp_fpath: path to current temporary file;
-    :type tmp_fpath: str;
-    :param taxonomy_path: path to taxonomt file;
-    :type taxonomy_path: str;
-    :param tsv_res_path: path to current classification file;
-    :type tsv_res_path: str;
-    :param acc_fpath: path to file 'hits_to_download.tsv';
-    :type acc_fpath: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    :param blast_algorithm: BLAST algorithm to use (see option '-a');
-    :type blast_algorithm: str;
-    :param user_email: user email ot send with request;
-    :type user_email: str;
-    :param organisms: list of strings performing 'nt' database slices;
-    :type organisms: list<str>;
-    :param acc_dict: accession dictionary for writing to 'hits_to_download.tsv';
-    :type acc_dict: dict<str: (str, int)>;
-    :param out_of_n: dictionary for printing how many packets left;
-    :type out_of_n: dict<str: str, str: int>;
-    """
+        fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+    # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
+    # :type packet: dict;
+    # :param packet_size: size of the packet (see option `-c` for definition);
+    # :type packet_size: int;
+    # :param packet_mode: packet forming mode (see option `-c` for definition);
+    # :type packet_mode: int;
+    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :type pack_to_send: list<int>;
+    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :type seqs_processed: list<int>;
+    # :param fq_fa_path: path to current input file;
+    # :type fq_fa_path: str;
+    # :param tmp_fpath: path to current temporary file;
+    # :type tmp_fpath: str;
+    # :param taxonomy_path: path to taxonomt file;
+    # :type taxonomy_path: str;
+    # :param tsv_res_path: path to current classification file;
+    # :type tsv_res_path: str;
+    # :param acc_fpath: path to file `hits_to_download.tsv`;
+    # :type acc_fpath: str;
+    # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
+    # :type blast_algorithm: str;
+    # :param user_email: user email ot send with request;
+    # :type user_email: str;
+    # :param organisms: list of strings performing `nt` database slices;
+    # :type organisms: list<str>;
+    # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
+    # :type acc_dict: dict<str: (str, int)>;
+    # :param out_of_n: dictionary for printing how many packets left;
+    # :type out_of_n: dict<str: str, str: int>;
 
     s_letter = 's' if len(packet["qual"]) != 1 else ''
-    printl(logfile_path, "\nGoing to BLAST (" + blast_algorithm + ")")
+    print()
+    printlog_info("Going to BLAST (" + blast_algorithm + ")")
 
     # Count base pairs in packet
     lines = filter(lambda x: not x.startswith('>'), packet["fasta"].splitlines())
@@ -274,7 +251,7 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
     totalbp = "{:,}".format(totalbp)
     del lines
 
-    printl(logfile_path, "Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send[0],
+    printlog_info("Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send[0],
         out_of_n["msg"], len(packet["qual"]), s_letter, totalbp))
 
     error = BlastError(-1)
@@ -286,13 +263,13 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
         # Send the request and get BLAST XML response.
         # 'align_xml_text' will be None if an error occurs.
         align_xml_text, error = send_request(request, pack_to_send, packet_size, packet_mode,
-            os.path.basename(fq_fa_path), tmp_fpath, logfile_path)
+            os.path.basename(fq_fa_path), tmp_fpath)
 
         if error.code == 0:
             # Write results and leave the loop
             _handle_result(align_xml_text, packet, taxonomy_path,
                 tsv_res_path, acc_dict, acc_fpath, seqs_processed, pack_to_send,
-                tmp_fpath, logfile_path)
+                tmp_fpath)
 
         elif error.code == 2:
             # If NCBI BLAST server rejects the request due to too large amount of data in it --
@@ -300,9 +277,8 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
             # Then resend the request.
 
             _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
-                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath, logfile_path,
-                blast_algorithm, user_email, organisms,
-                acc_dict, out_of_n)
+                fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
+                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
 
             error = BlastError(0) # _split_and_resubmit will process packet successfully
         # end if

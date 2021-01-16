@@ -7,15 +7,12 @@ from src.fmt_readID import fmt_read_id
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
-    """
-    Function passes sequences that have been already processed.
-
-    :param fasta_file: FASTA file instalce;
-    :type fasta_file: str;
-    :param num_done_seqs: amount of sequences that have been already processed;
-    :type num_done_seqs: int;
-    :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
-    """
+    # Function passes sequences that have been already processed.
+    # :param fasta_file: FASTA file instalce;
+    # :type fasta_file: str;
+    # :param num_done_seqs: amount of sequences that have been already processed;
+    # :type num_done_seqs: int;
+    # :param fmt_func: function from 'FORMATTING_FUNCS' tuple;
 
     if num_done_seqs == 0:
         return None # no sequences have been processed
@@ -43,28 +40,26 @@ def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
 def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
     saved_packet_size=None, saved_packet_mode=None,
     max_seq_len=float("inf"), probing_batch_size=float("inf")):
-    """
-    Generator yields fasta-formattedpackets of records from fasta file.
-    This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
-        to 'pass_processed_files'.
-
-    :param fasta: path to fasta file;
-    :type fasta: str;
-    :param packet_size: number of sequences to align in one request ('blastn' launching);
-    :type packet_size: int;
-    :param num_done_seqs: number of sequnces in current file that have been already processed;
-    :type num_done_seqs: int;
-    :param packet_mode: packet mode (see -c option);
-    :type packet_mode: int;
-    :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
-      It will be None, if no tmp file was in classification directory;
-    :type saved_packet_size: int;
-    :param saved_packet_mode: mode used whilst formig the last sent packet from tmp file.
-      Necessary for resumption. It will be None, if no tmp file was in classification directory;
-    :type saved_packet_mode: int;
-    :param max_seq_len: maximum length of a sequence proessed;
-    :type max_seq_len: int (float("inf") if pruning is disabled);
-    """
+    # Generator yields fasta-formattedpackets of records from fasta file.
+    # This function passes 'num_done_seqs' sequences (i.e. they will not be processed)
+    #     to 'pass_processed_files'.
+    #
+    # :param fasta: path to fasta file;
+    # :type fasta: str;
+    # :param packet_size: number of sequences to align in one request ('blastn' launching);
+    # :type packet_size: int;
+    # :param num_done_seqs: number of sequnces in current file that have been already processed;
+    # :type num_done_seqs: int;
+    # :param packet_mode: packet mode (see -c option);
+    # :type packet_mode: int;
+    # :param saved_packet_size: size of last sent packet from tmp file. Necessary for resumption.
+    #   It will be None, if no tmp file was in classification directory;
+    # :type saved_packet_size: int;
+    # :param saved_packet_mode: mode used whilst formig the last sent packet from tmp file.
+    #   Necessary for resumption. It will be None, if no tmp file was in classification directory;
+    # :type saved_packet_mode: int;
+    # :param max_seq_len: maximum length of a sequence proessed;
+    # :type max_seq_len: int (float("inf") if pruning is disabled);
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fasta) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fasta) ]
@@ -188,15 +183,12 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
 
 
 def fasta_packets_from_str(data, packet_size):
-    """
-    Generator retrieves 'packet_size' records from 'fasta'
-        no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
-
-    :param data: FASTA-formatted string;
-    :type data: str;
-    :param packet_size: number of sequences to align in one 'blastn' launching;
-    :type packet_size: int;
-    """
+    # Generator retrieves 'packet_size' records from 'fasta'
+    #     no matter whether is it path to FASTA file of actual FASTA data of 'str' type.
+    # :param data: FASTA-formatted string;
+    # :type data: str;
+    # :param packet_size: number of sequences to align in one 'blastn' launching;
+    # :type packet_size: int;
 
     fasta_lines = data.splitlines()
     fasta_lines.append("") # append fictive value imitating end of file
