@@ -11,19 +11,17 @@ from shelve import open as open_shelve
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
 from src.binning_modules.fast5 import fast5_readids
-from src.printlog import printl, printn, getwt, err_fmt
+from src.printlog import printn, printlog_info_time, printlog_error, printlog_error_time
 
 index_name = "fast5_to_tsvtaxann_idx"
 
 
 def init_paral_utw(write_lock_buff, print_lock_buff):
-    """
-    Function initializes global locks for funciton 'map_f5reads_2_taxann'.
-    :param write_lock_buff: lock for writing to output file(s);
-    :type write_lock_buff: mp.Lock;
-    :param print_lock_buff: lock for printing to console;
-    :type print_lock_buff: mp.Lock;
-    """
+    # Function initializes global locks for funciton 'map_f5reads_2_taxann'.
+    # :param write_lock_buff: lock for writing to output file(s);
+    # :type write_lock_buff: mp.Lock;
+    # :param print_lock_buff: lock for printing to console;
+    # :type print_lock_buff: mp.Lock;
 
     global write_lock
     write_lock = write_lock_buff
@@ -64,22 +62,18 @@ def init_paral_utw(write_lock_buff, print_lock_buff):
 # }
 
 
-def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_path):
-    """
-    Function perform mapping of all reads stored in input FAST5 files
-        to existing TSV files containing taxonomic annotation info.
+def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir):
+    # Function perform mapping of all reads stored in input FAST5 files
+    #     to existing TSV files containing taxonomic annotation info.
 
-    It creates an DBM index file.
+    # It creates an DBM index file.
     
-    :param f5_fpaths: list of paths to current FAST5 file;
-    :type f5_fpaths: list<str>;
-    :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
-    :type tsv_taxann_lst: list<str>;
-    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
-    :type tax_annot_res_dir: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
+    # :param f5_fpaths: list of paths to current FAST5 file;
+    # :type f5_fpaths: list<str>;
+    # :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
+    # :type tsv_taxann_lst: list<str>;
+    # :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    # :type tax_annot_res_dir: str;
 
     index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
 
@@ -100,10 +94,11 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
             # end for
         except RuntimeError as runterr:
             with print_lock:
-                printl(logfile_path, err_fmt("FAST5 file is broken"))
-                printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
-                printl(logfile_path, "Reason: {}".format( str(runterr) ))
-                printl(logfile_path, "Omitting this file...\n")
+                printlog_error_time("Error: FAST5 file is broken")
+                printlog_error("Reading the file `{}` failed.".format(os.path.basename(f5_path)))
+                printlog_error("Reason: {}".format( str(runterr) ))
+                printlog_error("Omitting this file...")
+                print()
             # end with
             return
         # end try
@@ -149,13 +144,13 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
         #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
         if len(readids_to_seek) == len_before:
             with print_lock:
-                printl(logfile_path, err_fmt("reads from FAST5 file not found"))
-                printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
-                printl(logfile_path, "Some reads have not undergone taxonomic annotation.")
+                printlog_error_time("Error: some reads from FAST5 file not found")
+                printlog_error("This FAST5 file: `{}`".format(f5_path))
+                printlog_error("Some reads have not undergone taxonomic annotation.")
                 missing_log = "missing_reads_lst.txt"
-                printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
+                printlog_error("List of missing reads are in following file: `{}`".format(missing_log))
                 with open(missing_log, 'w') as missing_logfile:
-                    missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
+                    missing_logfile.write("Missing reads from file `{}`:\n\n".format(f5_path))
                     for readid in readids_to_seek:
                         missing_logfile.write(fmt_read_id(readid) + '\n')
                     # end for
@@ -165,7 +160,7 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
                     # end for
                     os.rmdir(index_dirpath)
                 except OSError as oserr:
-                    printl(logfile_path, "error while removing index directory: {}".format(oserr))
+                    printlog_error_time("Error occured while removing index directory: {}".format(oserr))
                 finally:
                     platf_depend_exit(3)
                 # end try
@@ -180,13 +175,14 @@ def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir, logfile_p
                     index_f5_2_tsv[f5_path] = idx_dict
                 # end with
             except OSError as oserr:
-                printl(logfile_path, err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
-                printl(logfile_path,  str(oserr) )
+                printlog_error_time("Error: cannot create index file `{}`".format(os.path.join(index_dirpath, index_name)))
+                printlog_error( str(oserr) )
                 platf_depend_exit(1)
             # end try
         # end with
 
-        printl(logfile_path, "\r{} - File '{}' is processed.".format(getwt(), os.path.basename(f5_path)))
+        sys.stdout.write('\r')
+        printlog_info_time("File `{}` is processed.".format(os.path.basename(f5_path)))
         printn(" Working...")
     # end for
 # end def map_f5reads_2_taxann

@@ -74,6 +74,8 @@ def rename_file_verbosely(file):
         printlog_error( str(err) )
         platf_depend_exit(1)
     # end try
+
+    return new_name
 # end def rename_file_verbosely
 
 def remove_tmp_files(*paths):

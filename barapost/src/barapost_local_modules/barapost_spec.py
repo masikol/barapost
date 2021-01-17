@@ -125,8 +125,6 @@ def parse_align_results_xml(xml_text, qual_dict):
     # :type xml_text: str;
     # :param qual_dict: dict, which maps sequence IDs to their quality;
     # :type qual_dict: dict<str: float>;
-    # :param logfile_path: path to logfile;
-    # :type logfile_path: str;
     #
     # Returns list<str>.
 

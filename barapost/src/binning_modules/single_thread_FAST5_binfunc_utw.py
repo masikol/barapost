@@ -4,6 +4,7 @@ import h5py
 
 import os
 import sys
+import logging
 
 from src.binning_modules.binning_spec import configure_resfile_lines
 from src.binning_modules.fast5 import update_file_dict
@@ -13,7 +14,7 @@ from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
 from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
-from src.printlog import printl, printn, getwt, err_fmt
+from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
 from src.fmt_readID import fmt_read_id
 
 from shelve import open as open_shelve
@@ -21,32 +22,28 @@ from shelve import open as open_shelve
 index_name = "fast5_to_tsvtaxann_idx"
 
 
-def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
-        min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
-    """
-    Function bins FAST5 file with untwisting.
+def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
+    min_pident, min_coverage, no_trash):
+    # Function bins FAST5 file with untwisting.
+    #
+    # :param f5_path: path to FAST5 file meant to be processed;
+    # :type f5_path: str;
+    # :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    # :type tax_annot_res_dir: str;
+    # :param sens: binning sensitivity;
+    # :type sens: str;
+    # :param min_qual: threshold for quality filter;
+    # :type min_qual: float;
+    # :param min_qlen: threshold for length filter;
+    # :type min_qlen: int (or None, if this filter is disabled);
+    # :param min_pident: threshold for alignment identity filter;
+    # :type min_pident: float (or None, if this filter is disabled);
+    # :param min_coverage: threshold for alignment coverage filter;
+    # :type min_coverage: float (or None, if this filter is disabled);
+    # :param no_trash: loical value. True if user does NOT want to output trash files;
+    # :type no_trash: bool;
 
-    :param f5_path: path to FAST5 file meant to be processed;
-    :type f5_path: str;
-    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
-    :type tax_annot_res_dir: str;
-    :param sens: binning sensitivity;
-    :type sens: str;
-    :param min_qual: threshold for quality filter;
-    :type min_qual: float;
-    :param min_qlen: threshold for length filter;
-    :type min_qlen: int (or None, if this filter is disabled);
-    :param min_pident: threshold for alignment identity filter;
-    :type min_pident: float (or None, if this filter is disabled);
-    :param min_coverage: threshold for alignment coverage filter;
-    :type min_coverage: float (or None, if this filter is disabled);
-    :param no_trash: loical value. True if user does NOT want to output trash files;
-    :type no_trash: bool;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
-
-    outdir_path = os.path.dirname(logfile_path)
+    outdir_path = os.path.dirname(logging.getLoggerClass().root.handlers[0].baseFilename)
 
     seqs_pass = 0 # counter for sequences, which pass filters
     QL_seqs_fail = 0 # counter for too short or too low-quality sequences
@@ -89,10 +86,11 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
             break
         # end for
     except RuntimeError as runterr:
-        printl(logfile_path, err_fmt("FAST5 file is broken"))
-        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
-        printl(logfile_path, "Reason: {}".format( str(runterr) ))
-        printl(logfile_path, "Omitting this file...\n")
+        printlog_error_time("FAST5 file is broken")
+        printlog_error("Reading the file `{}` crashed.".format(os.path.basename(f5_path)))
+        printlog_error("Reason: {}".format( str(runterr) ))
+        printlog_error("Omitting this file...")
+        print()
         # Return zeroes -- inc_val won't be incremented and this file will be omitted
         return (0, 0, 0)
     # end try
@@ -117,8 +115,8 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
     index_f5_2_tsv = open_shelve( os.path.join(index_dirpath, index_name), 'r' )
 
     if not f5_path in index_f5_2_tsv.keys():
-        printl(logfile_path, err_fmt("Source FAST5 file not found in index"))
-        printl(logfile_path, "Try to rebuild index")
+        printlog_error_time("Source FAST5 file `{}` not found in index".format(f5_path))
+        printlog_error("Try to rebuild index")
         platf_depend_exit(1)
     # end if
 
@@ -126,18 +124,18 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens,
 
         read_names = index_f5_2_tsv[f5_path][tsv_path]
         taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy.tsv")
-        resfile_lines = configure_resfile_lines(tsv_path, sens, taxonomy_path, logfile_path)
+        resfile_lines = configure_resfile_lines(tsv_path, sens, taxonomy_path)
 
         for read_name in read_names:
             try:
                 hit_names, *vals_to_filter = resfile_lines[sys.intern(fmt_read_id(read_name)[1:])]
             except KeyError:
-                printl(logfile_path,
-                    err_fmt("missing taxonomic annotation info for read '{}'".format(fmt_read_id(read_name)[1:])))
-                printl(logfile_path, "It is stored in '{}' FAST5 file".format(f5_path))
-                printl(logfile_path, "Try to make new index file (press ENTER on corresponding prompt).")
-                printl(logfile_path, """Or, if does not work for you, make sure that taxonomic annotation info
-for this read is present in one of TSV files generated by 'barapost-prober.py' and 'barapost-local.py'.""")
+                printlog_error_time("Error: missing taxonomic annotation info for read `{}`"\
+                    .format(fmt_read_id(read_name)[1:]))
+                printlog_error("It is stored in `{}` FAST5 file".format(f5_path))
+                printlog_error("Try to make new index file (press ENTER on corresponding prompt).")
+                printlog_error("Or, if does not work for you, make sure that taxonomic annotation info \
+for this read is present in one of TSV files generated by `barapost-prober.py` and `barapost-local.py`.")
                 index_f5_2_tsv.close()
                 platf_depend_exit(1)
             # end try
@@ -145,25 +143,25 @@ for this read is present in one of TSV files generated by 'barapost-prober.py' a
             if not QL_filter(vals_to_filter):
                 # Get name of result FASTQ file to write this read in
                 if QL_trash_fpath not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, QL_trash_fpath, logfile_path)
+                    srt_file_dict = update_file_dict(srt_file_dict, QL_trash_fpath)
                 # end if
-                f5_cpy_func(from_f5, read_name, srt_file_dict[QL_trash_fpath], logfile_path)
+                f5_cpy_func(from_f5, read_name, srt_file_dict[QL_trash_fpath])
                 QL_seqs_fail += 1
             elif not align_filter(vals_to_filter):
                 # Get name of result FASTQ file to write this read in
                 if align_trash_fpath not in srt_file_dict.keys():
-                    srt_file_dict = update_file_dict(srt_file_dict, align_trash_fpath, logfile_path)
+                    srt_file_dict = update_file_dict(srt_file_dict, align_trash_fpath)
                 # end if
-                f5_cpy_func(from_f5, read_name, srt_file_dict[align_trash_fpath], logfile_path)
+                f5_cpy_func(from_f5, read_name, srt_file_dict[align_trash_fpath])
                 align_seqs_fail += 1
             else:
                 for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                     # Get name of result FASTQ file to write this read in
                     binned_file_path = os.path.join(outdir_path, "{}.fast5".format(hit_name))
                     if binned_file_path not in srt_file_dict.keys():
-                        srt_file_dict = update_file_dict(srt_file_dict, binned_file_path, logfile_path)
+                        srt_file_dict = update_file_dict(srt_file_dict, binned_file_path)
                     # end if
-                    f5_cpy_func(from_f5, read_name, srt_file_dict[binned_file_path], logfile_path)
+                    f5_cpy_func(from_f5, read_name, srt_file_dict[binned_file_path])
                 # end for
                 seqs_pass += 1
             # end if
@@ -177,7 +175,8 @@ for this read is present in one of TSV files generated by 'barapost-prober.py' a
         file_obj.close()
     # end for
 
-    printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(f5_path)))
+    sys.stdout.write('\r')
+    printlog_info_time("File `{}` is binned.".format(os.path.basename(f5_path)))
     printn(" Working...")
 
     return (seqs_pass, QL_seqs_fail, align_seqs_fail)

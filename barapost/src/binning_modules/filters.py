@@ -2,7 +2,7 @@
 # Module defines functions, which conifigure their return values according on filter options.
 
 import os
-from re import search as re_search
+import re
 from src.filesystem import is_fasta
 
 
@@ -28,18 +28,16 @@ from src.filesystem import is_fasta
 
 
 def get_QL_filter(fpath, quality, length):
-    """
-    Function returns a filter function.
-    This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
-    Returns quality and length filter.
-
-    :param fpath: path to input file;
-    :type fpath: str;
-    :param quality: threshold for quality filter;
-    :type quality: float;
-    :param length: threshold for length filter;
-    :type length: int or None, if filter is disabled;
-    """
+    # Function returns a filter function.
+    # This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
+    # Returns quality and length filter.
+    #
+    # :param fpath: path to input file;
+    # :type fpath: str;
+    # :param quality: threshold for quality filter;
+    # :type quality: float;
+    # :param length: threshold for length filter;
+    # :type length: int or None, if filter is disabled;
 
     filters = list()
 
@@ -72,16 +70,15 @@ def get_QL_filter(fpath, quality, length):
 
 
 def get_align_filter(pident, coverage):
-    """
-    Function returns a filter function.
-    This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
-    Returns alignment identity and coverage filter.
-
-    :param pident: threshold for alignment identity filter;
-    :type pident: float or None, if filter is disabled;
-    :param coverage: threshold for alignment coverage filter;
-    :type coverage: float or None, if filter is disabled;
-    """
+    # Function returns a filter function.
+    # This filter in turn returns True if annotation line
+    #   passed to it passes all filters and False otherwise.
+    # Returns alignment identity and coverage filter.
+    #
+    # :param pident: threshold for alignment identity filter;
+    # :type pident: float or None, if filter is disabled;
+    # :param coverage: threshold for alignment coverage filter;
+    # :type coverage: float or None, if filter is disabled;
 
     filters = list()
 
@@ -108,18 +105,16 @@ ext_pattern = r".*(\.(m)?f(ast)?(q|a|5))(\.gz)?$"
 
 
 def get_QL_trash_fpath(fpath, outdir_path, quality, length):
-    """
-    Function configures path to trash (quality and length) file according to filter options.
-
-    :param fpath: path to input file;
-    :type fpath: str;
-    :param outdir_path: path to output directory;
-    :type outdir_path: str;
-    :param quality: threshold for quality filter;
-    :type quality: float;
-    :param length: threshold for length filter;
-    :type length: int or None, if filter is disabled;
-    """
+    # Function configures path to trash (quality and length) file according to filter options.
+    #
+    # :param fpath: path to input file;
+    # :type fpath: str;
+    # :param outdir_path: path to output directory;
+    # :type outdir_path: str;
+    # :param quality: threshold for quality filter;
+    # :type quality: float;
+    # :param length: threshold for length filter;
+    # :type length: int or None, if filter is disabled;
 
     trash_fpath = os.path.join(outdir_path, "trash")
 
@@ -134,24 +129,22 @@ def get_QL_trash_fpath(fpath, outdir_path, quality, length):
     # end if
 
     # Add appropriate extention
-    trash_fpath += re_search(ext_pattern, fpath).group(1)
+    trash_fpath += re.search(ext_pattern, fpath).group(1)
 
     return trash_fpath
 # end def get_QL_trash_fpath
 
 
 def get_align_trash_fpath(fpath, outdir_path, pident, coverage):
-    """
-    Function configures path to trash (identity and coverage) file according to filter options.
-
-    :param fpath: path to input file;
-    :type fpath: str;
-    :param outdir_path: path to output directory;
-    :param pident: threshold for alignment identity filter;
-    :type pident: float or None, if filter is disabled;
-    :param coverage: threshold for alignment coverage filter;
-    :type coverage: float or None, if filter is disabled;
-    """
+    # Function configures path to trash (identity and coverage) file according to filter options.
+    #
+    # :param fpath: path to input file;
+    # :type fpath: str;
+    # :param outdir_path: path to output directory;
+    # :param pident: threshold for alignment identity filter;
+    # :type pident: float or None, if filter is disabled;
+    # :param coverage: threshold for alignment coverage filter;
+    # :type coverage: float or None, if filter is disabled;
 
     trash_fpath = os.path.join(outdir_path, "align_trash")
 
@@ -166,7 +159,7 @@ def get_align_trash_fpath(fpath, outdir_path, pident, coverage):
     # end if
 
     # Add appropriate extention
-    trash_fpath += re_search(ext_pattern, fpath).group(1)
+    trash_fpath += re.search(ext_pattern, fpath).group(1)
 
     return trash_fpath
 # end def get_align_trash_fpath

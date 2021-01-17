@@ -11,7 +11,7 @@ from shelve import open as open_shelve
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
 from src.binning_modules.fast5 import fast5_readids
-from src.printlog import printl, err_fmt
+from src.printlog import printlog_error, printlog_error_time
 
 index_name = "fast5_to_tsvtaxann_idx"
 
@@ -47,22 +47,18 @@ index_name = "fast5_to_tsvtaxann_idx"
 # }
 
 
-def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_path):
-    """
-    Function perform mapping of all reads stored in input FAST5 files
-        to existing TSV files containing taxonomic annotation info.
-
-    It creates an DBM index file.
-
-    :param f5_path: path to current FAST5 file;
-    :type f5_path: str;
-    :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
-    :type tsv_taxann_lst: list<str>;
-    :param tax_annot_res_dir: path to directory containing taxonomic annotation;
-    :type tax_annot_res_dir: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
+def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir):
+    # Function perform mapping of all reads stored in input FAST5 files
+    #     to existing TSV files containing taxonomic annotation info.
+    #
+    # It creates an DBM index file.
+    #
+    # :param f5_path: path to current FAST5 file;
+    # :type f5_path: str;
+    # :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;
+    # :type tsv_taxann_lst: list<str>;
+    # :param tax_annot_res_dir: path to directory containing taxonomic annotation;
+    # :type tax_annot_res_dir: str;
 
     index_dirpath = os.path.join(tax_annot_res_dir, index_name) # name of directory that will contain indicies
 
@@ -81,10 +77,11 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
             break
         # end for
     except RuntimeError as runterr:
-        printl(logfile_path, err_fmt("FAST5 file is broken"))
-        printl(logfile_path, "Reading the file '{}' crashed.".format(os.path.basename(f5_path)))
-        printl(logfile_path, "Reason: {}".format( str(runterr) ))
-        printl(logfile_path, "Omitting this file...\n")
+        printlog_error_time("FAST5 file is broken")
+        printlog_error("Reading the file `{}` crashed.".format(os.path.basename(f5_path)))
+        printlog_error("Reason: {}".format( str(runterr) ))
+        printlog_error("Omitting this file...")
+        print()
         return
     # end try
 
@@ -128,11 +125,12 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
     # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
     #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
     if len(readids_to_seek) == len_before:
-        printl(logfile_path, err_fmt("reads from FAST5 file not found"))
-        printl(logfile_path, "FAST5 file: '{}'".format(f5_path))
-        printl(logfile_path, "Some reads have not undergone taxonomic annotation.")
+        printlog_error_time("reads from FAST5 file not found")
+        printlog_error("FAST5 file: `{}`".format(f5_path))
+        printlog_error("Some reads have not undergone taxonomic annotation.")
         missing_log = "missing_reads_lst.txt"
-        printl(logfile_path, "List of missing reads are in following file:\n  '{}'\n".format(missing_log))
+        printlog_error("List of missing reads are in following file:"
+        printlog_error("{}".format(missing_log)))
         with open(missing_log, 'w') as missing_logfile:
             missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
             for readid in readids_to_seek:
@@ -144,7 +142,7 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
             # end for
             os.rmdir(index_dirpath)
         except OSError as oserr:
-            printl(logfile_path, "error while removing index directory: {}".format(oserr))
+            printlog_error("Error occured while removing index directory: {}".format(oserr))
         finally:
             platf_depend_exit(3)
         # end try
@@ -157,8 +155,8 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir, logfile_pat
             index_f5_2_tsv[f5_path] = idx_dict
         # end with
     except OSError as oserr:
-        printl(logfile_path, err_fmt("cannot write to file '{}'".format(os.path.join(index_dirpath, index_name))))
-        printl(logfile_path,  str(oserr) )
+        printlog_error_time("Error: cannot create index file `{}`".format(os.path.join(index_dirpath, index_name))))
+        printlog_error( str(oserr) )
         platf_depend_exit(1)
     # end try
 # end def map_f5reads_2_taxann

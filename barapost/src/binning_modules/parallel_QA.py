@@ -8,12 +8,13 @@
 
 import os
 import sys
+import logging
 
 from src.binning_modules.binning_spec import get_res_tsv_fpath, configure_resfile_lines
 
 from src.fmt_readID import fmt_read_id
 from src.platform import platf_depend_exit
-from src.printlog import printl, printn, getwt, err_fmt
+from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
 from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.binning_modules.fastq_records import fastq_records
@@ -24,12 +25,10 @@ from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 
 def write_fastq_record(binned_fpath, fastq_record):
-    """
-    :param binned_fpath: path to file, in which data from fastq_record is oing to be written;
-    :type binned_fpath: str;
-    :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ;
-    :type fastq_record: dict<str: str>;
-    """
+    # :param binned_fpath: path to file, in which data from fastq_record is oing to be written;
+    # :type binned_fpath: str;
+    # :param fastq_record: dict of 4 elements. Elements are four corresponding lines of FASTQ;
+    # :type fastq_record: dict<str: str>;
 
     if not binned_fpath is None:
         with open(binned_fpath, 'a') as binned_file:
@@ -43,12 +42,10 @@ def write_fastq_record(binned_fpath, fastq_record):
 
 
 def write_fasta_record(binned_fpath, fasta_record):
-    """
-    :param binned_file: file, which data from fasta_record is written in
-    :type binned_file: _io.TextIOWrapper
-    :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
-    :type fasta_record: dict<str: str>
-    """
+    # :param binned_file: file, which data from fasta_record is written in
+    # :type binned_file: _io.TextIOWrapper
+    # :param fasta_record: dict of 2 elements. Elements are four corresponding lines of FASTA
+    # :type fasta_record: dict<str: str>
 
     if not binned_fpath is None:
         with open(binned_fpath, 'a') as binned_file:
@@ -60,14 +57,11 @@ def write_fasta_record(binned_fpath, fasta_record):
 
 
 def init_paral_binning(print_lock_buff, write_lock_buff):
-    """
-    Function initializes global locks for parallel binning of fasta and fastq files.
-
-    :param print_lock_buff: lock for printing to console;
-    :type print_lock_buff: multiprocessing.Lock;
-    :param write_lock_buff: lock for printing writing to binned files;
-    :type write_lock_buff: multiprocessing.Lock;
-    """
+    # Function initializes global locks for parallel binning of fasta and fastq files.
+    # :param print_lock_buff: lock for printing to console;
+    # :type print_lock_buff: multiprocessing.Lock;
+    # :param write_lock_buff: lock for printing writing to binned files;
+    # :type write_lock_buff: multiprocessing.Lock;
 
     global print_lock
     print_lock = print_lock_buff
@@ -78,29 +72,25 @@ def init_paral_binning(print_lock_buff, write_lock_buff):
 # end def init_paral_binning
 
 
-def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
-    min_qual, min_qlen, min_pident, min_coverage, no_trash, logfile_path):
-    """
-    Function for parallel binning FASTQ and FASTA files.
-    Actually bins multiple files.
+def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
+    min_qlen, min_pident, min_coverage, no_trash):
+    # Function for parallel binning FASTQ and FASTA files.
+    # Actually bins multiple files.
+    #
+    # :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
+    # :type fq_fa_lst: list<str>;
+    # :param min_qual: threshold for quality filter;
+    # :type min_qual: float;
+    # :param min_qlen: threshold for length filter;
+    # :type min_qlen: int (or None, if this filter is disabled);
+    # :param min_pident: threshold for alignment identity filter;
+    # :type min_pident: float (or None, if this filter is disabled);
+    # :param min_coverage: threshold for alignment coverage filter;
+    # :type min_coverage: float (or None, if this filter is disabled);
+    # :param no_trash: loical value. True if user does NOT want to output trash files;
+    # :type no_trash: bool;
 
-    :param fq_fa_lst: lsit of paths to FASTQ (of FASTA) file meant to be processed;
-    :type fq_fa_lst: list<str>;
-    :param min_qual: threshold for quality filter;
-    :type min_qual: float;
-    :param min_qlen: threshold for length filter;
-    :type min_qlen: int (or None, if this filter is disabled);
-    :param min_pident: threshold for alignment identity filter;
-    :type min_pident: float (or None, if this filter is disabled);
-    :param min_coverage: threshold for alignment coverage filter;
-    :type min_coverage: float (or None, if this filter is disabled);
-    :param no_trash: loical value. True if user does NOT want to output trash files;
-    :type no_trash: bool;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
-
-    outdir_path = os.path.dirname(logfile_path)
+    outdir_path = os.path.dirname(logging.getLoggerClass().root.handlers[0].baseFilename)
 
     seqs_pass = 0 # counter for sequences, which pass filters
     QL_seqs_fail = 0 # counter for too short or too low-quality sequences
@@ -109,9 +99,9 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
     for fq_fa_path in fq_fa_lst:
 
         new_dpath = get_curr_res_dpath(fq_fa_path, tax_annot_res_dir)
-        tsv_res_fpath = get_res_tsv_fpath(new_dpath, logfile_path)
+        tsv_res_fpath = get_res_tsv_fpath(new_dpath)
         taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy.tsv")
-        resfile_lines = configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path, logfile_path)
+        resfile_lines = configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path)
 
         # Configure path to trash file
         if is_fastq(fq_fa_path):
@@ -163,9 +153,10 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                 try:
                     hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
                 except KeyError:
-                    printl(logfile_path, err_fmt("""read '{}' not found in TSV file containing taxonomic annotation.
-    This TSV file: '{}'""".format(read_name, tsv_res_fpath)))
-                    printl(logfile_path, "Make sure that this read has been already processed by 'barapost-prober.py' and 'barapost-local.py'.")
+                    printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation.")
+                    printlog_error("This TSV file: `{}`".format(read_name, tsv_res_fpath))
+                    printlog_error("Make sure that this read has been already processed by \
+`barapost-prober.py` and `barapost-local.py`.")
                     platf_depend_exit(1)
                 # end try
 
@@ -205,7 +196,8 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr,
                     write_fun(fpath, record)
                 # end for
             # end if
-            printl(logfile_path, "\r{} - File '{}' is binned.".format(getwt(), os.path.basename(fq_fa_path)))
+            sys.stdout.write('\r')
+            printlog_info_time("File `{}` is binned.".format(os.path.basename(fq_fa_path)))
             printn(" Working...")
         # end with
     # end for

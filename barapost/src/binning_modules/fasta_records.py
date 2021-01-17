@@ -4,17 +4,15 @@
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 def fasta_records(fa_path):
-    """
-    Generator yields records retrieved from fasta files.
-
-    :param fasta_file: file instance of FASTA file to retrieve sequences from;
-    :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
-    Returns dictionary of the following structure:
-    {
-        "seq_id": ID_of_sequence,
-        "seq": sequence_itself
-    }
-    """
+    # Generator yields records retrieved from fasta files.
+    #
+    # :param fasta_file: file instance of FASTA file to retrieve sequences from;
+    # :type fasta_file: _io.TextIOWrapper or gzip.GzipFile;
+    # Returns dictionary of the following structure:
+    # {
+    #     "seq_id": ID_of_sequence,
+    #     "seq": sequence_itself
+    # }
 
     how_to_open = OPEN_FUNCS[ is_gzipped(fa_path) ]
     fmt_func = FORMATTING_FUNCS[ is_gzipped(fa_path) ]
