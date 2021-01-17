@@ -10,7 +10,7 @@ import multiprocessing as mp
 from src.fasta import fasta_packets
 from src.fastq import fastq_packets
 
-from src.printlog import printlog_info, printlog_info_time, printn
+from src.printlog import printlog_info, printlog_info_time, printn, printlog_warning
 from src.write_classification import write_classification
 from src.spread_files_equally import spread_files_equally
 from src.filesystem import create_result_directory
@@ -92,8 +92,19 @@ def process_paral(fq_fa_list, packet_size, tax_annot_res_dir,
             num_seqs = sum(1 for line in how_to_open(fq_fa_path)) // 4 # 4 lines per record
         else:
             packet_generator = fasta_packets
-            num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
-                map(fmt_func, how_to_open(fq_fa_path).readlines()))))
+            try:
+                num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+                    map(fmt_func, how_to_open(fq_fa_path).readlines()))))
+            except UnicodeDecodeError as err:
+                with print_lock:
+                    print()
+                    printlog_warning("Warning: current file is broken: {}."\
+                        .format(str(err)))
+                    printlog_warning("File: `{}`".format(os.path.abspath(fq_fa_path)))
+                    printlog_warning("This file will not be processed.")
+                    continue
+                # end with
+            # end try
         # end if
 
         if num_seqs == num_done_seqs:

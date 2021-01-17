@@ -3,10 +3,12 @@
 #   of certain ('packet_size') size.
 # Moreover, this module can be used to calculate mean quality of a read.
 
+import os
 from math import log
 from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
+from src.printlog import printlog_warning, printlog_error_time
 
 FASTQ_LINES_PER_READ = 4
 
@@ -49,7 +51,17 @@ def form_packet_numseqs(fastq_file, packet_size, fmt_func, max_seq_len):
 
     for i in range(packet_size):
 
-        read_id = fmt_func(fastq_file.readline())
+        try:
+            read_id = fmt_func(fastq_file.readline())
+        except UnicodeDecodeError as err:
+            print()
+            printlog_warning("Warning: current file is broken: {}."\
+                .format(str(err)))
+            printlog_warning("File: `{}`".format(os.path.abspath(fastq_file.name)))
+            printlog_warning("Ceasing reading sequences from this file.")
+            eof = True
+            break
+        # end try
 
         if read_id == "": # if eof is reached, leave now
             eof = True
@@ -92,7 +104,17 @@ def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
 
     while totalbp < packet_size:
 
-        read_id = fmt_func(fastq_file.readline())
+        try:
+            read_id = fmt_func(fastq_file.readline())
+        except UnicodeDecodeError as err:
+            print()
+            printlog_warning("Warning: current file is broken: {}."\
+                .format(str(err)))
+            printlog_warning("File: `{}`".format(os.path.abspath(fastq_file.name)))
+            printlog_warning("Ceasing reading sequences from this file.")
+            eof = True
+            break
+        # end try
 
         if read_id == "": # if eof is reached, leave now
             eof = True
@@ -108,7 +130,7 @@ def form_packet_totalbp(fastq_file, packet_size, fmt_func, max_seq_len):
         qual_dict[read_id[1:]] = avg_qual
 
         totalbp += min(len(seq), max_seq_len)
-    # end for
+    # end while
 
     if max_seq_len < float("inf"): # prune sequences
         packet = prune_seqs(packet, max_seq_len)
@@ -179,7 +201,7 @@ def fastq_packets(fastq, packet_size, num_done_seqs, packet_mode=0,
 
             packet, eof = form_packet(fastq_file, wrk_pack_size, fmt_func, max_seq_len)
 
-            if eof or packet["fasta"] == "":
+            if eof and packet["fasta"] == "":
                 return
             # end if
 

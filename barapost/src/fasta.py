@@ -2,8 +2,10 @@
 # This module defines function-generator that yields fasta-formatted records from fasta file
 #   of certain ('packet_size') size.
 
+import os
 from src.prune_seqs import prune_seqs
 from src.fmt_readID import fmt_read_id
+from src.printlog import printlog_warning
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 def pass_processed_seqs(fasta_file, num_done_seqs, fmt_func):
@@ -81,7 +83,17 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
         packet = ""
 
         # We are resuming, nucleotide sequence will be saved in 'line' variable here:
-        line = get_next_line()
+        try:
+            line = get_next_line()
+        except UnicodeDecodeError as err:
+            print()
+            printlog_warning("Warning: current file is broken: {}."\
+                .format(str(err)))
+            printlog_warning("File: `{}`".format(fasta))
+            printlog_warning("Ceasing reading sequences from this file.")
+            return
+        # end try
+
         if line.startswith('>'):
             line = fmt_read_id(line) # format sequence ID
         # end if
@@ -114,7 +126,18 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
 
             while counter < wrk_pack_size:
 
-                line = get_next_line()
+                try:
+                    line = get_next_line()
+                except UnicodeDecodeError as err:
+                    print()
+                    printlog_warning("Warning: current file is broken: {}."\
+                        .format(str(err)))
+                    printlog_warning("File: `{}`".format(fasta))
+                    printlog_warning("Ceasing reading sequences from this file.")
+                    line = ""
+                    break
+                # end try
+
                 if line.startswith('>'):
                     line = fmt_read_id(line)
                     if packet_mode == 0:

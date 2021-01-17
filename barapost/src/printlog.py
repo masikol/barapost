@@ -4,6 +4,7 @@
 
 import sys
 import logging
+import traceback as tb
 from time import time, strftime, localtime, gmtime
 
 
@@ -35,11 +36,12 @@ def log_info(msg):
 def printlog_error_time(msg):
     print("\n{} - {}".format(getwt(), msg))
     logging.error("({} from start)\t{}.".format(getwt(), msg))
+    logging.error("Stack trace:\n{}".format(''.join(tb.format_stack())))
 # end def printlog
 
 def printlog_error(msg):
     print(msg)
-    logging.error("({} from start)\t{}.".format(msg))
+    logging.error("({} from start)\t{}.".format(getwt(), msg))
 # end def printlog
 
 def printlog_warning(msg):

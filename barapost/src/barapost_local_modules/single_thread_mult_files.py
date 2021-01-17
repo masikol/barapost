@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from src.printlog import printlog_info, printlog_info_time, printn
+from src.printlog import printlog_info, printlog_info_time, printn, printlog_warning
 from src.write_classification import write_classification
 from src.filesystem import create_result_directory
 from src.filesystem import remove_tmp_files, is_fastq, is_gzipped, OPEN_FUNCS, FORMATTING_FUNCS
@@ -67,8 +67,17 @@ def process(fq_fa_list, packet_size, tax_annot_res_dir, blast_algorithm, use_ind
             num_seqs = sum(1 for line in how_to_open(fq_fa_path)) // 4 # 4 lines per record
         else:
             packet_generator = fasta_packets
-            num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
-                map(fmt_func, how_to_open(fq_fa_path).readlines()))))
+            try:
+                num_seqs = len(tuple(filter(lambda l: True if l.startswith('>') else False,
+                    map(fmt_func, how_to_open(fq_fa_path).readlines()))))
+            except UnicodeDecodeError as err:
+                print()
+                printlog_warning("Warning: current file is broken: {}."\
+                    .format(str(err)))
+                printlog_warning("File: `{}`".format(os.path.abspath(fq_fa_path)))
+                printlog_warning("This file will not be processed.")
+                continue
+            # end try
         # end if
 
         if num_seqs == num_done_seqs:
