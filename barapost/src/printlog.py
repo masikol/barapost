@@ -39,7 +39,12 @@ def printlog_error_time(msg):
 
 def printlog_error(msg):
     print(msg)
-    logging.error("({} from start)\t{}.\n  {}".format(err, msg))
+    logging.error("({} from start)\t{}.".format(msg))
+# end def printlog
+
+def printlog_warning(msg):
+    print(msg)
+    logging.warning("({} from start)\t{}.".format(getwt(), msg))
 # end def printlog
 
 

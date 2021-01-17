@@ -6,34 +6,30 @@ import re
 import sys
 
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
-from subprocess import Popen as sp_Popen, PIPE as sp_PIPE
+import subprocess as sp
 
-from src.printlog import printl, err_fmt
+from src.printlog import printlog_info, printlog_warning, printlog_error, printlog_error_time
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
 
 
-def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
-    """
-    Function looks around in order to check if there are results from previous runs of this script.
+def look_around(new_dpath, fq_fa_path, blast_algorithm):
+    # Function looks around in order to check if there are results from previous runs of this script.
 
-    Returns None if there is no result from previous run.
-    If there are results from previous run, returns a dict of the following structure:
-    {
-        "tsv_respath": path_to_tsv_file_from_previous_run (str),
-        "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
-    }
+    # Returns None if there is no result from previous run.
+    # If there are results from previous run, returns a dict of the following structure:
+    # {
+    #     "tsv_respath": path_to_tsv_file_from_previous_run (str),
+    #     "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
+    # }
 
-    :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
-    :type new_dpath: str;
-    :param fq_fa_path: path to current (corresponding to fq_fa_path file) FASTA file;
-    :type fq_fa_path: str;
-    :param blast_algorithm: BLASTn algorithm to use.
-        This parameter is necessary because it is included in name of result files;
-    :type blast_algorithm: str;
-    :param logfile_path: path to logfile;
-    :type logfile_path: str;
-    """
+    # :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
+    # :type new_dpath: str;
+    # :param fq_fa_path: path to current (corresponding to fq_fa_path file) FASTA file;
+    # :type fq_fa_path: str;
+    # :param blast_algorithm: BLASTn algorithm to use.
+    #     This parameter is necessary because it is included in name of result files;
+    # :type blast_algorithm: str;
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fq_fa_path) # get rid of absolute path
@@ -52,10 +48,10 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
                 lines = res_file.readlines()
                 num_done_reads = len(lines) - 1 # the first line is a head
             except Exception as err:
-                printl(logfile_path, "\nData in classification file '{}' is broken. Reason:".format(tsv_res_fpath))
-                printl(logfile_path,  str(err) )
-                printl(logfile_path, "Starting from the beginning.")
-                rename_file_verbosely(tsv_res_fpath, logfile_path)
+                printlog_error_time("Data in classification file `{}` is broken. Reason:".format(tsv_res_fpath))
+                printlog_error( str(err) )
+                printlog_error("Starting from the beginning.")
+                rename_file_verbosely(tsv_res_fpath)
                 return None
             # end try
         # end with
@@ -70,7 +66,7 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm, logfile_path):
 # end def look_around
 
 
-def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path, logfile_path):
+def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path):
     """
     Function launches 'blastn' utility from "BLAST+" toolkit and returns it's response.
 
@@ -84,8 +80,6 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path, 
     :type queries_tmp_dir: str:
     :param db_path: path to database;
     :type db_path: str:
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
     """
 
     # PID of current process won't change, so we can use it to mark query files.
@@ -101,12 +95,12 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path, 
     blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 10 -max_hsps 1 -use_index {}".format(query_path,
         db_path, blast_algorithm, use_index)
 
-    pipe = sp_Popen(blast_cmd, shell=True, stdout=sp_PIPE, stderr=sp_PIPE)
+    pipe = sp.Popen(blast_cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
     stdout_stderr = pipe.communicate()
 
     if pipe.returncode != 0:
-        printl(logfile_path, err_fmt("error while aligning a sequence against local database"))
-        printl(logfile_path, stdout_stderr[1].decode("utf-8"))
+        printlog_error_time("Error occured while aligning a sequence against local database")
+        printlog_error(stdout_stderr[1].decode("utf-8"))
         platf_depend_exit(pipe.returncode)
     # end if
 
@@ -114,29 +108,27 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path, 
 # end def launch_blastn
 
 
-def parse_align_results_xml(xml_text, qual_dict, logfile_path):
-    """
-    Function parses BLAST xml response and returns tsv lines containing gathered information:
-        1. Query name.
-        2. Hit name formatted by 'format_taxonomy_name()' function.
-        3. Hit accession.
-        4. Length of query sequence.
-        5. Length of alignment.
-        6. Percent of identity.
-        7. Percent of gaps.
-        8. E-value.
-        9. Average Phred33 quality of a read (if source file is FASTQ).
-        10. Read accuracy (%) (if source file is FASTQ).
-
-    :param xml_text: XML text with results of alignment;
-    :type xml_text: str;
-    :param qual_dict: dict, which maps sequence IDs to their quality;
-    :type qual_dict: dict<str: float>;
-    :param logfile_path: path to logfile;
-    :type logfile_path: str;
-
-    Returns list<str>.
-    """
+def parse_align_results_xml(xml_text, qual_dict):
+    # Function parses BLAST xml response and returns tsv lines containing gathered information:
+    #     1. Query name.
+    #     2. Hit name formatted by 'format_taxonomy_name()' function.
+    #     3. Hit accession.
+    #     4. Length of query sequence.
+    #     5. Length of alignment.
+    #     6. Percent of identity.
+    #     7. Percent of gaps.
+    #     8. E-value.
+    #     9. Average Phred33 quality of a read (if source file is FASTQ).
+    #     10. Read accuracy (%) (if source file is FASTQ).
+    #
+    # :param xml_text: XML text with results of alignment;
+    # :type xml_text: str;
+    # :param qual_dict: dict, which maps sequence IDs to their quality;
+    # :type qual_dict: dict<str: float>;
+    # :param logfile_path: path to logfile;
+    # :type logfile_path: str;
+    #
+    # Returns list<str>.
 
     result_tsv_lines = list()
 
@@ -213,21 +205,17 @@ def parse_align_results_xml(xml_text, qual_dict, logfile_path):
 # end def parse_align_results_xml
 
 
-def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path):
-    """
-    Fucntion configures accession dictionary according to accession file generated by 'barapost-prober.py':
-       keys are accessions, values are tuples of the following format:
-        (<sequence_name_aka_definition>).
-
-    :param acc_fpath: path to accession file generated by 'barapost-prober.py';
-    :type acc_fpath: str;
-    :param your_own_fasta_lst: list of paths to user's fasta files;
-    :type your_own_fasta_lst: list<str>;
-    :param logfile_path: path to logfile;
-    :type logfile_path: str;
-
-    Returns accession dictionary described above.
-    """
+def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download):
+    # Fucntion configures accession dictionary according to accession file generated by 'barapost-prober.py':
+    #    keys are accessions, values are tuples of the following format:
+    #     (<sequence_name_aka_definition>).
+    #
+    # :param acc_fpath: path to accession file generated by 'barapost-prober.py';
+    # :type acc_fpath: str;
+    # :param your_own_fasta_lst: list of paths to user's fasta files;
+    # :type your_own_fasta_lst: list<str>;
+    #
+    # Returns accession dictionary described above.
 
     acc_dict = dict()
 
@@ -260,9 +248,9 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_
                             acc_dict[acc] = name
 
                         except Exception as err:
-                            printl(logfile_path, err_fmt("invalid data in file '{}'!".format(acc_fpath)))
-                            printl(logfile_path, "Here is that invalid line:\n   '{}'".format(line))
-                            printl(logfile_path, str(err))
+                            printlog_error_time("Error: invalid data in file `{}`!".format(acc_fpath))
+                            printlog_error("Here is that invalid line:\n  `{}`".format(line))
+                            printlog_error(str(err))
                             platf_depend_exit(1)
                         # end try
                     else:
@@ -274,7 +262,7 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_
     # end if
 
     if len(your_own_fasta_lst) == 0 and len(acc_dict) == 0 and len(accs_to_download) == 0:
-        printl(logfile_path, err_fmt("no accession information found in file '{}'".format(acc_fpath)))
+        printlog_error_time("Error: no accession information found in file `{}`".format(acc_fpath))
         platf_depend_exit(1)
     # end if
 

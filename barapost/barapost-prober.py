@@ -374,7 +374,7 @@ from src.check_connection import check_connection
 from src.printlog import get_full_time, printlog_info, printlog_error, log_info
 import logging
 logging.basicConfig(filename=get_logfile_path("prober", outdir_path),
-    format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
+    format='%(levelname)s: %(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
     level=logging.INFO, filemode='w')
 log_info(sys.platform)
 log_info(sys.implementation)

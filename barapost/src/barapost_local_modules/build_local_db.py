@@ -19,7 +19,8 @@ from src.barapost_local_modules.related_replicons import search_for_related_repl
 import src.taxonomy as taxonomy
 from src.platform import platf_depend_exit
 from src.check_connection import check_connection
-from src.printlog import printl, printn, println, err_fmt, getwt
+from src.printlog import printlog_info, printlog_info_time, printlog_error
+from src.printlog import printlog_error_time, printn, getwt, log_info
 from src.filesystem import rename_file_verbosely, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 
@@ -38,20 +39,16 @@ if not gzip_util_found:
 # end if
 
 
-def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
-    """
-    Function downloads set of records from Genbank according to accessions passed to it.
-    Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
+def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta):
+    # Function downloads set of records from Genbank according to accessions passed to it.
+    # Downloaded FASTA file will be placed in 'db_dir' directory and named 'local_seq_set.fasta'
 
-    :param acc_dict: dictionary comntaining accession data of hits;
-    :type acc_dict: dict<str: tuple<str, str, int>>;
-    :param db_dir: path to directory in which downloaded FASTA file will be placed;
-    :type db_dir: str;
-    :param local_fasta: path to file with reference sequences to be included in database;
-    :type local_fasta: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
+    # :param acc_dict: dictionary comntaining accession data of hits;
+    # :type acc_dict: dict<str: tuple<str, str, int>>;
+    # :param db_dir: path to directory in which downloaded FASTA file will be placed;
+    # :type db_dir: str;
+    # :param local_fasta: path to file with reference sequences to be included in database;
+    # :type local_fasta: str;
 
     tmp_fasta = os.path.join(db_dir, "tmp.fasta") # path to file with current chunk (see below "100 accession numbers...")
 
@@ -73,6 +70,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
         accs_del_comma = ','.join(curr_accessions) # accessions must be separated by comma in url
         # E-utilities provide a possibility to download records from Genbank by accessions.
         retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
+        log_info("Retrieve URL: `{}`".format(retrieve_url))
 
         # GNU wget utility is safer, but there can be presence of absence of it :)
         wget_util = "wget"
@@ -84,7 +82,8 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
             # end if
         # end for
 
-        printl(logfile_path, "\n{} - Downloading {} reference sequences...".format(getwt(), len(curr_accessions)))
+        print()
+        printlog_info("{} - Downloading {} reference sequences...".format(getwt(), len(curr_accessions)))
 
         if util_found:
             # If we have wget -- just use it
@@ -93,13 +92,12 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
             pipe = sp_Popen(wget_cmd, shell=True)
             pipe.communicate()
             if pipe.returncode != 0:
-                printl(logfile_path, err_fmt("error while downloading reference sequences"))
+                printlog_error_time("Error occured while downloading reference sequences")
                 platf_depend_exit(pipe.returncode)
             # end if
 
         else:
             # If there are no wget -- we will download sequences with Python disposal
-            
             stop_wait = Event() # a flag variable that will signal waiter-function to stop executing
 
             def download_waiter(stop_wait):
@@ -133,7 +131,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
                     # And this function just waits :)
                     pass
                 # end try
-                printl(logfile_path, "\r{} - {} MB downloaded ".format(getwt(), fsize))
+                printlog_info("\r{} - {} MB downloaded ".format(getwt(), fsize))
             # end def download_waiter
 
             error = True
@@ -144,9 +142,9 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
                     waiter.start() # start waiting
                     urllib.request.urlretrieve(retrieve_url, tmp_fasta) # retrieve FASTA file
                 except Exception as err:
-                    printl(logfile_path, err_fmt("error while downloading fasta file"))
-                    printl(logfile_path,  str(err) )
-                    printl(logfile_path, "'barapost-local.py' will try again in 30 seconds")
+                    printlog_error_time("Error occured while downloading fasta file.")
+                    printlog_error( str(err) )
+                    printlog_error("`barapost-local.py` will try again in 30 seconds")
                     if os.path.exists(tmp_fasta):
                         os.unlink(tmp_fasta)
                     # end if
@@ -160,7 +158,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
             # end while
         # end if
 
-        printl(logfile_path, "{} - Downloading is completed".format(getwt()))
+        printlog_info_time("Downloading is completed")
 
         # Write chunk to result fasta file
         with open(tmp_fasta, 'r') as infile, open(local_fasta, 'a') as outfile:
@@ -174,34 +172,30 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path):
 # end def retrieve_fastas_by_acc
 
 
-def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
-    """
-    Function checks existance of GenBank records that correspond to accessions
-      specified with '-s' option. After checking the function fulills 'acc_fict'.
+def verify_cl_accessions(accs_to_download, acc_dict):
+    # Function checks existance of GenBank records that correspond to accessions
+    #   specified with '-s' option. After checking the function fulills 'acc_fict'.
 
-    :param accs_to_download: list of accessions from command line ('-s');
-    :type accs_to_download: list<str>;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
-    :type acc_dict: dict<str: tuple<str>>;
-    """
+    # :param accs_to_download: list of accessions from command line ('-s');
+    # :type accs_to_download: list<str>;
+    # :param acc_dict: dictionary {<ACCESSION>: <HIT_DEFINITION>};
+    # :type acc_dict: dict<str: tuple<str>>;
 
     check_connection("https://www.ncbi.nlm.nih.gov/")
 
-    printl(logfile_path, "{} - Verifying '-s' accessions...".format(getwt()))
+    printlog_info_time("Verifying `-s` accessions...")
     sys.stdout.write("0/{}".format(len(accs_to_download)))
 
     for i, acc in enumerate(accs_to_download):
 
         server = "eutils.ncbi.nlm.nih.gov"
         url = "/entrez/eutils/esummary.fcgi?db=nuccore&id={}".format(acc)
-        text = lingering_https_get_request(server, url, logfile_path, "record's name", acc)
+        text = lingering_https_get_request(server, url, "record's name", acc)
 
         name = re.search(r"\<Item Name=\"Title\" Type=\"String\"\>(.+)\</Item\>", text)
 
         if name is None:
-            printl(logfile_path, "Cannot find GenBank record with accession '{}'".format(acc))
+            printlog_info("Cannot find GenBank record with accession '{}'".format(acc))
             platf_depend_exit(1)
         else:
             name = name.group(1)
@@ -210,24 +204,22 @@ def verify_cl_accessions(accs_to_download, logfile_path, acc_dict):
         acc_dict[acc] = name
         sys.stdout.write("\r{}/{}".format(i+1, len(accs_to_download)))
     # end for
-    println(logfile_path, "\n{} - OK.\n".format(getwt()))
+    print()
+    printlog_info_time("OK.")
 # end def verify_cl_accessions
 
 
-def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
-    """
-    Function adds control sequence of nanopore lambda phase DNA-CS
-       to 'local_fasta'.
+def add_lambda_phage(local_fasta, taxonomy_path):
+    # Function adds control sequence of nanopore lambda phase DNA-CS
+    #    to 'local_fasta'.
+    #
+    # :param local_fasta: path to file with reference sequences to be included in database;
+    # :type local_fasta: str;
+    # :param taxonomy_path: path to taxonomy file;
+    # :type taxonomy_path: str;
 
-    :param local_fasta: path to file with reference sequences to be included in database;
-    :type local_fasta: str;
-    :param taxonomy_path: path to taxonomy file;
-    :type taxonomy_path: str;
-    :param logfile_path: path to log file;
-    :type logfile_path: str;
-    """
-
-    println(logfile_path, "\n{} - Adding lambda phage control sequence...".format(getwt()))
+    print()
+    printlog_info_time("Adding lambda phage control sequence...")
 
     # sys.path[0] is directory containing the script that was used to invoke the Python interpreter.
     # We will use it to get path to file with lambda's sequence.
@@ -238,8 +230,8 @@ def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
 
     # Check file existance
     if not os.path.exists(lambda_fpath):
-        printl(logfile_path, err_fmt("cannot find lambda phage control sequence: '{}'".format(lambda_fpath)))
-        sys.exit(1)
+        printlog_error_time("Error: cannot find lambda phage control sequence: '{}'".format(lambda_fpath))
+        platf_depend_exit(1)
     # end if
 
     # Read lambda's sequence
@@ -255,28 +247,26 @@ def add_lambda_phage(local_fasta, taxonomy_path, logfile_path):
     # Save lambda's taxonomy
     taxonomy.save_taxonomy_directly(taxonomy_path, "LAMBDA", "Lambda-phage-nanopore-control")
 
-    printl(logfile_path, " ok")
+    printlog_info_time(" ok")
 # end def add_lambda_phage
 
 
-def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path):
-    """
-    Function creates a database with utilities from 'blast+' toolkit
-        according to acc_dict and your_own_fasta_lst.
+def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_download, use_index):
+    # Function creates a database with utilities from 'blast+' toolkit
+    #     according to acc_dict and your_own_fasta_lst.
+    #
+    # :param tax_annot_res_dir: path to current result directory (each processed file has it's own result directory);
+    # :type tax_annot_res_dir: str;
+    # :param acc_fpath: path to file "hits_to_download.tsv";
+    # :type acc_fpath: str;
+    # :param your_own_fasta_lst: list of user's fasta files to be included in database;
+    # :type your_own_fasta_lst: list<str>;
+    # :param accs_to_download: list of accessions from command line ('-s');
+    # :type accs_to_download: list<str>;
+    # :param use_index: whether to use index;
+    # :type use_index: str;
 
-    :param tax_annot_res_dir: path to current result directory (each processed file has it's own result directory);
-    :type tax_annot_res_dir: str;
-    :param acc_fpath: path to file "hits_to_download.tsv";
-    :type acc_fpath: str;
-    :param your_own_fasta_lst: list of user's fasta files to be included in database;
-    :type your_own_fasta_lst: list<str>;
-    :param accs_to_download: list of accessions from command line ('-s');
-    :type accs_to_download: list<str>;
-    :param logfile_path: path to logfile;
-    :type logfile_path: str;
-
-    Returns path to created database.
-    """
+    # Returns path to created database.
 
     db_dir = os.path.join(tax_annot_res_dir, "local_database") # path to directory in which database will be placed
     # Path to DBM taxonomy file
@@ -292,18 +282,19 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
                 # If db directory is empty -- break and build a database
                 break
             else:
-                printl(logfile_path, "\nDatabase directory is not empty:")
-                printl(logfile_path, "  '{}'".format(os.path.abspath(db_dir)))
-                printl(logfile_path, "Here is it's content:")
+                print()
+                printlog_info("Database directory is not empty:")
+                printlog_info("  `{}`".format(os.path.abspath(db_dir)))
+                printlog_info("Here is it's content:")
                 for i, fname in enumerate(os.listdir(os.path.abspath(db_dir))):
-                    printl(logfile_path, " {}. '{}'".format(i+1, fname))
+                    printlog_info(" {}. `{}`".format(i+1, fname))
                 # end for
                 reply = input("""\nPress ENTER to start classification using existing database.
 Enter 'r' to remove all files in this directory and create the database from the beginning:>>""")
 
                 if reply == "":
                     # Do not build a database, just return path to it.
-                    printl(logfile_path, "") # just print blank line
+                    printlog_info("You have chosen to use extant database.")
 
                     # Return path to DB located in this directory
                     dbpath = next(iter(os.listdir(db_dir)))
@@ -313,6 +304,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                 
                 elif reply == 'r':
 
+                    printlog_info("You have chosen to rebuild the database.")
                     # Rename old classification files and write actual data to new one:
                     old_classif_dirs = filter(
                         lambda d: os.path.exists(os.path.join(d, "classification.tsv")),
@@ -321,9 +313,10 @@ Enter 'r' to remove all files in this directory and create the database from the
                         old_classif_dirs))
 
                     if len(old_classif_files) > 0:
-                        printl(logfile_path, "\n Renaming old classification files:")
+                        print()
+                        printlog_info("Renaming old classification files:")
                         for classif_file in old_classif_files:
-                            rename_file_verbosely(classif_file, logfile_path)
+                            rename_file_verbosely(classif_file)
                         # end for
                     # end if
 
@@ -335,7 +328,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                     # Break from the loop in order to build a database
                     break
                 else:
-                    print("Invalid reply: '{}'\n".format(reply))
+                    print("Invalid reply: `{}`\n".format(reply))
                     continue
                 # end if
             # end if
@@ -344,10 +337,10 @@ Enter 'r' to remove all files in this directory and create the database from the
 
     # It is a dictionary of accessions and record names.
     # Accessions are keys, record names are values.
-    acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download, logfile_path)
+    acc_dict = configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download)
 
     if len(accs_to_download) != 0:
-        verify_cl_accessions(accs_to_download, logfile_path, acc_dict)
+        verify_cl_accessions(accs_to_download, acc_dict)
     # end if
 
     # Retrieve already existing taxonomy data from taxonomy file
@@ -358,31 +351,34 @@ Enter 'r' to remove all files in this directory and create the database from the
     if len(acc_dict) != 0:
         print()
 
-        printl(logfile_path, """Following sequences (and all replicons related to them)
+        print("""Following sequences (and all replicons related to them)
   will be downloaded from Genbank for further taxonomic classification
   on your local machine:\n""")
+        printlog_info("Following sequences (and all replicons related to them) \
+will be downloaded from Genbank for further taxonomic classification \
+on your local machine:")
         for i, acc in enumerate(acc_dict.keys()):
-            printl(logfile_path, " {}. {} - `{}`".format(i+1, acc, acc_dict[acc]))
+            printlog_info(" {}. {} - `{}`".format(i+1, acc, acc_dict[acc]))
         # end for
 
-        search_for_related_replicons(acc_dict, logfile_path)
+        search_for_related_replicons(acc_dict)
 
-        printl(logfile_path, "{} - Completing taxonomy file...".format(getwt()))
+        printlog_info_time("Completing taxonomy file...")
         for i, acc in enumerate(acc_dict.keys()):
             if not acc in tax_exist_accs:
-                taxonomy.find_taxonomy(acc, acc_dict[acc][1], taxonomy_path, logfile_path)
+                taxonomy.find_taxonomy(acc, acc_dict[acc][1], taxonomy_path)
             # end if
             # Accessions can be of different length
             printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
         # end for
+        printlog_info_time("Taxonomy file is consistent.")
     # end if
-    print()
 
     local_fasta = os.path.join(db_dir, "local_seq_set.fasta") # path to downloaded FASTA file
 
-    add_lambda_phage(local_fasta, taxonomy_path, logfile_path) # add lambda phage control sequence
+    add_lambda_phage(local_fasta, taxonomy_path) # add lambda phage control sequence
 
-    retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta, logfile_path) # download main fasta data from GenBank
+    retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta) # download main fasta data from GenBank
 
     # Add 'your own' fasta files to database
     if not len(your_own_fasta_lst) == 0:
@@ -455,7 +451,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                 # Add assembled sequences to database
                 with open (local_fasta, 'a') as fasta_db:
                     for assm_path in assm_lst:
-                        println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(assm_path)))
+                        printlog_info("Adding `{}` to database...".format(os.path.basename(assm_path)))
 
                         how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
                         fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
@@ -484,7 +480,7 @@ Enter 'r' to remove all files in this directory and create the database from the
 
         with open(local_fasta, 'a') as fasta_db:
             for own_fasta_path in your_own_fasta_lst:
-                println(logfile_path, "\n{} - Adding '{}' to database...".format(getwt(), os.path.basename(own_fasta_path)))
+                printlog_info("Adding `{}` to database...".format(os.path.basename(own_fasta_path)))
 
                 how_to_open = OPEN_FUNCS[ is_gzipped(own_fasta_path) ]
                 fmt_func = FORMATTING_FUNCS[ is_gzipped(own_fasta_path) ]
@@ -512,7 +508,9 @@ Enter 'r' to remove all files in this directory and create the database from the
     #   (or '.2', whatever) terminus by blastn.
     # There is no '.1' terminus in taxonomy file.
     # Therefore we will prune accessions in advance.
-    println(logfile_path, "\n{} - Formatting accessions...".format(getwt()))
+    print()
+    printn("{} - Formatting accessions...".format(getwt()))
+    log_info("Formatting accessions...")
     corrected_path = os.path.join(db_dir, "corrected_seqs.fasta")
     with open(local_fasta, 'r') as source_file, open(corrected_path, 'w') as dest_file:
         for line in source_file:
@@ -529,35 +527,38 @@ Enter 'r' to remove all files in this directory and create the database from the
     # end with
     os.unlink(local_fasta)
     os.rename(corrected_path, local_fasta)
-    println(logfile_path, "\r{} - Formatting accessions... ok".format(getwt()))
+    sys.stdout.write("\r{} - Formatting accessions... ok".format(getwt()))
+    log_info("Formatting accessions done.")
 
     # Configure command line
     make_db_cmd = "makeblastdb -in {} -parse_seqids -dbtype nucl".format(local_fasta)
     exit_code = os.system(make_db_cmd) # make a blast-format database
     if exit_code != 0:
-        printl(logfile_path, err_fmt("error while making the database"))
+        printlog_error_time("Error occured while making the database")
         platf_depend_exit(exit_code)
     # end if
     
-    printl(logfile_path, """\033[1A{} - Database is successfully created:
-  '{}'\n""".format(getwt(), local_fasta))
+    print("\033[1A{} - Database is successfully created: `{}`\n".format(getwt(), local_fasta))
+    log_info("Database is successfully created: `{}`".format(local_fasta))
 
-    printl(logfile_path, "{} - Database index creating started".format(getwt()))
-    # Configure command line
-    make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
-    exit_code = os.system(make_index_cmd) # create an index for the database
-    if exit_code != 0:
-        printl(logfile_path, err_fmt("error while creating database index"))
-        platf_depend_exit(exit_code)
+    if use_index == "true":
+        printlog_info_time("Database index creating started")
+        # Configure command line
+        make_index_cmd = "makembindex -input {} -iformat blastdb -verbosity verbose".format(local_fasta)
+        exit_code = os.system(make_index_cmd) # create an index for the database
+        if exit_code != 0:
+            printlog_info_time("Error occured while creating database index")
+            platf_depend_exit(exit_code)
+        # end if
+
+        printlog_info_time("Database index has been successfully created")
     # end if
 
-    printl(logfile_path, "{} - Database index has been successfully created\n".format(getwt()))
-
     # Gzip downloaded FASTA file
-    printl(logfile_path, "Gzipping FASTA file:\n '{}'\n".format(local_fasta))
+    printlog_info_time("Gzipping FASTA file: `{}`".format(local_fasta))
 
     if gzip_util_found:
-        os.system("{} {}".format(gzip_util, local_fasta))
+        os.system("{} -v {}".format(gzip_util, local_fasta))
     else:
         # form .fasta.gz file 'by hand'
         with open(local_fasta, 'rb') as fasta_file, open_as_gzip(local_fasta+".gz", "wb") as fagz_file:
