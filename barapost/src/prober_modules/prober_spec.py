@@ -6,7 +6,7 @@ import re
 import sys
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 
-from src.printlog import printlog_info, printlog_error, printlog_error_time, getwt, printn, log_info
+from src.printlog import printlog_info, printlog_error, printlog_error_time, printn
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
 
@@ -50,7 +50,7 @@ Enter a number (1 or 2):>> """)
 def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, probing_batch_size):
     # Function looks around in order to check if there are results from previous run(s) of this script
     #   in order to resume the previous run.
-
+    #
     # Returns None if there is no result from previous run.
     # If there are results from previous run, returns a dict of the following structure:
     # {
@@ -62,7 +62,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
     #     "tmp_fpath": path_to_pemporary_file <str>,
     #     "decr_pb": valuse decreasing size of probing batch (see below, where this variable is defined) <int>
     # }
-    
+    #
     # :param outdir_path: path to output directory;
     # :type outdir_path: str;
     # :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
@@ -100,11 +100,11 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
         resume = ask_for_resumption()
     # end if
 
-    if resume == False:
+    if not resume:
         rename_file_verbosely(tsv_res_fpath)
         rename_file_verbosely(tmp_fpath)
         rename_file_verbosely(acc_fpath)
-    elif resume == True:
+    else:
         printlog_info("Let's try to resume...")
 
         # Collect information from result file
@@ -182,7 +182,7 @@ def look_around(outdir_path, new_dpath, infile_path, blast_algorithm, acc_dict, 
                 # end with
 
             except Exception as err:
-                printlog_error_time("\nData in accession file `{}` not found or broken. Reason:".format(acc_fpath))
+                printlog_error_time("Data in accession file `{}` not found or broken. Reason:".format(acc_fpath))
                 printlog_error(' ' + str(err))
                 printlog_error("Invalid line: `{}`".format(line))
 

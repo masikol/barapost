@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # This module defines functions, via which barapost-binning manipulated FAST5 data
 
+import re
 import sys
 import h5py
 
 from src.platform import platf_depend_exit
 from src.printlog import printlog_error, printlog_error_time
-from src.fmt_readID import fmt_read_id
-from re import search as re_search
+from src.fmt_read_id import fmt_read_id
 
 
 def fast5_readids(fast5_file):
@@ -41,13 +41,13 @@ def copy_read_f5_2_f5(from_f5, read_name, to_f5):
     if not to_f5 is None: # handle no_trash
         try:
             from_f5.copy(read_name, to_f5)
-        except Exception as err:
+        except ValueError as err:
             printlog_error_time("Error: `{}`".format( str(err) ))
             printlog_error("Reason is probably the following:")
             printlog_error("  read that is copying to the result file is already in this file.")
             printlog_error("ID of the read: `{}`".format(read_name))
             printlog_error("File: `{}`".format(to_f5.filename))
-            platf_depend_exit(1)
+            return
         # end try
     # end if
 # end def copy_read_f5_2_f5
@@ -81,7 +81,7 @@ def copy_single_f5(from_f5, read_name, to_f5):
         # Get data array in single-FAST5 file
         read_number_group = "Raw/Reads/"+next(iter(from_f5["Raw"]["Reads"]))
         # It's name in multi-FAST5 file
-        read_number = re_search(r"(Read_[0-9]+)", read_number_group).group(1)
+        read_number = re.search(r"(Read_[0-9]+)", read_number_group).group(1)
 
         # Copy group to multi-FAST5 file
         from_f5.copy(from_f5[read_number_group], to_f5[read_group])
@@ -100,7 +100,7 @@ def copy_single_f5(from_f5, read_name, to_f5):
         printlog_error("  read that is copying to the result file is already in this file.")
         printlog_error("ID of the read: `{}`".format(read_name))
         printlog_error("File: `{}`".format(to_f5.filename))
-        platf_depend_exit(1)
+        return
     # end try
 # end def copy_single_f5
 

@@ -50,7 +50,8 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta):
     # :param local_fasta: path to file with reference sequences to be included in database;
     # :type local_fasta: str;
 
-    tmp_fasta = os.path.join(db_dir, "tmp.fasta") # path to file with current chunk (see below "100 accession numbers...")
+    # Path to file with current chunk (see below "100 accession numbers...")
+    tmp_fasta = os.path.join(db_dir, "tmp.fasta")
 
     accessions = tuple(set(acc_dict.keys()))
     if len(accessions) == 0: # just in case
@@ -69,14 +70,15 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta):
 
         accs_del_comma = ','.join(curr_accessions) # accessions must be separated by comma in url
         # E-utilities provide a possibility to download records from Genbank by accessions.
-        retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
+        retrieve_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?\
+db=nuccore&id={}&rettype=fasta&retmode=text".format(accs_del_comma)
         log_info("Retrieve URL: `{}`".format(retrieve_url))
 
         # GNU wget utility is safer, but there can be presence of absence of it :)
         wget_util = "wget"
         util_found = False
-        for directory in os.environ["PATH"].split(os.pathsep):
-            if os.path.isdir(directory) and wget_util in os.listdir(directory):
+        for d in os.environ["PATH"].split(os.pathsep):
+            if os.path.isdir(d) and wget_util in os.listdir(d):
                 util_found = True
                 break
             # end if
@@ -122,7 +124,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta):
                     printn("\r{} - {} MB downloaded ".format(getwt(), fsize))
                     sleep(1) # instant updates are not necessary
                 # end while
-                
+
                 # Print total size of downloaded file (it can be deleted by this time)
                 try:
                     fsize = round(os.path.getsize(tmp_fasta) / MB_size, 1)
@@ -141,7 +143,7 @@ def retrieve_fastas_by_acc(acc_dict, db_dir, local_fasta):
                     stop_wait.set() # raise the flag
                     waiter.start() # start waiting
                     urllib.request.urlretrieve(retrieve_url, tmp_fasta) # retrieve FASTA file
-                except Exception as err:
+                except OSError as err:
                     printlog_error_time("Error occured while downloading fasta file.")
                     printlog_error( str(err) )
                     printlog_error("`barapost-local.py` will try again in 30 seconds")
@@ -255,7 +257,8 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
     # Function creates a database with utilities from 'blast+' toolkit
     #     according to acc_dict and your_own_fasta_lst.
     #
-    # :param tax_annot_res_dir: path to current result directory (each processed file has it's own result directory);
+    # :param tax_annot_res_dir: path to current result directory
+    #   (each processed file has it's own result directory);
     # :type tax_annot_res_dir: str;
     # :param acc_fpath: path to file "hits_to_download.tsv";
     # :type acc_fpath: str;
@@ -268,7 +271,8 @@ def build_local_db(tax_annot_res_dir, acc_fpath, your_own_fasta_lst, accs_to_dow
 
     # Returns path to created database.
 
-    db_dir = os.path.join(tax_annot_res_dir, "local_database") # path to directory in which database will be placed
+    # Path to directory in which database will be placed
+    db_dir = os.path.join(tax_annot_res_dir, "local_database")
     # Path to DBM taxonomy file
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy.tsv")
 
@@ -301,7 +305,7 @@ Enter 'r' to remove all files in this directory and create the database from the
                     dbpath = dbpath.partition(".fasta")[0] + dbpath.partition(".fasta")[1] # remove all after '.fasta'
 
                     return os.path.join(db_dir, dbpath)
-                
+
                 elif reply == 'r':
 
                     printlog_info("You have chosen to rebuild the database.")
@@ -371,6 +375,7 @@ on your local machine:")
             # Accessions can be of different length
             printn("\r{} - {}: {}/{}".format(getwt(), acc, i+1, len(acc_dict)) + " "*10 + "\b"*10)
         # end for
+        print()
         printlog_info_time("Taxonomy file is consistent.")
     # end if
 
@@ -410,7 +415,7 @@ on your local machine:")
                 spades_assms.append(own_fasta_path)
                 continue
             # end if
-            
+
             # if we've got a5 assembly
             if not re.search(a5_patt, first_seq_id) is None:
                 a5_counter += 1
@@ -537,7 +542,7 @@ on your local machine:")
         printlog_error_time("Error occured while making the database")
         platf_depend_exit(exit_code)
     # end if
-    
+
     print("\033[1A{} - Database is successfully created: `{}`\n".format(getwt(), local_fasta))
     log_info("Database is successfully created: `{}`".format(local_fasta))
 

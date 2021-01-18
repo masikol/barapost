@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.7.b"
+__version__ = "4.8.a"
 # Year, month, day
-__last_update_date__ = "2021-01-11"
+__last_update_date__ = "2021-01-18"
 
 # |===== Check python interpreter version =====|
 
@@ -131,9 +131,9 @@ if "-v" in sys.argv[1:] or "--version" in sys.argv[1:]:
 
 
 import os
+import re
 import getopt
 from glob import glob
-from re import search as re_search
 
 try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "hvr:d:o:s:q:m:i:c:ut:n",
@@ -285,13 +285,13 @@ for opt, arg in opts:
         if n_thr > len(os.sched_getaffinity(0)):
             print("""\nWarning! You have specified {} threads to use
   although {} are available.""".format(n_thr, len(os.sched_getaffinity(0))))
-            error = True
-            while error:
+            err = True
+            while err:
                 reply = input("""\nPress ENTER to switch to {} threads,
   or enter 'c' to continue with {} threads anyway,
   or enter 'q' to quit:>>""".format(len(os.sched_getaffinity(0)), n_thr))
                 if reply in ("", 'c', 'q'):
-                    error = False
+                    err = False
                     if reply == "":
                         n_thr = len(os.sched_getaffinity(0))
                         print("\nNumber of threads switched to {}\n".format(n_thr))
@@ -359,15 +359,14 @@ if num_files == 0:
         else:
             # Ask if a user wants to proceed or he/she ran it occasionally and wants just help message
             print("\n {} fasta and/or fastq files are found in working directory.\n".format(len(fq_fa_list)))
-            error = True
-            while error:
+            err = True
+            while err:
                 reply = input("""Press ENTER to process them
   or enter 'h' to just see help message:>> """)
                 if reply == "":
-                    error = False
-                    pass
+                    err = False
                 elif reply == 'h':
-                    error = False
+                    err = False
                     print('\n' + '-'*15)
                     print("  barapost-binning.py (Version {})\n".format(__version__))
                     print("Usage:")
@@ -392,8 +391,8 @@ for lst in (fq_fa_list, fast5_list):
         if len(same_bnames) != 1:
             print("Error: input files must have different names")
             print("List of files having same name:")
-            for path in same_bnames:
-                print("`{}`".format(path))
+            for p in same_bnames:
+                print("`{}`".format(p))
             # end for
             platf_depend_exit(1)
         # end if
@@ -404,7 +403,7 @@ del bname, same_bnames, lst
 
 # Check it here once and not further in imported modules
 if len(fast5_list) != 0:
-    printn("Importing h5py...")
+    sys.stdout.write("Importing h5py...")
     try:
         import h5py
     except ImportError as imperr:
@@ -420,22 +419,6 @@ if len(fast5_list) != 0:
 # Sort input files in order to process them in alphabetical order
 fq_fa_list.sort()
 fast5_list.sort()
-
-# Some warnings:
-
-if len(fq_fa_list) == 0 and n_thr != 1 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
-    print("\nWarning! Binning FAST5 files in parallel doesn't give any profit.")
-    print("Number of threads is switched to 1.")
-    n_thr = 1
-# end if
-
-if len(fast5_list) == 0 and untwist_fast5:
-    print("\nWarning! No FAST5 file has been given to barapost-binning's input.")
-    print("Therefore, `-u` (`--untwist-fast5`) flag does not make any sense.")
-    print("Ignoring it.")
-    untwist_fast5 = False
-# end if
-
 
 # Create output directory
 if not os.path.isdir(outdir_path):
@@ -476,7 +459,7 @@ def get_checkstr(fast5_fpath):
 
     try:
         # I'll lower the 40-character barrier down to 30 just in case.
-        filename_payload = re_search(r"([a-zA-Z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
+        filename_payload = re.search(r"([a-zA-Z0-9]{30,}_[0-9]+)", fast5_fpath).group(1)
     except AttributeError:
         return os.path.basename(fast5_fpath).replace(".fast5", "")
     else:
@@ -502,6 +485,20 @@ log_info("barapost-binning.py (version {})".format(__version__))
 print(get_full_time() + " - Start working\n")
 log_info("Start working.")
 
+# Some possible warnings:
+if len(fq_fa_list) == 0 and n_thr != 1 and not "-u" in sys.argv[1:] and not "--untwist-fast5" in sys.argv[1:]:
+    print("\nWarning! Binning FAST5 files in parallel doesn't give any profit.")
+    print("Number of threads is switched to 1.")
+    n_thr = 1
+# end if
+if len(fast5_list) == 0 and untwist_fast5:
+    print("\nWarning! No FAST5 file has been given to barapost-binning's input.")
+    print("Therefore, `-u` (`--untwist-fast5`) flag does not make any sense.")
+    print("Ignoring it.\n")
+    untwist_fast5 = False
+# end if
+
+
 # Make sure that each file meant to be processed has it's directory with TSV result file
 #    generated by prober and barapost.
 
@@ -516,11 +513,11 @@ if not untwist_fast5:
             continue # OK
         elif possible_fast5_resdirs_num == 0: # there is no such a directory
             print()
-            printlog_error("directory that may be considered as valid for binning of file")
-            printlog_error("  `{}` is not found in directory `{}`".format(fpath, tax_annot_res_dir))
+            printlog_error_time("Error: classification for following FAST5 file is missing:")
+            printlog_error("  `{}`".format(fpath))
             printlog_error("Try running barapost-binning with `-u` (`--untwist-fast5`) flag.")
             print()
-            platf_depend_exit(1)
+            platf_depend_exit(5)
         else: # there are multiple directories where prober-barapost results can be located
             printlog_error_time("Error: multiple result directories match FAST5 file meant to be binned")
             printlog_error("File: `{}`".format(os.path.basename(fpath)))
@@ -529,7 +526,7 @@ if not untwist_fast5:
                 printlog_error(d)
             # end for
             printlog_error("  Please, contact the developer -- it is his mistake.\n")
-            platf_depend_exit(1)
+            platf_depend_exit(6)
         # end if
     # end for
 # end if
@@ -551,7 +548,7 @@ sys.stdout.write('\r')
 printlog_info("Primary validation...ok")
 print()
 
-is_fastQA5 = lambda f: True if not re_search(r".*\.(m)?f(ast)?(a|q|5)(\.gz)?$", f) is None else False
+is_fastQA5 = lambda f: not re.search(r".*\.(m)?f(ast)?(a|q|5)(\.gz)?$", f) is None
 
 # Check if there are some results in output directory
 if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
@@ -561,7 +558,7 @@ if len( list( filter(is_fastQA5, os.listdir(outdir_path)) ) ) != 0:
         printlog_info("  {}. `{}`".format(i+1, file))
     # end for
     print()
-    
+
     invalid_reply = True
     while invalid_reply:
         reply = input("""Press ENTER to overwrite all old sequence-containing files
@@ -631,7 +628,7 @@ if untwist_fast5:
         use_old_index = False
 
         if len(os.listdir(index_dirpath)) != 0:
-            printlog_info("Attention! Index file created by `-u` (`--untwist-fast5`) option exists (left from previous run).")
+            printlog_info("Index file created by `-u` option already exists (left from previous run).")
 
             error = True
 
@@ -668,7 +665,7 @@ if untwist_fast5:
 if not os.path.exists(outdir_path):
     try:
         os.makedirs(outdir_path)
-    except Exception as err:
+    except OSError as err:
         printlog_error_time("Error: unable to create output directory!")
         printlog_error( str(err) )
         platf_depend_exit(1)

@@ -12,9 +12,9 @@ import logging
 
 from src.binning_modules.binning_spec import get_res_tsv_fpath, configure_resfile_lines
 
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.platform import platf_depend_exit
-from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
+from src.printlog import printn, printlog_error, printlog_error_time, printlog_info_time
 from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.binning_modules.fastq_records import fastq_records
@@ -65,7 +65,7 @@ def init_paral_binning(print_lock_buff, write_lock_buff):
 
     global print_lock
     print_lock = print_lock_buff
-    
+
     global write_lock
     write_lock = write_lock_buff
 
@@ -153,8 +153,9 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
                 try:
                     hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
                 except KeyError:
-                    printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation.")
-                    printlog_error("This TSV file: `{}`".format(read_name, tsv_res_fpath))
+                    printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation."\
+                        .format(read_name))
+                    printlog_error("This TSV file: `{}`".format(tsv_res_fpath))
                     printlog_error("Make sure that this read has been already processed by \
 `barapost-prober.py` and `barapost-local.py`.")
                     platf_depend_exit(1)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.22.a"
+__version__ = "1.23.a"
 # Year, month, day
-__last_update_date__ = "2021-01-09"
+__last_update_date__ = "2021-01-18"
 
 # |===== Check python interpreter version =====|
 
@@ -146,7 +146,7 @@ except getopt.GetoptError as gerr:
     platf_depend_exit(2)
 # end try
 
-is_fq_or_fa = lambda f: True if not re.search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None else False
+is_fq_or_fa = lambda f: not re.search(r".*\.(m)?f(ast)?(a|q)(\.gz)?$", f) is None
 
 # Default values:
 fq_fa_list = list() # list of paths to file meant to be processed
@@ -269,7 +269,7 @@ for opt, arg in opts:
             print("Argument error: directory `{}` does not exist!".format(arg))
             platf_depend_exit(1)
         # end if
-        
+
         indir_path = os.path.abspath(arg)
 
         # Add all fastq and fasta files from `-d` directory to fq_fa_list
@@ -294,7 +294,7 @@ if len(fq_fa_list) == 0:
         print("""Error: no input FASTQ or FASTA files specified
   or there is no FASTQ and FASTA files in the input directory.\n""")
         platf_depend_exit(1)
-    
+
     # If input directory was not specified -- look for FASTQ files in working directory
     else:
         fq_fa_list = list(filter( is_fq_or_fa, glob("{}{}*".format(os.getcwd(), os.sep)) ))
@@ -316,7 +316,6 @@ if len(fq_fa_list) == 0:
   or enter 'h' to just see help message:>> """)
                 if reply == "":
                     error = False
-                    pass
                 elif reply == 'h':
                     error = False
                     print('\n' + '-'*15)
@@ -341,8 +340,8 @@ for path in fq_fa_list:
     if len(same_bnames) != 1:
         print("Error: input files must have different names")
         print("List of files having same name:")
-        for path in same_bnames:
-            print("`{}`".format(path))
+        for p in same_bnames:
+            print("`{}`".format(p))
         # end for
         platf_depend_exit(1)
     # end if
@@ -371,7 +370,7 @@ from src.filesystem import is_fastq, is_fasta
 from src.platform import get_logfile_path
 from src.check_connection import check_connection
 
-from src.printlog import get_full_time, printlog_info, printlog_error, log_info
+from src.printlog import get_full_time, printlog_info, log_info
 import logging
 logging.basicConfig(filename=get_logfile_path("prober", outdir_path),
     format='%(levelname)s: %(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S',

@@ -35,7 +35,8 @@ def lingering_https_get_request(server, url, request_for=None, acc=None):
     error = True
 
     # We can get spurious 404 or sth due to instability of NCBI servers work.
-    # Let's give it 3 attempts (with 15 sec spans in between), and if all them are unsuccessful -- teminate execution.
+    # Let's give it 3 attempts (with 15 sec spans in between),
+    #   and if all them are unsuccessful -- teminate execution.
     attempt_i = 0
     max_attempts = 3
 
@@ -49,17 +50,22 @@ def lingering_https_get_request(server, url, request_for=None, acc=None):
                 if attempt_i < max_attempts and "ncbi.nlm.nih.gov" in server:
                     printlog_error("Error {}: {}.".format(response.code, response.reason))
                     printlog_error("It may be due to instable work of NCBI servers.")
-                    printlog_error("{} attempts to connect left, waiting 15 sec...".format(max_attempts - attempt_i))
+                    printlog_error("{} attempts to connect left, waiting 15 sec..."\
+                        .format(max_attempts - attempt_i))
                     attempt_i += 1
                 else:
                     printlog_error("Cannot find {} for {}.".format(request_for, acc))
-                    printlog_error("Request failed with status code {}: {}".format(response.code, response.reason))
+                    printlog_error("Request failed with status code {}: {}"\
+                        .format(response.code, response.reason))
                     platf_depend_exit(1)
                 # end if
             # end if
 
             resp_content = str(response.read(), "utf-8") # get response text
-        except (OSError, http.client.RemoteDisconnected, socket.gaierror, http.client.CannotSendRequest) as err:
+        except (OSError,\
+                http.client.RemoteDisconnected,\
+                socket.gaierror,\
+                http.client.CannotSendRequest) as err:
             comment_str = ""
             if not request_for is None:
                 comment_str += " requesting for {}".format(request_for)

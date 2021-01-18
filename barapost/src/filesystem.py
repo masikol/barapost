@@ -17,31 +17,29 @@ FORMATTING_FUNCS = (
     lambda line: line.decode("utf-8").strip()  # format gzipped line
 )
 
-is_gzipped = lambda file: True if file.endswith(".gz") else False
+is_gzipped = lambda file: file.endswith(".gz")
 
-is_fastq = lambda f: True if not re.search(r".+\.f(ast)?q(\.gz)?$", f) is None else False
-is_fasta = lambda f: True if not re.search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None else False
+is_fastq = lambda f: not re.search(r".+\.f(ast)?q(\.gz)?$", f) is None
+is_fasta = lambda f: not re.search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None
 is_fast5 = lambda f: f.endswith(".fast5")
 
 
 def rename_file_verbosely(file):
-    """
-    Function verbosely renames file (as well as directory) given to it.
-
-    :param file: path to file (directory) meant to be renamed;
-    :type file: str;
-    """
+    # Function verbosely renames file (as well as directory) given to it.
+    # :param file: path to file (directory) meant to be renamed;
+    # :type file: str;
 
     if not os.path.exists(file):
-        return
+        return None
     # end if
 
     # Path to "file's" parent directory
     pardir = os.path.abspath(os.path.dirname(file))
-    
+
     # Function can rename directories
     if os.path.isdir(file):
-        is_analog = lambda f: not re.search(r"{}.*(_old_[0-9]+)?$".format(os.path.basename(file)), f) is None
+        is_analog = lambda f: not re.search(r"{}.*(_old_[0-9]+)?$"\
+            .format(os.path.basename(file)), f) is None
         word = "directory"
         name_itself = file
         ext = ""
@@ -69,7 +67,7 @@ def rename_file_verbosely(file):
         printlog_info(" - Renaming old {}:".format(word))
         printlog_info("  `{}` --> `{}`".format(file, new_name))
         os.rename(file, new_name)
-    except Exception as err:
+    except OSError as err:
         printlog_error_time("Error: {} `{}` cannot be renamed:".format( word, str(file)) )
         printlog_error( str(err) )
         platf_depend_exit(1)
@@ -79,12 +77,9 @@ def rename_file_verbosely(file):
 # end def rename_file_verbosely
 
 def remove_tmp_files(*paths):
-    """
-    Function removes files passed to it.
-
-    :param paths: an array-like collection of apth of files;
-    :type paths: list<str>;
-    """
+    # Function removes files passed to it.
+    # :param paths: an array-like collection of apth of files;
+    # :type paths: list<str>;
 
     for path in paths:
         if os.path.exists(path):
@@ -103,12 +98,12 @@ def remove_tmp_files(*paths):
 def create_result_directory(fq_fa_path, outdir_path):
     # Function creates a result directory named according
     #     to how source FASTQ or FASTA file is named.
-
+    #
     # :param fq_fa_path: path to source FASTQ or FASTA file;
     # :type fq_fa_path: str;
     # :param outdir_path: path to directory in which result_directory will be created;
     # :type outdir_path: str;
-
+    #
     # Returns 'str' path to the recently created result directory.
 
     # dpath means "directory path"
@@ -128,18 +123,16 @@ def create_result_directory(fq_fa_path, outdir_path):
 
 
 def get_curr_res_dpath(fq_fa_path, tax_annot_res_dir):
-    """
-    Function configures and returns the path to result directory for particular FASTA or FASTQ file.
-    Result directory is nested in 'tax_annot_res_dir' and is named according to name of FASTA/FASTQ file.
-    E.g. if file 'some_reads.fastq' is processing, it's result directory will be named 'some_reads'.
-
-    :param fq_fa_path: path to FASTA/FASTQ file that is procesing;
-    :type fq_fa_path: str;
-    :param tax_annot_res_dir: path to directory with results of classification;
-    :type tax_annot_res_dir: str;
-
-    Returns path to result directory that was recenly created of 'str' type.
-    """
+    # Function configures and returns the path to result directory for particular FASTA or FASTQ file.
+    # Result directory is nested in 'tax_annot_res_dir' and is named according to name of FASTA/FASTQ file.
+    # E.g. if file 'some_reads.fastq' is processing, it's result directory will be named 'some_reads'.
+    #
+    # :param fq_fa_path: path to FASTA/FASTQ file that is procesing;
+    # :type fq_fa_path: str;
+    # :param tax_annot_res_dir: path to directory with results of classification;
+    # :type tax_annot_res_dir: str;
+    #
+    # Returns path to result directory that was recenly created of 'str' type.
 
     # dpath means "directory path"
     new_dpath = os.path.join(tax_annot_res_dir, os.path.basename(fq_fa_path)) # get rid of absolute path

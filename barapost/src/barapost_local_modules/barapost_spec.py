@@ -8,28 +8,25 @@ import sys
 from xml.etree import ElementTree # for retrieving information from XML BLAST report
 import subprocess as sp
 
-from src.printlog import printlog_info, printlog_warning, printlog_error, printlog_error_time
+from src.printlog import printlog_error, printlog_error_time
 from src.platform import platf_depend_exit
 from src.filesystem import rename_file_verbosely
 
 
-def look_around(new_dpath, fq_fa_path, blast_algorithm):
+def look_around(new_dpath, fq_fa_path):
     # Function looks around in order to check if there are results from previous runs of this script.
-
+    #
     # Returns None if there is no result from previous run.
     # If there are results from previous run, returns a dict of the following structure:
     # {
     #     "tsv_respath": path_to_tsv_file_from_previous_run (str),
     #     "n_done_reads": number_of_successfull_requests_from_currenrt_FASTA_file (int),
     # }
-
+    #
     # :param new_dpath: path to current (corresponding to fq_fa_path file) result directory;
     # :type new_dpath: str;
     # :param fq_fa_path: path to current (corresponding to fq_fa_path file) FASTA file;
     # :type fq_fa_path: str;
-    # :param blast_algorithm: BLASTn algorithm to use.
-    #     This parameter is necessary because it is included in name of result files;
-    # :type blast_algorithm: str;
 
     # "hname" means human readable name (i.e. without file path and extention)
     fasta_hname = os.path.basename(fq_fa_path) # get rid of absolute path
@@ -47,8 +44,9 @@ def look_around(new_dpath, fq_fa_path, blast_algorithm):
             try:
                 lines = res_file.readlines()
                 num_done_reads = len(lines) - 1 # the first line is a head
-            except Exception as err:
-                printlog_error_time("Data in classification file `{}` is broken. Reason:".format(tsv_res_fpath))
+            except OSError as err:
+                printlog_error_time("Data in classification file `{}` is broken. Reason:"\
+                    .format(tsv_res_fpath))
                 printlog_error( str(err) )
                 printlog_error("Starting from the beginning.")
                 rename_file_verbosely(tsv_res_fpath)
@@ -92,8 +90,8 @@ def launch_blastn(packet, blast_algorithm, use_index, queries_tmp_dir, db_path):
     # end with
 
     # Configure command line
-    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 10 -max_hsps 1 -use_index {}".format(query_path,
-        db_path, blast_algorithm, use_index)
+    blast_cmd = "blastn -query {} -db {} -outfmt 5 -task {} -max_target_seqs 10 -max_hsps 1 -use_index {}"\
+        .format(query_path, db_path, blast_algorithm, use_index)
 
     pipe = sp.Popen(blast_cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
     stdout_stderr = pipe.communicate()
@@ -136,7 +134,7 @@ def parse_align_results_xml(xml_text, qual_dict):
 
     # Iterate over "Iteration" and "Iteration_hits" nodes
     for iter_elem, iter_hit in zip(root.iter("Iteration"), root.iter("Iteration_hits")):
-    
+
         # "Iteration" node contains query name information
         query_name = iter_elem.find("Iteration_query-def").text
         query_len = iter_elem.find("Iteration_query-len").text
@@ -238,14 +236,14 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download):
                                 raise IndexError
                             elif len(line_splt) == 1: # just accession
                                 name = "No definition of the sequence provided"
-                            elif len(line_splt):
+                            else:
                                 name = line_splt[1]
                             # end if
                             acc = sys.intern(line_splt[0].partition('.')[0])
                             # gi = line_splt[1]
                             acc_dict[acc] = name
 
-                        except Exception as err:
+                        except IndexError as err:
                             printlog_error_time("Error: invalid data in file `{}`!".format(acc_fpath))
                             printlog_error("Here is that invalid line:\n  `{}`".format(line))
                             printlog_error(str(err))

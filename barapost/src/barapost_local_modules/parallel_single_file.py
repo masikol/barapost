@@ -109,7 +109,7 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
 
         # Look around and ckeck if there are results of previous runs of this script
         # If 'look_around' is None -- there is no data from previous run
-        previous_data = look_around(new_dpath, fq_fa_path, blast_algorithm)
+        previous_data = look_around(new_dpath, fq_fa_path)
 
         if previous_data is None: # If there is no data from previous run
             num_done_seqs = 0 # number of successfully processed sequences
@@ -176,6 +176,6 @@ def process(fq_fa_list, n_thr, packet_size, tax_annot_res_dir,
 
         sys.stdout.write('\r')
         printlog_info_time("File #{}/{} (`{}`) is processed.".\
-            format(i, nfiles, os.path.basename(fq_fa_path)))
+            format(i+1, nfiles, os.path.basename(fq_fa_path)))
         printn("Working...")    # end for
 # end def process

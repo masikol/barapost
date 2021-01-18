@@ -2,9 +2,8 @@
 # This module defines function-generator that yields fasta-formatted records from fasta file
 #   of certain ('packet_size') size.
 
-import os
 from src.prune_seqs import prune_seqs
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.printlog import printlog_warning
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
@@ -147,7 +146,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
                         seqlen = 0
                     # end if
                 # end if
-                
+
                 if line == "": # if end of file (data) is reached
                     break
                 # end if
@@ -168,7 +167,7 @@ def fasta_packets(fasta, packet_size, num_done_seqs, packet_mode=0,
             # end if
 
             # Get list of sequence IDs:
-            names = filter(lambda l: True if l.startswith('>') else False, packet.splitlines())
+            names = filter(lambda l: l.startswith('>'), packet.splitlines())
             names = map(lambda l: l.replace('>', ''), names)
 
             # {<seq_id>: '-'}, as soon as it is a fasta file
@@ -268,7 +267,7 @@ def fasta_packets_from_str(data, packet_size):
         # end if
 
         # Get list of sequence IDs:
-        names = filter(lambda l: True if l.startswith('>') else False, packet.splitlines())
+        names = filter(lambda l: l.startswith('>'), packet.splitlines())
         names = map(lambda l: l.replace('>', ''), names)
 
         for name in names:
@@ -276,7 +275,7 @@ def fasta_packets_from_str(data, packet_size):
         # end for
 
         # No way to get quality from fasta-formatted string.
-        # However, we will have it from 'packet_generator()' launching 
+        # However, we will have it from 'packet_generator()' launching
         #   (see function 'process' in src/barapost_local_modules/parallel_single_file.py).
         if packet != "":
             yield {"fasta": packet, "qual": qual_dict}

@@ -5,12 +5,11 @@
 import os
 
 import src.taxonomy as taxonomy
-from src.printlog import printlog_info, printlog_error, printn, log_info
+from src.printlog import printlog_info, printlog_error, printn, log_info, printlog_error_time
 from src.platform import platf_depend_exit
 
 def check_deprecated_taxonomy(classif_dir):
 
-    legacy_mode = False
     legacy_tax_path = os.path.join(classif_dir, "taxonomy", "taxonomy")
 
     if not os.path.exists(legacy_tax_path):
@@ -34,7 +33,7 @@ def _reformat_legacy_file(legacy_tax_path):
         with shelve.open(legacy_tax_path, 'r') as tax_file:
             pass
         # end with
-    except Exception as err:
+    except OSError as err:
         printlog_error("Legacy taxonomy file appears to be corrupted.")
         printlog_error("This error might be fatal.")
         str_err = str(err)
@@ -56,16 +55,16 @@ def _reformat_legacy_file(legacy_tax_path):
     log_info("Reformatting: `{}` ->".format(legacy_tax_path))
 
     with shelve.open(legacy_tax_path, 'r') as old_tax_file, open(new_tax_path, 'w') as new_tax_file:
-        for acc, taxonomy in old_tax_file.items():
-            if isinstance(taxonomy, tuple):
-                tax_str = taxonomy.config_taxonomy_str(taxonomy)
+        for acc, taxonomy_from_file in old_tax_file.items():
+            if isinstance(taxonomy_from_file, tuple):
+                tax_str = taxonomy.config_taxonomy_str(taxonomy_from_file)
                 new_tax_file.write("{}\n".format('\t'.join( (acc, tax_str) )))
-            elif isinstance(taxonomy, str):
-                new_tax_file.write("{}\n".format('\t'.join( (acc, taxonomy) )))
+            elif isinstance(taxonomy_from_file, str):
+                new_tax_file.write("{}\n".format('\t'.join( (acc, taxonomy_from_file) )))
             else:
                 # Execution must not reach here
-                printlog_error("\nFatal error 8755.")
-                printlog_error("Please, contact the developer -- it is his fault.")
+                printlog_error_time("Fatal error 8755.")
+                printlog_error("Please, contact the developer.")
                 platf_depend_exit(8755)
             # end if
         # end for
@@ -77,7 +76,7 @@ def _reformat_legacy_file(legacy_tax_path):
         renamed_legacy_file = "{}_deprecated".format(legacy_tax_path)
         os.rename(legacy_tax_path, renamed_legacy_file)
     except OSError as err:
-        printlog_error("Cannot rename legacy taxonomy file `{}`:".format(legacy_tax_path))
+        printlog_error_time("Cannot rename legacy taxonomy file `{}`:".format(legacy_tax_path))
         printlog_error(str(err))
         printlog_error("But it's not a problem -- we will proceed with our work.")
     else:

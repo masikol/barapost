@@ -384,7 +384,7 @@ def recover_taxonomy(acc, hit_def, taxonomy_path):
         db_files = glob.glob("{}{}*".format(db_dir, os.sep))
         try:
             local_fasta = next(iter(filter(is_fasta, db_files)))
-        except StopIteration as err:
+        except StopIteration:
             printlog_error_time("Error: cannot recover taxonomy for following sequence:")
             printlog_error(" `{} - {}`.".format(acc, hit_def))
             printlog_error("You can solve this problem by yourself (it's pretty simple).")

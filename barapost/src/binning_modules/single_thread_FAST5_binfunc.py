@@ -5,8 +5,8 @@ import h5py
 
 import os
 import sys
-from glob import glob
 import logging
+from glob import glob
 
 from src.binning_modules.binning_spec import get_checkstr, get_res_tsv_fpath, configure_resfile_lines
 from src.binning_modules.fast5 import update_file_dict
@@ -16,8 +16,8 @@ from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
 from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
-from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
-from src.fmt_readID import fmt_read_id
+from src.printlog import printn, printlog_error, printlog_error_time, printlog_info_time
+from src.fmt_read_id import fmt_read_id
 
 
 def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
@@ -104,13 +104,14 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
         f5_cpy_func = copy_read_f5_2_f5
     # end if
 
-    for i, read_name in enumerate(fast5_readids(from_f5)):
+    for _, read_name in enumerate(fast5_readids(from_f5)):
 
         try:
             hit_names, *vals_to_filter = resfile_lines[sys.intern(fmt_read_id(read_name))[1:]] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
-            printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation.")
-            printlog_error("This TSV file: `{}`".format(fmt_read_id(read_name), tsv_res_fpath))
+            printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation."\
+                .format(fmt_read_id(read_name)))
+            printlog_error("This TSV file: `{}`".format(tsv_res_fpath))
             printlog_error("Try running barapost-binning with `-u` (`--untwist-fast5`) flag.\n")
             platf_depend_exit(1)
         # end try

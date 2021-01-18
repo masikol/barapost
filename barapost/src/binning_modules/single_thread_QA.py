@@ -7,9 +7,9 @@ import logging
 
 from src.binning_modules.binning_spec import get_res_tsv_fpath, configure_resfile_lines
 
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.platform import platf_depend_exit
-from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
+from src.printlog import printn, printlog_error, printlog_error_time, printlog_info_time
 from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.binning_modules.fastq_records import fastq_records
@@ -132,8 +132,9 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
         try:
             hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
         except KeyError:
-            printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation.")
-            printlog_error("This TSV file: `{}`".format(read_name, tsv_res_fpath))
+            printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation."\
+                .format(read_name))
+            printlog_error("This TSV file: `{}`".format(tsv_res_fpath))
             printlog_error("Make sure that this read has been already \
                 processed by `barapost-prober.py` and `barapost-local.py`.")
             platf_depend_exit(1)
@@ -147,7 +148,7 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
                 srt_file_dict = update_file_dict(srt_file_dict, QL_trash_fpath)
             # end if
             write_fun(srt_file_dict[QL_trash_fpath], fastq_rec) # write current read to binned file
-            
+
         elif not align_filter(vals_to_filter):
             align_seqs_fail += 1
             # Place this sequence to align_trash file
@@ -155,7 +156,7 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
                 srt_file_dict = update_file_dict(srt_file_dict, align_trash_fpath)
             # end if
             write_fun(srt_file_dict[align_trash_fpath], fastq_rec) # write current read to binned file
-            
+
         else:
             for hit_name in hit_names.split("&&"): # there can be multiple hits for single query sequence
                 # Get name of result FASTQ file to write this read in

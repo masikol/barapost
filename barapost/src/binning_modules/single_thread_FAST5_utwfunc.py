@@ -8,7 +8,7 @@ import h5py
 from glob import glob
 from shelve import open as open_shelve
 
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.platform import platf_depend_exit
 from src.binning_modules.fast5 import fast5_readids
 from src.printlog import printlog_error, printlog_error_time
@@ -26,24 +26,24 @@ index_name = "fast5_to_tsvtaxann_idx"
 # <DBM file>:
 # {
 #     <path_to_FAST5_1>: {
-#                         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-#                         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-#                         ...
-#                         <path_to_TSV_1.M>: [<read_ID_1.M.1>, <read_ID_1.M.2>, ..., <read_ID_1.M.N>]
-#                      },
+#        <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
+#        <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
+#        ...
+#        <path_to_TSV_1.M>: [<read_ID_1.M.1>, <read_ID_1.M.2>, ..., <read_ID_1.M.N>]
+#        },
 #     <path_to_FAST5_2>: {
-#                         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-#                         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-#                         ...
-#                         <path_to_TSV_2.M>: [<read_ID_2.M.1>, <read_ID_2.M.2>, ..., <read_ID_2.M.N>]
-#                      },
+#        <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
+#        <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
+#        ...
+#        <path_to_TSV_2.M>: [<read_ID_2.M.1>, <read_ID_2.M.2>, ..., <read_ID_2.M.N>]
+#        },
 #     ...
 #     <path_to_FAST5_K>: {
-#                         <path_to_TSV_K.1>: [<read_ID_K.1.1>, <read_ID_K.1.2>, ..., <read_ID_K.1.N>],
-#                         <path_to_TSV_K.2>: [<read_ID_K.2.1>, <read_ID_K.2.2>, ..., <read_ID_K.2.N>],
-#                         ...
-#                         <path_to_TSV_K.M>: [<read_ID_K.M.1>, <read_ID_K.M.2>, ..., <read_ID_K.M.N>]
-#                      },
+#        <path_to_TSV_K.1>: [<read_ID_K.1.1>, <read_ID_K.1.2>, ..., <read_ID_K.1.N>],
+#        <path_to_TSV_K.2>: [<read_ID_K.2.1>, <read_ID_K.2.2>, ..., <read_ID_K.2.N>],
+#        ...
+#        <path_to_TSV_K.M>: [<read_ID_K.M.1>, <read_ID_K.M.2>, ..., <read_ID_K.M.N>]
+#        }
 # }
 
 
@@ -129,8 +129,8 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir):
         printlog_error("FAST5 file: `{}`".format(f5_path))
         printlog_error("Some reads have not undergone taxonomic annotation.")
         missing_log = "missing_reads_lst.txt"
-        printlog_error("List of missing reads are in following file:"
-        printlog_error("{}".format(missing_log)))
+        printlog_error("List of missing reads are in following file:")
+        printlog_error("{}".format(missing_log))
         with open(missing_log, 'w') as missing_logfile:
             missing_logfile.write("Missing reads from file '{}':\n\n".format(f5_path))
             for readid in readids_to_seek:
@@ -155,7 +155,8 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir):
             index_f5_2_tsv[f5_path] = idx_dict
         # end with
     except OSError as oserr:
-        printlog_error_time("Error: cannot create index file `{}`".format(os.path.join(index_dirpath, index_name))))
+        printlog_error_time("Error: cannot create index file `{}`"\
+            .format(os.path.join(index_dirpath, index_name)))
         printlog_error( str(oserr) )
         platf_depend_exit(1)
     # end try

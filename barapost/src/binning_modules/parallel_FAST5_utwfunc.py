@@ -3,12 +3,13 @@
 #   taxonomic annotation in parallel.
 
 import os
+import sys
 import h5py
 from glob import glob
 
 from shelve import open as open_shelve
 
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.platform import platf_depend_exit
 from src.binning_modules.fast5 import fast5_readids
 from src.printlog import printn, printlog_info_time, printlog_error, printlog_error_time
@@ -41,33 +42,33 @@ def init_paral_utw(write_lock_buff, print_lock_buff):
 # <DBM file>:
 # {
 #     <path_to_FAST5_1>: {
-#                         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-#                         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-#                         ...
-#                         <path_to_TSV_1.M>: [<read_ID_1.M.1>, <read_ID_1.M.2>, ..., <read_ID_1.M.N>]
-#                      },
+#         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
+#         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
+#         ...
+#         <path_to_TSV_1.M>: [<read_ID_1.M.1>, <read_ID_1.M.2>, ..., <read_ID_1.M.N>]
+#         },
 #     <path_to_FAST5_2>: {
-#                         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
-#                         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
-#                         ...
-#                         <path_to_TSV_2.M>: [<read_ID_2.M.1>, <read_ID_2.M.2>, ..., <read_ID_2.M.N>]
-#                      },
+#         <path_to_TSV_1.1>: [<read_ID_1.1.1>, <read_ID_1.1.2>, ..., <read_ID_1.1.N>],
+#         <path_to_TSV_1.2>: [<read_ID_1.2.1>, <read_ID_1.2.2>, ..., <read_ID_1.2.N>],
+#         ...
+#         <path_to_TSV_2.M>: [<read_ID_2.M.1>, <read_ID_2.M.2>, ..., <read_ID_2.M.N>]
+#         },
 #     ...
 #     <path_to_FAST5_K>: {
-#                         <path_to_TSV_K.1>: [<read_ID_K.1.1>, <read_ID_K.1.2>, ..., <read_ID_K.1.N>],
-#                         <path_to_TSV_K.2>: [<read_ID_K.2.1>, <read_ID_K.2.2>, ..., <read_ID_K.2.N>],
-#                         ...
-#                         <path_to_TSV_K.M>: [<read_ID_K.M.1>, <read_ID_K.M.2>, ..., <read_ID_K.M.N>]
-#                      },
+#         <path_to_TSV_K.1>: [<read_ID_K.1.1>, <read_ID_K.1.2>, ..., <read_ID_K.1.N>],
+#         <path_to_TSV_K.2>: [<read_ID_K.2.1>, <read_ID_K.2.2>, ..., <read_ID_K.2.N>],
+#         ...
+#         <path_to_TSV_K.M>: [<read_ID_K.M.1>, <read_ID_K.M.2>, ..., <read_ID_K.M.N>]
+#         }
 # }
 
 
 def map_f5reads_2_taxann(f5_fpaths, tsv_taxann_lst, tax_annot_res_dir):
     # Function perform mapping of all reads stored in input FAST5 files
     #     to existing TSV files containing taxonomic annotation info.
-
+    #
     # It creates an DBM index file.
-    
+    #
     # :param f5_fpaths: list of paths to current FAST5 file;
     # :type f5_fpaths: list<str>;
     # :param tsv_taxann_lst: list of path to TSV files that contain taxonomic annotation;

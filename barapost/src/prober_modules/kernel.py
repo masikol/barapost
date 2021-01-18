@@ -8,7 +8,8 @@ from src.filesystem import remove_tmp_files
 
 from src.prune_seqs import prune_seqs
 from src.write_classification import write_classification
-from src.prober_modules.networking import configure_request, send_request, wait_for_align, BlastError
+from src.prober_modules.networking import configure_request, send_request
+from src.prober_modules.networking import wait_for_align, BlastError
 from src.prober_modules.prober_spec import parse_align_results_xml, write_hits_to_download
 
 from src.fasta import fasta_packets_from_str
@@ -22,9 +23,11 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
     # :type packet_size: int;
     # :param packet_mode: packet forming mode (see option `-c` for definition);
     # :type packet_mode: int;
-    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :param pack_to_send: ordinal number of packet to send
+    #   (it is list rather that in because it should be mutable);
     # :type pack_to_send: list<int>;
-    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :param seqs_processed: nuber of sequnces processed
+    #   (it is list rather that in because it should be mutable);
     # :type seqs_processed: list<int>;
     # :param fq_fa_path: path to current input file;
     # :type fq_fa_path: str;
@@ -68,7 +71,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         # end if
 
         # Split the packet
-        for i, splitted_packet in enumerate(fasta_packets_from_str(packet["fasta"], new_pack_size_0)):
+        for _, splitted_packet in enumerate(fasta_packets_from_str(packet["fasta"], new_pack_size_0)):
 
             # Inherit quality information from "ancestor" qual_dict
             for query_name in splitted_packet["qual"].keys():
@@ -87,7 +90,8 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
         printlog_info("prober will prune this sequence twofold and resubmit it.")
 
         # Calculate new length for this sequence
-        old_seq = map(str.strip, packet["fasta"].splitlines()[1:]) # generator of stripped sequence-sontaining lines
+        # Generator of stripped sequence-sontaining lines:
+        old_seq = map(str.strip, packet["fasta"].splitlines()[1:])
         old_len = len(''.join(old_seq)) # calculate length of old sequence
         new_len = old_len // 2
         if old_len % 2 != 0:
@@ -117,9 +121,11 @@ def _handle_result(align_xml_text, packet, taxonomy_path,
     # :type acc_dict: dict<str: (str, int)>;
     # :param acc_fpath: path to file `hits_to_download.tsv`;
     # :type acc_fpath: str;
-    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :param seqs_processed: nuber of sequnces processed
+    #   (it is list rather that in because it should be mutable);
     # :type seqs_processed: list<int>;
-    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :param pack_to_send: ordinal number of packet to send
+    #   (it is list rather that in because it should be mutable);
     # :type pack_to_send: list<int>;
     # :param tmp_fpath: path to current temporary file;
     # :type tmp_fpath: str;
@@ -152,9 +158,11 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
     # :type packet_size: int;
     # :param packet_mode: packet forming mode (see option `-c` for definition);
     # :type packet_mode: int;
-    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :param pack_to_send: ordinal number of packet to send
+    #   (it is list rather that in because it should be mutable);
     # :type pack_to_send: list<int>;
-    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :param seqs_processed: nuber of sequnces processed
+    #   (it is list rather that in because it should be mutable);
     # :type seqs_processed: list<int>;
     # :param fq_fa_path: path to current input file;
     # :type fq_fa_path: str;
@@ -216,9 +224,11 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
     # :type packet_size: int;
     # :param packet_mode: packet forming mode (see option `-c` for definition);
     # :type packet_mode: int;
-    # :param pack_to_send: ordinal number of packet to send (it is list rather that in because it should be mutable);
+    # :param pack_to_send: ordinal number of packet to send
+    #   (it is list rather that in because it should be mutable);
     # :type pack_to_send: list<int>;
-    # :param seqs_processed: nuber of sequnces processed (it is list rather that in because it should be mutable);
+    # :param seqs_processed: nuber of sequnces processed
+    #   (it is list rather that in because it should be mutable);
     # :type seqs_processed: list<int>;
     # :param fq_fa_path: path to current input file;
     # :type fq_fa_path: str;
@@ -251,14 +261,16 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
     totalbp = "{:,}".format(totalbp)
     del lines
 
-    printlog_info("Request number {}{}. Sending {} sequence{} ({} b.p. totally).".format(pack_to_send[0],
-        out_of_n["msg"], len(packet["qual"]), s_letter, totalbp))
+    printlog_info("Request number {}{}. Sending {} sequence{} ({} b.p. totally)."\
+        .format(pack_to_send[0], out_of_n["msg"],
+                len(packet["qual"]), s_letter, totalbp))
 
     error = BlastError(-1)
 
     while error.code != 0: # until successfull attempt
 
-        request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email) # get the request
+        # Get the request
+        request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email)
 
         # Send the request and get BLAST XML response.
         # 'align_xml_text' will be None if an error occurs.

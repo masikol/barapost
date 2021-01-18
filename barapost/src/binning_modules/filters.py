@@ -12,7 +12,7 @@ from src.filesystem import is_fasta
 # A = {Value is not minus};
 # B = {Value passes filter};
 # R = {Do NOT place sequence to trash file};
-# 
+#
 # +---+---+---+
 # | A | B | R |
 # +===+===+===+
@@ -29,7 +29,8 @@ from src.filesystem import is_fasta
 
 def get_QL_filter(fpath, quality, length):
     # Function returns a filter function.
-    # This filter in turn returns True if annotation line passed to it passes all filters and False otherwise.
+    # This filter in turn returns True if annotation line
+    #   passed to it passes all filters and False otherwise.
     # Returns quality and length filter.
     #
     # :param fpath: path to input file;

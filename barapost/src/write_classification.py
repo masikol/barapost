@@ -16,8 +16,10 @@ def write_classification(res_tsv_lines, tsv_res_path):
     # If there is no result tsv file -- create it and write a head of the table.
     if not os.path.exists(tsv_res_path):
         with open(tsv_res_path, 'w') as tsv_res_file:
-            tsv_res_file.write('\t'.join( ["QUERY_ID", "HIT_NAME", "HIT_ACCESSION", "QUERY_LENGTH",
-                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS", "E-VALUE", "AVG_QUALITY", "ACCURACY(%)"] ) + '\n')
+            tsv_res_file.write('\t'.join( ["QUERY_ID", "HIT_NAME",
+                "HIT_ACCESSION", "QUERY_LENGTH",
+                "ALIGNMENET_LENGTH", "IDENTITY", "GAPS",
+                "E-VALUE", "AVG_QUALITY", "ACCURACY(%)"] ) + '\n')
         # end with
     # end if
 

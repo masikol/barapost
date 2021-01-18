@@ -16,17 +16,16 @@ from src.printlog import log_info, printlog_info, printlog_info_time, printlog_e
 
 
 def verify_taxids(taxid_list):
-    """
-    Funciton verifies TaxIDs passed to prober with `-g` option.
-    Function requests NCBI Taxonomy Browser and parses organism's name from HTML response.
-    What is more, this function configures `oraganisms` list - it will be included into BLAST submissions.
+    # Funciton verifies TaxIDs passed to prober with `-g` option.
+    # Function requests NCBI Taxonomy Browser and parses organism's name from HTML response.
+    # What is more, this function configures `oraganisms` list - it will be included into BLAST submissions.
+    #
+    # :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
+    #     during CL argument parsing;
+    # :type taxid_list: list<str>;
+    #
+    # Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
 
-    :param taxid_list: list of TaxIDs. TaxIDs are strings, but they are verified to be integers
-        during CL argument parsing;
-    :type taxid_list: list<str>;
-
-    Returns list of strings of the following format: "<tax_name> (taxid:<TaxID>)>"
-    """
     organisms = list()
     if len(taxid_list) > 0:
 
@@ -60,22 +59,20 @@ def verify_taxids(taxid_list):
 
 
 def configure_request(packet, blast_algorithm, organisms, user_email):
-    """
-    Function configures the submissoin request to BLAST server.
-
-    :param packet: FASTA_data_containing_query_sequences;
-    :type packet: str;
-    :param blast_algorithm: BLASTn algorithm to use;
-    :type blast_algorithm: str;
-    :param organisms: list of strings performing `nt` database slices;
-    :type organisms: list<str>;
-
-    Returns a dict of the following structure:
-    {
-        "payload": the_payload_of_the_request (dict),
-        "headers": headers of thee request (dict)
-    }
-    """
+    # Function configures the submissoin request to BLAST server.
+    #
+    # :param packet: FASTA_data_containing_query_sequences;
+    # :type packet: str;
+    # :param blast_algorithm: BLASTn algorithm to use;
+    # :type blast_algorithm: str;
+    # :param organisms: list of strings performing `nt` database slices;
+    # :type organisms: list<str>;
+    #
+    # Returns a dict of the following structure:
+    # {
+    #     "payload": the_payload_of_the_request (dict),
+    #     "headers": headers of thee request (dict)
+    # }
 
     payload = dict()
     payload["CMD"] = "PUT" # method
@@ -104,21 +101,20 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
 
 
 def send_request(request, pack_to_send, packet_size, packet_mode, filename, tmp_fpath):
-    """
-    Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
-        and then waits for satisfaction of the request and retrieves response text.
+    # Function sends a request to "blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
+    #     and then waits for satisfaction of the request and retrieves response text.
+    #
+    # :param request: request_data (it is a dict that `configure_request()` function returns);
+    # :param request: dict<dict>;
+    # :param pack_to_send: current number (like id) of packet meant to be sent now.
+    # :type pack_to_send: int;
+    # :param pack_to_send: ordinal number of packet;
+    # :type pack_to_send: int;
+    # :param packet_size: numner of sequences in the packet;
+    # :type packet_size: int;
+    #
+    # Returns XML text of type 'str' with BLAST response.
 
-    :param request: request_data (it is a dict that `configure_request()` function returns);
-    :param request: dict<dict>;
-    :param pack_to_send: current number (like id) of packet meant to be sent now.
-    :type pack_to_send: int;
-    :param pack_to_send: ordinal number of packet;
-    :type pack_to_send: int;
-    :param packet_size: numner of sequences in the packet;
-    :type packet_size: int;
-
-    Returns XML text of type 'str' with BLAST response.
-    """
     payload = request["payload"]
     headers = request["headers"]
 
@@ -166,7 +162,7 @@ def send_request(request, pack_to_send, packet_size, packet_mode, filename, tmp_
     # end with
 
     # Wait for results of alignment
-    return( wait_for_align(rid, rtoe, pack_to_send, filename) )
+    return wait_for_align(rid, rtoe, pack_to_send, filename)
 # end def send_request
 
 
@@ -178,20 +174,18 @@ class BlastError:
 
 
 def wait_for_align(rid, rtoe, pack_to_send, filename):
-    """
-    Function waits untill BLAST server accomplishes the request.
-    
-    :param rid: Request ID to wait for;
-    :type rid: str;
-    :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
-    :type rtoe: int;
-    :param pack_to_send: current packet (id) number to send;
-    :type pack_to_send: int;
-    :param filename: basename of current FASTA file;
-    :type filename: str
-
-    Returns XML response ('str').
-    """
+    # Function waits untill BLAST server accomplishes the request.
+    #
+    # :param rid: Request ID to wait for;
+    # :type rid: str;
+    # :param rtoe: time in seconds estimated by BLAST server needed to accomplish the request;
+    # :type rtoe: int;
+    # :param pack_to_send: current packet (id) number to send;
+    # :type pack_to_send: int;
+    # :param filename: basename of current FASTA file;
+    # :type filename: str
+    #
+    # Returns XML response ('str').
 
     print()
     print("Requesting for current query status. Request ID: {}".format(rid))
@@ -255,7 +249,7 @@ def wait_for_align(rid, rtoe, pack_to_send, filename):
                 txt_align_res = lingering_https_get_request(server, retrieve_text_url, "text version of BLAST response")
 
                 # Count already existing plain text files in outdir:
-                is_txt_response = lambda f: False if re.search(r"prober_blast_response_[0-9]+\.txt", f) is None else True
+                is_txt_response = lambda f: not re.search(r"prober_blast_response_[0-9]+\.txt", f) is None
                 outdir_path = os.path.dirname(logging.getLoggerClass().root.handlers[0].baseFilename) # tricky trick
                 response_num = len(tuple(filter(is_txt_response, os.listdir(outdir_path))))
 

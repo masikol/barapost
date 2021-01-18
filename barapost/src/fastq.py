@@ -6,9 +6,9 @@
 import os
 from math import log
 from src.prune_seqs import prune_seqs
-from src.fmt_readID import fmt_read_id
+from src.fmt_read_id import fmt_read_id
 from src.filesystem import OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
-from src.printlog import printlog_warning, printlog_error_time
+from src.printlog import printlog_warning
 
 FASTQ_LINES_PER_READ = 4
 
@@ -49,7 +49,7 @@ def form_packet_numseqs(fastq_file, packet_size, fmt_func, max_seq_len):
     qual_dict = dict() # {<seq_id>: <read_quality>}
     eof = False
 
-    for i in range(packet_size):
+    for _ in range(packet_size):
 
         try:
             read_id = fmt_func(fastq_file.readline())

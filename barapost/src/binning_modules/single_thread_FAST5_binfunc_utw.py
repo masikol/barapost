@@ -14,8 +14,8 @@ from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
 from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
 
 from src.platform import platf_depend_exit
-from src.printlog import printn, printlog_info, printlog_error, printlog_error_time, printlog_info_time
-from src.fmt_readID import fmt_read_id
+from src.printlog import printn, printlog_error, printlog_error_time, printlog_info_time
+from src.fmt_read_id import fmt_read_id
 
 from shelve import open as open_shelve
 

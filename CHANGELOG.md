@@ -1,5 +1,17 @@
 # "Barapost" changelog
 
+## 2021-01-18 edition.
+
+- barapost-binnig: `-z` option removed: now barapost-binnig does not compress output files;
+- all: new format of log files;
+- all: fixed error that would cause barapost-prober and barapost-local to fail if an input file is broken and utf-8 codec cannot decode it. Now the programs don't terminate execution and just continue working after this error;
+
+## Vesrion changes:
+
+- barapost-prober: `1.22.a --> 1.23.a`
+- barapost-local: `3.17.a --> 3.18.a`
+- barapost-binning: `4.7.b --> 4.8.a`
+
 ## 2021-01-11 edition.
 
 - barapost-binning. Taxonomy recovering added: now if barapost-binning fails to find taxonomy for a sequence in `taxonomy.tsv`, it is able to recover it and continue binning;
