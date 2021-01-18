@@ -2,13 +2,12 @@
 
 **Barapost** command line toolkit is designed for binning (i.e. separation into different files) FASTA, FASTQ and FAST5 files according to taxonomic annotation. Taxonomic annotation is implemented as finding the most similar reference sequence in a nucleotide database: remotely using NCBI BLAST web service or on a local machine with BLAST+ toolkit.
 
-## Motivation
+## Applications (possible use cases)
 
-Find yourself constantly having a large amount of FASTA, FASTQ or FAST5 files, where sequences that belong to different organisms are **mixed up** together, but you want them to be **separated**?
-
-It is awful to sit in front of the computer for hours sending all these sequences to NCBI BLAST server and to rewrite large FAST(A/Q) files by hand, isn't it?
-
-"Barapost" toolkit is the thing that can do it for you and **save your time**.
+- Demultiplexing whole genome sequencing reads (basically, "long" reads) without barcoding. This demultiplexing is based on taxonomic annotation, therefore organisms of interest should be distant (having in mind naive classification algorithm and lateral gene transfer). Usually, it is enough to organisms to belong to different genera.
+- Genome assembly: Barapost can detect and remove contigs assembled from cross-talks. You might have seen such contigs: they are short and have low coverage, they don't belong to genome of interest and should be removed.
+- Comparing different sets of contigs of the same genome (see [Example 7](https://www.github.com/masikol/barapost/wiki/barapost-local#examples) on barapost-local page).
+- I dare to surmise this list isn't complete :-)
 
 ## Getting started
 
@@ -40,16 +39,16 @@ If you are not sure how to do this, following links can help you:
 
 1. **barapost-prober.py** -- this script submits several sequences (i.e. only a part of your data set) to NCBI BLAST server in order to determine what taxons are "present" in data set. "barapost-prober.py" saves accession numbers of best hit(s) of each submitted input sequence. Processing all sequences in this way takes too much time, what leads us to "barapost-local.py".
 
-2. **barapost-local.py** -- this script firstly downloads best hits "discovered" by "barapost-prober.py" from GenBank, then composes a database from doownloaded reference sequences on local machine and finally classifies the major part of data using created database. "barapost-local.py" creates a database and "BLASTs" input sequences with "BLAST+" toolkit.
+2. **barapost-local.py** -- this script firstly downloads best hits "discovered" by "barapost-prober.py" from GenBank, then composes a database from downloaded reference sequences on local machine and finally classifies the major part of data using created database. "barapost-local.py" creates a database and "BLASTs" input sequences with "BLAST+" toolkit.
 
-3. **barapost-binning.py** -- this script bins (divides into separate files) nucleotide sequences according to results of "barapost-prober.py" and "barapost-local.py"
+3. **barapost-binning.py** -- this script bins (divides into separate files) nucleotide sequences according to results of "barapost-prober.py" and/or "barapost-local.py"
 
 ![](imgs/Barapost-wokflow.png)
 
-## Manual
+## Manual and details
 
 You can find detailed information about Barapost at [Barapost Wiki](https://github.com/masikol/barapost/wiki).
 
-## How to cite
+## How to cite Barapost
 
 You can find paper describing the toolkit together with benchmark at [https://doi.org/10.1109/TCBB.2020.3009780](https://doi.org/10.1109/TCBB.2020.3009780). If you use Barapost in your research, it would be great if you could cite us.
