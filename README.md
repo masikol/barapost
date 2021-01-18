@@ -4,7 +4,7 @@
 
 ## Applications (possible use cases)
 
-- Demultiplexing whole genome sequencing reads (basically, "long" reads) without barcoding. This demultiplexing is based on taxonomic annotation, therefore organisms of interest should be distant (having in mind naive classification algorithm and lateral gene transfer). Usually, it is enough to organisms to belong to different genera.
+- Demultiplexing whole genome sequencing reads (basically, "long" reads) without barcoding. This demultiplexing is based on taxonomic annotation, therefore organisms of interest should be distant (having in mind naive classification algorithm and lateral gene transfer). Usually, it is enough for organisms to belong to different genera.
 - Genome assembly: Barapost can detect and remove contigs assembled from cross-talks. You might have seen such contigs: they are short and have low coverage, they don't belong to genome of interest and should be removed.
 - Comparing different sets of contigs of the same genome (see [Example 7](https://www.github.com/masikol/barapost/wiki/barapost-local#examples) on barapost-local page).
 - I dare to surmise this list isn't complete :-)
