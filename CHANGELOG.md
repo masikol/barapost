@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2021-01-27 edition.
+
+- all scripts: barapost now does not allow inappropriate characters (such as semisolons, parentheses or spaces) to appear in names of ouput files;
+
+## Vesrion changes:
+
+- barapost-prober: `1.23.a --> 1.23.b`
+- barapost-local: `3.18.a --> 3.18.b`
+- barapost-binning: `4.8.a --> 4.8.b`
+
 ## 2021-01-18 edition.
 
 - barapost-binnig: `-z` option removed: now barapost-binnig does not compress output files;

@@ -18,6 +18,7 @@ from src.barapost_local_modules.related_replicons import search_for_related_repl
 
 import src.taxonomy as taxonomy
 from src.platform import platf_depend_exit
+from src.filesystem import remove_bad_chars
 from src.check_connection import check_connection
 from src.printlog import printlog_info, printlog_info_time, printlog_error
 from src.printlog import printlog_error_time, printn, getwt, log_info
@@ -471,7 +472,7 @@ on your local machine:")
                                     own_seq_counter += 1
                                     own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                                     own_def = "(_{}_)_".format(def_convert_func(assm_path)) + line[1:]
-                                    own_def = own_def.replace(' ', '_')
+                                    own_def = remove_bad_chars(own_def)
                                     taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, own_def)
                                     line = ">" + "{} {}".format(own_acc, own_def)
                                 # end if
@@ -500,7 +501,7 @@ on your local machine:")
                             own_seq_counter += 1
                             own_acc = "OWN_SEQ_{}".format(own_seq_counter)
                             taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, line[1:])
-                            line = ">" + own_acc + ' ' + line[1:].replace(' ', '_')
+                            line = ">" + own_acc + ' ' + remove_bad_chars(line[1:])
                         # end if
                         fasta_db.write(line + '\n')
                     # end for
@@ -523,7 +524,7 @@ on your local machine:")
                 line = line.strip()
                 acc, seq_name = (line.partition(' ')[0], line.partition(' ')[2])
                 acc = acc.partition('.')[0]
-                seq_name = seq_name.replace(' ', '_') # remove spaces
+                seq_name = remove_bad_chars(seq_name)
                 seq_name = re.sub(r'[^\x00-\x7F]+', '_', seq_name) # remove non-ascii chars
                 line = ' '.join( (acc, seq_name) ) + '\n'
             # end if

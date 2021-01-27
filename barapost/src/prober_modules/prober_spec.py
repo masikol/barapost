@@ -8,6 +8,7 @@ from xml.etree import ElementTree # for retrieving information from XML BLAST re
 
 from src.printlog import printlog_info, printlog_error, printlog_error_time, printn
 from src.platform import platf_depend_exit
+from src.filesystem import remove_bad_chars
 from src.filesystem import rename_file_verbosely
 
 from src.taxonomy import find_taxonomy
@@ -335,7 +336,7 @@ def parse_align_results_xml(xml_text, qual_dict, acc_dict, taxonomy_path):
                 # end if
 
                 # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                hit_def = hit.find("Hit_def").text.replace(' ', '_')
+                hit_def = remove_bad_chars(hit.find("Hit_def").text)
                 annotations.append(hit_def)
 
                 curr_acc = sys.intern(hit.find("Hit_accession").text)

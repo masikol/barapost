@@ -6,8 +6,10 @@ import re
 import sys
 from glob import glob
 
+
 import src.taxonomy
 from src.platform import platf_depend_exit
+from src.filesystem import remove_bad_chars
 from src.printlog import printlog_warning, printlog_info, printlog_error, printlog_error_time
 
 
@@ -84,13 +86,6 @@ def find_rank_for_filename(sens, taxonomy):
         return find_rank_for_filename( new_sens, taxonomy ) + "_no-{}".format(rank_name)
     # end if
 # end def find_rank_for_filename
-
-
-# Characters not allowes in filenames
-chars_excl_from_filename = ("/", "\\", ":", "*", "+",
-                            "?", "\"", "<", ">", "(",
-                                 ")", "|", " ", ";")
-
 
 class NoTaxonomyError(Exception):
     pass
@@ -201,7 +196,7 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_dict):
                 # end for
             else:
                 # If it is not assembly -- merely return sequence ID
-                best_hit_annots.append(annotation)
+                best_hit_annots.append(taxonomy)
             # end if
         else:
             # Execution must not reach here
@@ -211,10 +206,8 @@ def format_taxonomy_name(hit_acc, hit_def, sens, tax_dict):
         # end if
     # end for
 
-    # Replace symbols not useful in filenames with underscores
-    for char in chars_excl_from_filename:
-        best_hit_annots = map(lambda ann: ann.replace(char, '_'), best_hit_annots)
-    # end for
+    # Replace symbols not allowed in filenames
+    best_hit_annots = map(remove_bad_chars, best_hit_annots)
 
     # Return deduplicated names
     return "&&".join(set(best_hit_annots))
