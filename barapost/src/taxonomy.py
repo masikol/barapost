@@ -9,6 +9,7 @@ from src.lingering_https_get_request import lingering_https_get_request
 
 from src.printlog import printlog_error, printlog_error_time
 from src.platform import platf_depend_exit
+from src.filesystem import remove_bad_chars
 from src.filesystem import is_fasta, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 
@@ -239,7 +240,7 @@ def parse_taxonomy(taxonomy_str):
         taxonomy = tuple(taxonomy)
     # Otherwise we will merely use this sequence ID
     else:
-        taxonomy = taxonomy_str.replace(' ', '_')
+        taxonomy = remove_bad_chars(taxonomy_str)
     # end if
 
     return taxonomy
@@ -326,7 +327,7 @@ def config_taxonomy_own_seq(taxonomy_str):
         taxonomy = proper_tax_match.group(0)
     # Otherwise we will merely use this sequence ID
     else:
-        taxonomy = taxonomy_str.replace(' ', '_')
+        taxonomy = remove_bad_chars(taxonomy_str)
     # end if
 
     return taxonomy

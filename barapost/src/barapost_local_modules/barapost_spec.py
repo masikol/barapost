@@ -10,6 +10,7 @@ import subprocess as sp
 
 from src.printlog import printlog_error, printlog_error_time
 from src.platform import platf_depend_exit
+from src.filesystem import remove_bad_chars
 from src.filesystem import rename_file_verbosely
 
 
@@ -177,7 +178,7 @@ def parse_align_results_xml(xml_text, qual_dict):
                 hit_accs.append( curr_acc )
 
                 # Get full hit name (e.g. "Erwinia amylovora strain S59/5, complete genome")
-                hit_def = hit.find("Hit_def").text.replace(' ', '_')
+                hit_def = remove_bad_chars(hit.find("Hit_def").text)
                 annotations.append(hit_def)
 
                 align_len = hsp.find("Hsp_align-len").text.strip()

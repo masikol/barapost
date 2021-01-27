@@ -24,6 +24,28 @@ is_fasta = lambda f: not re.search(r".+\.(m)?f(ast)?a(\.gz)?$", f) is None
 is_fast5 = lambda f: f.endswith(".fast5")
 
 
+# Characters not allowes in filenames
+bad_chars = ("/", "\\", ":", "*", "+", "'",
+             "?", "\"", "<", ">", "(", ")",
+             "[",  "]", "|", ";", "{", "}")
+
+def remove_bad_chars(string):
+    # :param string: string to edit;
+    # :type string: str;
+
+    # Replace spaces with underscores.
+    string = string.replace(' ', '_')
+
+    # And all other "bad chars" -- with empty string (remove them)
+    for char in bad_chars:
+        string = string.replace(char, '')
+    # end for
+
+    return string
+# end def remove_bad_chars_from_str
+
+
+
 def rename_file_verbosely(file):
     # Function verbosely renames file (as well as directory) given to it.
     # :param file: path to file (directory) meant to be renamed;
