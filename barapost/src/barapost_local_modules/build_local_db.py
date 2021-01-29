@@ -395,11 +395,8 @@ on your local machine:")
 
         # Check if these files are assembly made by SPAdes or a5
         spades_patt = r">NODE_[0-9]+" # this pattern will match sequence IDs generated y SPAdes
-        spades_counter = 0 # variable counts number of SPAdes assembly files
-        spades_assms = list() # this list will contain paths to SPAdes assembly files
         a5_patt = r">scaffold_[0-9]+" # this pattern will match sequence IDs generated y a5
-        a5_counter = 0 # variable counts number of a5 assembly files
-        a5_assms = list() # this list will contain paths to a5 assembly files
+        assemblies = list() # this list will contain paths to assembly files (SPAdes or a5)
 
         for own_fasta_path in reversed(your_own_fasta_lst):
 
@@ -412,77 +409,65 @@ on your local machine:")
 
             # if we've got SPAdes assembly
             if not re.search(spades_patt, first_seq_id) is None:
-                spades_counter += 1
-                spades_assms.append(own_fasta_path)
+                assemblies.append(own_fasta_path)
+                # Remove these file from list -- they will be processed in a specific way
+                your_own_fasta_lst.remove(own_fasta_path)
                 continue
             # end if
 
             # if we've got a5 assembly
             if not re.search(a5_patt, first_seq_id) is None:
-                a5_counter += 1
-                a5_assms.append(own_fasta_path)
+                assemblies.append(own_fasta_path)
+                your_own_fasta_lst.remove(own_fasta_path)
                 continue
             # end if
         # end for
 
-        # Include assembly files in multi-fasta file
-        for counter, assm_lst in zip((spades_counter, a5_counter), (spades_assms, a5_assms)):
+        # Include assemblies files in multi-fasta file
 
-            # If there are more than one file with assembly of one assembler,
-            #    we need to distinguish these files (i.e. these assemblies).
-            # Otherwise they will be processed just like any other file
-            if counter > 1:
+        # Find common prefix of all assembly paths and remove it from assembly names
+        if len(assemblies) > 1:
+            assemblies_formatted = tuple(
+                map(lambda f: os.path.abspath(f).replace(os.sep, '-'), assemblies)
+            )
+            common_prefix = find_common_prefix(assemblies_formatted)
+            assemblies_formatted = tuple(
+                map(lambda f: f.replace(common_prefix, ''), assemblies_formatted)
+            )
+        elif len(assemblies) > 0:
+            common_prefix = ''
+            assemblies_formatted = tuple(
+                map(os.path.basename, assemblies)
+            )
+        # end if
 
-                # Remove this files from list -- they will be processed in a specific way
-                for file in assm_lst:
-                    your_own_fasta_lst.remove(file)
-                # end for
+        # Add assembled sequences to database
+        with open (local_fasta, 'a') as fasta_db:
+            for assm_path, assm_name_fmt in zip(assemblies, assemblies_formatted):
+                printlog_info("Adding `{}` to database...".format(os.path.basename(assm_path)))
 
-                # If there are any equal basenames of files, absolute paths to these files will be used in seq IDs:
-                assm_basenames = list( map(os.path.basename, assm_lst) ) # get basenames
-
-                # If this sum is equal to length of 'assm_basenames' -- there are no duplicated basenames.
-                # So, there is no need to use absolute paths.
-                dedpul_sum = sum( map(assm_basenames.count, assm_basenames) )
-
-                # Path conversion according to 'deduplication sum':
-                if dedpul_sum == len(assm_basenames):
-                    def_convert_func = os.path.basename
-                    # assm_lst = map(os.path.basename, assm_lst)
-                else:
-                    def_convert_func = os.path.abspath
-                    # assm_lst = map(os.path.abspath, assm_lst)
-                # end if
-
-                # Add assembled sequences to database
-                with open (local_fasta, 'a') as fasta_db:
-                    for assm_path in assm_lst:
-                        printlog_info("Adding `{}` to database...".format(os.path.basename(assm_path)))
-
-                        how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
-                        fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
-                        with how_to_open(assm_path) as fasta_file:
-                            for line in fasta_file:
-                                line = fmt_func(line)
-                                # You can find comments to "OWN_SEQ..." below.
-                                # Paths will be written to seq IDs in following way:
-                                #   (_/some/happy/path.fastq_)
-                                # in order to retrieve them securely with regex later.
-                                if line.startswith('>'):
-                                    own_seq_counter += 1
-                                    own_acc = "OWN_SEQ_{}".format(own_seq_counter)
-                                    own_def = "(_{}_)_".format(def_convert_func(assm_path)) + line[1:]
-                                    own_def = remove_bad_chars(own_def)
-                                    taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, own_def)
-                                    line = ">" + "{} {}".format(own_acc, own_def)
-                                # end if
-                                fasta_db.write(line + '\n')
-                            # end for
-                        # end with
+                how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
+                fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
+                with how_to_open(assm_path) as fasta_file:
+                    for line in fasta_file:
+                        line = fmt_func(line)
+                        # You can find comments to "OWN_SEQ..." below.
+                        # Paths will be written to seq IDs in following way:
+                        #   some-happy-path.fastq--
+                        # in order to retrieve them securely with regex later.
+                        if line.startswith('>'):
+                            own_seq_counter += 1
+                            own_acc = "OWN_SEQ_{}".format(own_seq_counter)
+                            own_def = "{}--".format(assm_name_fmt.replace(common_prefix, '')) + line[1:]
+                            own_def = remove_bad_chars(own_def)
+                            taxonomy.save_taxonomy_directly(taxonomy_path, own_acc, own_def)
+                            line = ">" + "{} {}".format(own_acc, own_def)
+                        # end if
+                        fasta_db.write(line + '\n')
                     # end for
                 # end with
-            # end if
-        # end for
+            # end for
+        # end with
 
         with open(local_fasta, 'a') as fasta_db:
             for own_fasta_path in your_own_fasta_lst:
@@ -575,3 +560,21 @@ on your local machine:")
 
     return local_fasta
 # end def build_local_db
+
+
+def find_common_prefix(strings_list):
+    i = 0
+    found = False
+
+    for i in range(min(map(len, strings_list))):
+        ith_chars = tuple(map(lambda x: x[i], strings_list))
+        curr_char = ith_chars[0]
+        if all(map(lambda c: c == curr_char, ith_chars)):
+            i += 1
+        else:
+            break
+        # end if
+    # end for
+
+    return strings_list[0][:i]
+# end def def find_common_prefix

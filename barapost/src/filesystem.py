@@ -33,8 +33,9 @@ def remove_bad_chars(string):
     # :param string: string to edit;
     # :type string: str;
 
-    # Replace spaces with underscores.
+    # Replace spaces and non-breaking spaces with underscores.
     string = string.replace(' ', '_')
+    string = string.replace('\u00A0', '_')
 
     # And all other "bad chars" -- with empty string (remove them)
     for char in bad_chars:
