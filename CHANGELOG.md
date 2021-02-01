@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2021-02-01 edition.
+
+- barapost-local: yet another database managing bug fixed;
+
+## Vesrion changes:
+
+- barapost-local: `3.18.c --> 3.18.d`
+
 ## 2021-01-29 edition.
 
 - addition to 2021-01-27 edition: non-breaking spaces are now replaced too;

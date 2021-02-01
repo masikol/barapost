@@ -442,9 +442,10 @@ on your local machine:")
         # end if
 
         # Add assembled sequences to database
-        with open (local_fasta, 'a') as fasta_db:
-            for assm_path, assm_name_fmt in zip(assemblies, assemblies_formatted):
+        with open(local_fasta, 'a') as fasta_db:
+            for i, assm_path in enumerate(assemblies):
                 printlog_info("Adding `{}` to database...".format(os.path.basename(assm_path)))
+                assm_name_fmt = assemblies_formatted[i]
 
                 how_to_open = OPEN_FUNCS[ is_gzipped(assm_path) ]
                 fmt_func = FORMATTING_FUNCS[ is_gzipped(assm_path) ]
