@@ -9,7 +9,7 @@ from src.binning_modules.binning_spec import get_res_tsv_fpath, configure_resfil
 
 from src.fmt_read_id import fmt_read_id
 from src.platform import platf_depend_exit
-from src.printlog import printn, printlog_error, printlog_error_time, printlog_info_time
+from src.printlog import printlog_error, printlog_error_time
 from src.filesystem import get_curr_res_dpath, is_fastq
 
 from src.binning_modules.fastq_records import fastq_records
@@ -175,10 +175,6 @@ def bin_fastqa_file(fq_fa_path, tax_annot_res_dir, sens,
     for file_obj in filter(lambda x: not x is None, srt_file_dict.values()):
         file_obj.close()
     # end for
-
-    sys.stdout.write('\r')
-    printlog_info_time("File `{}` is binned.".format(os.path.basename(fq_fa_path)))
-    printn(" Working...")
 
     return (seqs_pass, QL_seqs_fail, align_seqs_fail)
 # end def bin_fastqa_file

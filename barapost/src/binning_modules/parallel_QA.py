@@ -56,7 +56,7 @@ def write_fasta_record(binned_fpath, fasta_record):
 # end def write_fasta_record
 
 
-def init_paral_binning(print_lock_buff, write_lock_buff):
+def init_paral_binning(print_lock_buff, write_lock_buff, fcounter_buff, fcounter_lock_buff):
     # Function initializes global locks for parallel binning of fasta and fastq files.
     # :param print_lock_buff: lock for printing to console;
     # :type print_lock_buff: multiprocessing.Lock;
@@ -69,11 +69,17 @@ def init_paral_binning(print_lock_buff, write_lock_buff):
     global write_lock
     write_lock = write_lock_buff
 
+    global fcounter
+    fcounter = fcounter_buff
+
+    global fcounter_lock
+    fcounter_lock = fcounter_lock_buff
+
 # end def init_paral_binning
 
 
 def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
-    min_qlen, min_pident, min_coverage, no_trash):
+    min_qlen, min_pident, min_coverage, num_files_total, no_trash):
     # Function for parallel binning FASTQ and FASTA files.
     # Actually bins multiple files.
     #
@@ -87,6 +93,8 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
     # :type min_pident: float (or None, if this filter is disabled);
     # :param min_coverage: threshold for alignment coverage filter;
     # :type min_coverage: float (or None, if this filter is disabled);
+    # :param num_files_total: total number of files to process. Needed for printing;
+    # :type num_files_total: int;
     # :param no_trash: loical value. True if user does NOT want to output trash files;
     # :type no_trash: bool;
 
@@ -197,8 +205,12 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
                     write_fun(fpath, record)
                 # end for
             # end if
+        # end with
+        with fcounter_lock:
+            fcounter.value += 1
             sys.stdout.write('\r')
-            printlog_info_time("File `{}` is binned.".format(os.path.basename(fq_fa_path)))
+            printlog_info_time("File #{}/{} `{}` is binned."\
+                .format(fcounter.value, num_files_total, os.path.basename(fq_fa_path)))
             printn(" Working...")
         # end with
     # end for
