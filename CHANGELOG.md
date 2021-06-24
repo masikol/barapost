@@ -1,5 +1,15 @@
 # "Barapost" changelog
 
+## 2021-06-24 edition.
+
+- barapost-local: fixed bug that would cause barapost-local to misinterpret user-defined path in `hits_to_download.tsv` as GenBank accession number;
+- barapost-binnning: improved status messages: it now reports info e.g. "File #2 out of 23 is binned".
+
+## Vesrion changes:
+
+- barapost-local: `3.18.d --> 3.18.e`
+- barapost-binning: `4.8.c --> 4.8.d`
+
 ## 2021-02-01 edition.
 
 - barapost-local: yet another database managing bug fixed;

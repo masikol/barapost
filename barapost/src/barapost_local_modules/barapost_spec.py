@@ -13,6 +13,11 @@ from src.platform import platf_depend_exit
 from src.filesystem import remove_bad_chars
 from src.filesystem import rename_file_verbosely
 
+# Pattern for GenBank accession number
+# See https://www.ncbi.nlm.nih.gov/genbank/acc_prefix/
+#   and maybe https://www.ncbi.nlm.nih.gov/books/NBK21091/table/ch18.T.refseq_accession_numbers_and_mole/?report=objectonly/
+GB_ACC_PATTERN = r"([A-Z]{2}_)?([A-Z]{1,2})?[0-9]{5,8}(\.[0-9]+)?"
+
 
 def look_around(new_dpath, fq_fa_path):
     # Function looks around in order to check if there are results from previous runs of this script.
@@ -222,28 +227,23 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download):
         with open(acc_fpath, 'r') as acc_file:
             lines = acc_file.readlines()
 
-            for line in lines:
+            for line_idx, line in enumerate(lines):
                 line = line.strip()
                 # Ignore ampty lines, commented lines and head of the table:
                 if line != "" and not line.startswith('#') and not line.startswith("ACCESSION"):
 
-                    # Handle situation if user writes path to his own FASTA file
-                    #  (that is meant to be added to DB) to accession file.
-                    if not os.path.exists(line):
-                        try:
-                            line_splt = line.split('\t')
+                    line_splt = line.split('\t')
+                    acc = sys.intern(line_splt[0].partition('.')[0])
 
-                            if len(line_splt) == 0:
-                                raise IndexError
-                            elif len(line_splt) == 1: # just accession
+                    if not re.match(GB_ACC_PATTERN, acc) is None:
+                        # If we encounter GenBank accession number
+                        try:
+                            if len(line_splt) == 1: # just accession
                                 name = "No definition of the sequence provided"
                             else:
                                 name = line_splt[1]
                             # end if
-                            acc = sys.intern(line_splt[0].partition('.')[0])
-                            # gi = line_splt[1]
                             acc_dict[acc] = name
-
                         except IndexError as err:
                             printlog_error_time("Error: invalid data in file `{}`!".format(acc_fpath))
                             printlog_error("Here is that invalid line:\n  `{}`".format(line))
@@ -251,7 +251,17 @@ def configure_acc_dict(acc_fpath, your_own_fasta_lst, accs_to_download):
                             platf_depend_exit(1)
                         # end try
                     else:
-                        your_own_fasta_lst.append(line)
+                        # It it's not a GenBank accession number,
+                        #   probably it is a path to reference file.
+                        if os.path.exists(line):
+                            your_own_fasta_lst.append(line)
+                        else:
+                            printlog_error_time("Error in file `{}`.".format(acc_fpath))
+                            printlog_error("Line #{} looks like path to reference file, but this file does not exist."\
+                                .format(line_idx+1))
+                            printlog_error("Here is this invalid line:\n  `{}`".format(line))
+                            platf_depend_exit(1)
+                        # end if
                     # end if
                 # end if
             # end for
