@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.23.b"
+__version__ = "1.24.a"
 # Year, month, day
-__last_update_date__ = "2021-01-27"
+__last_update_date__ = "2021-06-28"
+__author__ = "Maxim Sikolenko"
+__author_email__ = "maximdeynonih" + "@" + "gmail" + ".com"
 
 # |===== Check python interpreter version =====|
 
@@ -54,7 +56,6 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("""- database slices (see `-g` option): whole `nr/nt` database, i.e. no slices;""")
         print("""- output directory (`-o` option): directory named `barapost_result`
    nested in working directory;""")
-        print("""- prober sends no email information (`-e` option) to NCBI;""")
         print("""- prober sends sequences intact
    (i.e. does not prune them before submission (see `-x` option));""")
         print("----------------------------------------------------------\n")
@@ -87,7 +88,7 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
     print("""-g (--organisms) --- TaxIDs of organisms to align your sequences against. I.e. `nr/nt` database slices.
    Functionality of this option is totally equal to "Organism" text boxes on this BLASTn page:
     `https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&LINK_LOC=blasthome`.
-   Format of value (see EXAMPLES #4 and #5 below.):
+   Format of value (see EXAMPLES #3 and #4 below.):
      <organism1_taxid>,<organism2_taxid>...
    Spaces are NOT allowed.
    Default value is full `nr/nt` database, i.e. no slices.
@@ -97,8 +98,6 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
    You can specify `-b all` to process all your sequeces by `barapost-prober.py`.
    Value: positive integer number.
    Default value is 200;\n""")
-    print("""-e (--email) --- your email. Please, specify your email when you run "barapost-prober.py",
-   so that the NCBI can contact you if there is a problem. See Example #2 below;\n""")
     print("""-x (--max-seq-len) --- maximum length of a sequence that prober subits to NCBI BLAST service.
    It means that prober can prune your sequences before submission in order to spare NCBI servers.
    This feature is disabled by default;""")
@@ -108,17 +107,14 @@ if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         print("EXAMPLES:\n")
         print("""1. Process all FASTA and FASTQ files in working directory with default settings:\n
    barapost-prober.py\n""")
-        print("""2. Process all files starting with "some_fasta" in the working directory with default settings.
-   Provide NCBI with your email:\n
-   barapost-prober.py some_fasta* -e my.email@sth.com\n""")
-        print("""3. Process one file with default settings:\n
+        print("""2. Process one file with default settings:\n
    barapost-prober.py reads.fastq\n""")
-        print("""4. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
-   Search only among Erwinia sequences (551 is Erwinia taxid):\n
+        print("""3. Process a FASTQ file and a FASTA file with discoMegablast, packet size of 100 sequences.
+   Search only among Erwinia sequences (551 is Erwinia taxID):\n
    barapost-prober.py reads_1.fastq.gz some_sequences.fasta -a discoMegablast -p 100 -g 551\n""")
-        print("""5. Process all FASTQ and FASTA files in directory named `some_dir`.
+        print("""4. Process all FASTQ and FASTA files in directory named `some_dir`.
    Process 300 sequences, packet size is 100 sequnces (3 packets will be sent).
-   Search only among Escherichia (taxid 561) and viral (taxid 10239) sequences:\n
+   Search only among Escherichia (taxID 561) and viral (taxID 10239) sequences:\n
    barapost-prober.py -d some_dir -g 561,10239 -o outdir -b 300 -p 100\n""")
     # end if
     platf_depend_exit(0)
@@ -137,9 +133,9 @@ from glob import glob
 import getopt
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:o:p:c:a:g:b:e:x:",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvd:o:p:c:a:g:b:x:",
         ["help", "version", "indir=", "outdir=", "packet-size=", "packet-mode=",
-        "algorithm=", "organisms=", "probing-batch-size=", "email=",
+        "algorithm=", "organisms=", "probing-batch-size=",
         "max-seq-len="])
 except getopt.GetoptError as gerr:
     print( str(gerr) )
@@ -157,7 +153,6 @@ probing_batch_size = 200
 send_all = False # it will be True if `-b all` is specified
 blast_algorithm = "megaBlast"
 taxid_list = list() # list of TaxIDs to perform database slices
-user_email = ""
 max_seq_len = float("inf") # maximum length of a sequence sent to NCBI
 packet_mode = 0 # mode of packet forming. `numseqs` is default
 
@@ -241,15 +236,6 @@ for opt, arg in opts:
             print("Your value: {}".format(arg))
             platf_depend_exit(1)
         # end try
-
-    elif opt in ("-e", "--email"):
-        if re.search(r"^.+@.+\..+$", arg) is None:
-            print("Your email doesn't look like an email: `{}`".format(arg))
-            print("""Please check it and, if you are sure that your email is right,
-  but prober still refuses it  -- contact the developer.""")
-            platf_depend_exit(1)
-        # end if
-        user_email = arg
 
     elif opt in ("-x", "--max-seq-len"):
 
@@ -413,9 +399,6 @@ organisms = verify_taxids(taxid_list)
 # Print information about the run
 printlog_info(" - Output directory: `{}`;".format(outdir_path))
 printlog_info(" - Logging to `{}`".format(logging.getLoggerClass().root.handlers[0].baseFilename))
-if user_email != "":
-    printlog_info(" - Your email: <{}>".format(user_email))
-# end if
 printlog_info(" - Probing batch size: {} sequences;".format("all" if send_all else probing_batch_size))
 
 mode_comment = "number of sequences" if packet_mode == 0 else "sum of sequences' lengths"
@@ -575,7 +558,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         if not saved_RID is None:
             send = retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send, seqs_processed,
                 fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+                blast_algorithm, __author_email__, organisms, acc_dict, out_of_n)
             saved_RID = None
         # end if
 
@@ -583,7 +566,7 @@ for i, fq_fa_path in enumerate(fq_fa_list):
         if send:
             submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
                 fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+                blast_algorithm, __author_email__, organisms, acc_dict, out_of_n)
         # end if
 
         if not send_all and seqs_processed[0] >= probing_batch_size: # probing batch is processed -- finish work

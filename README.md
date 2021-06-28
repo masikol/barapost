@@ -9,6 +9,12 @@
 - Comparing different sets of contigs of the same genome (see [Example 7](https://www.github.com/masikol/barapost/wiki/barapost-local#examples) on barapost-local page).
 - I dare to surmise this list isn't complete :-)
 
+## Current versions
+
+- barapost-prober: `1.24.a` (2021-06-28 edition).
+- barapost-local:  `3.18.e` (2021-06-24 edition).
+- barapost-binning: `4.8.d` (2021-06-24 edition).
+
 ## Getting started
 
 You can get "Barapost" in the following ways:

@@ -58,7 +58,7 @@ def verify_taxids(taxid_list):
 # end def verify taxids
 
 
-def configure_request(packet, blast_algorithm, organisms, user_email):
+def configure_request(packet, blast_algorithm, organisms, author_email):
     # Function configures the submissoin request to BLAST server.
     #
     # :param packet: FASTA_data_containing_query_sequences;
@@ -67,6 +67,8 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
     # :type blast_algorithm: str;
     # :param organisms: list of strings performing `nt` database slices;
     # :type organisms: list<str>;
+    # :param author_email: author's email to send within request;
+    # :type author_email: str;
     #
     # Returns a dict of the following structure:
     # {
@@ -82,9 +84,9 @@ def configure_request(packet, blast_algorithm, organisms, user_email):
     payload["DATABASE"] = "nt" # db
     payload["QUERY"] = packet # FASTA data
     payload["HITLIST_SIZE"] = 1 # we need only the best hit
-    if user_email != "":
-        payload["email"] = user_email # user's email
-        payload["tool"] = "barapost:_prober"
+    if author_email != "":
+        payload["email"] = author_email # author's email
+        payload["tool"] = "barapost_prober"
     # end if
 
     # `nt` database slices:

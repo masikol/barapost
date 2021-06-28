@@ -16,7 +16,7 @@ from src.fasta import fasta_packets_from_str
 
 def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
         fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+        blast_algorithm, author_email, organisms, acc_dict, out_of_n):
     # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     # :type packet: dict;
     # :param packet_size: size of the packet (see option `-c` for definition);
@@ -41,8 +41,8 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
     # :type acc_fpath: str;
     # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
     # :type blast_algorithm: str;
-    # :param user_email: user email ot send with request;
-    # :type user_email: str;
+    # :param author_email: author's email to send within request;
+    # :type author_email: str;
     # :param organisms: list of strings performing `nt` database slices;
     # :type organisms: list<str>;
     # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
@@ -81,7 +81,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
             # Submit subpacket
             submit(splitted_packet, new_pack_size_0, 0, pack_to_send, seqs_processed,
                 fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+                blast_algorithm, author_email, organisms, acc_dict, out_of_n)
         # end for
     else:
         # Prune the only sequence in packet and resend it
@@ -102,7 +102,7 @@ def _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_pro
 
         submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
             fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-            blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+            blast_algorithm, author_email, organisms, acc_dict, out_of_n)
     # end if
 # end def _split_and_resubmit
 
@@ -149,7 +149,7 @@ def _handle_result(align_xml_text, packet, taxonomy_path,
 
 def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send, seqs_processed,
         fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+        blast_algorithm, author_email, organisms, acc_dict, out_of_n):
     # :param saved_RID: saved Request ID from previous run;
     # :type saved_RID: str;
     # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
@@ -176,8 +176,8 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
     # :type acc_fpath: str;
     # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
     # :type blast_algorithm: str;
-    # :param user_email: user email ot send with request;
-    # :type user_email: str;
+    # :param author_email: author's email to send within request;
+    # :type author_email: str;
     # :param organisms: list of strings performing `nt` database slices;
     # :type organisms: list<str>;
     # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
@@ -207,7 +207,7 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
 
         _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
             fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-            blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+            blast_algorithm, author_email, organisms, acc_dict, out_of_n)
         return False
     else:
         return True
@@ -217,7 +217,7 @@ def retrieve_ready_job(saved_RID, packet, packet_size, packet_mode, pack_to_send
 
 def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
         fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-        blast_algorithm, user_email, organisms, acc_dict, out_of_n):
+        blast_algorithm, author_email, organisms, acc_dict, out_of_n):
     # :param packet: "packet" dictionary described in "barapost-prober.py" before the kernel loop:
     # :type packet: dict;
     # :param packet_size: size of the packet (see option `-c` for definition);
@@ -242,8 +242,8 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
     # :type acc_fpath: str;
     # :param blast_algorithm: BLAST algorithm to use (see option `-a`);
     # :type blast_algorithm: str;
-    # :param user_email: user email ot send with request;
-    # :type user_email: str;
+    # :param author_email: author's email to send within request;
+    # :type author_email: str;
     # :param organisms: list of strings performing `nt` database slices;
     # :type organisms: list<str>;
     # :param acc_dict: accession dictionary for writing to `hits_to_download.tsv`;
@@ -270,7 +270,7 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
     while error.code != 0: # until successfull attempt
 
         # Get the request
-        request = configure_request(packet["fasta"], blast_algorithm, organisms, user_email)
+        request = configure_request(packet["fasta"], blast_algorithm, organisms, author_email)
 
         # Send the request and get BLAST XML response.
         # 'align_xml_text' will be None if an error occurs.
@@ -290,7 +290,7 @@ def submit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
 
             _split_and_resubmit(packet, packet_size, packet_mode, pack_to_send, seqs_processed,
                 fq_fa_path, tmp_fpath, taxonomy_path, tsv_res_path, acc_fpath,
-                blast_algorithm, user_email, organisms, acc_dict, out_of_n)
+                blast_algorithm, author_email, organisms, acc_dict, out_of_n)
 
             error = BlastError(0) # _split_and_resubmit will process packet successfully
         # end if

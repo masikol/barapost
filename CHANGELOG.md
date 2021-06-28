@@ -2,6 +2,14 @@
 
 ## 2021-06-24 edition.
 
+- barapost-prober: removed option `-e`, since it is the **program author's** email that [should](https://www.ncbi.nlm.nih.gov/books/NBK25497/) be sent to BLAST server within requests, not user's one.
+
+## Vesrion changes:
+
+- barapost-prober: `1.23.b --> 1.24.a`
+
+## 2021-06-24 edition.
+
 - barapost-local: fixed bug that would cause barapost-local to misinterpret user-defined path in `hits_to_download.tsv` as GenBank accession number;
 - barapost-binnning: improved status messages: it now reports info e.g. "File #2 out of 23 is binned".
 
