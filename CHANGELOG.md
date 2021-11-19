@@ -6,7 +6,7 @@
 
 ## Vesrion changes:
 
-- barapost-binning: `4.8.d --> 4.8.a`
+- barapost-binning: `4.8.d --> 4.9.a`
 
 ## 2021-06-24 edition.
 
