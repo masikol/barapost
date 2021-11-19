@@ -101,6 +101,7 @@ def get_align_filter(pident, coverage):
     return lambda line: all( (f(line) for f in filters) )
 # end def get_align_filter
 
+
 # Pattern will match .fasta, .fastq and .fast5 extentions without '.gz'
 ext_pattern = r".*(\.(m)?f(ast)?(q|a|5))(\.gz)?$"
 
@@ -163,4 +164,24 @@ def get_align_trash_fpath(fpath, outdir_path, pident, coverage):
     trash_fpath += re.search(ext_pattern, fpath).group(1)
 
     return trash_fpath
+# end def get_align_trash_fpath
+
+
+def get_classif_not_found_fpath(fpath, outdir_path):
+    # Function configures path to "classification not found" file.
+    #
+    # :param fpath: path to input file;
+    # :type fpath: str;
+    # :param outdir_path: path to output directory;
+    # :type outdir_path: str;
+
+    classif_not_found_fpath = os.path.join(
+        outdir_path,
+        'classification_not_found'
+    )
+
+    # Add appropriate extention
+    classif_not_found_fpath += re.search(ext_pattern, fpath).group(1)
+
+    return classif_not_found_fpath
 # end def get_align_trash_fpath

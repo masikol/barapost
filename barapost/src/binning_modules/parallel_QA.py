@@ -22,6 +22,7 @@ from src.binning_modules.fasta_records import fasta_records
 
 from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
 from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
+from src.binning_modules.filters import get_classif_not_found_fpath
 
 
 def write_fastq_record(binned_fpath, fastq_record):
@@ -120,6 +121,9 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
             write_fun = write_fasta_record
         # end if
 
+        # Configure path to "classification not found" file
+        classif_not_found_fpath = get_classif_not_found_fpath(fq_fa_path, outdir_path)
+
         # Make filter for quality and length
         QL_filter = get_QL_filter(fq_fa_path, min_qual, min_qlen)
         # Configure path to trash file
@@ -161,12 +165,9 @@ def bin_fastqa_file(fq_fa_lst, tax_annot_res_dir, sens, n_thr, min_qual,
                 try:
                     hit_names, *vals_to_filter = resfile_lines[read_name]  # find hit corresponding to this sequence
                 except KeyError:
-                    printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation."\
-                        .format(read_name))
-                    printlog_error("This TSV file: `{}`".format(tsv_res_fpath))
-                    printlog_error("Make sure that this read has been already processed by \
-`barapost-prober.py` and `barapost-local.py`.")
-                    platf_depend_exit(1)
+                    # Place this sequence into the "classification not found" file
+                    to_write[read_name] = (fastqa_rec, classif_not_found_fpath)
+                    continue
                 # end try
 
                 # If read is found in TSV file:

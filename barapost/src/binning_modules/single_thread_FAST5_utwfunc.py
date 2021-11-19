@@ -122,6 +122,17 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir):
         # end if
     # end for
 
+    # Save info about reads, for which classification if not found
+    #   in any of classification files
+    if len(readids_to_seek) != 0:
+        not_fount_key = 'CLASSIF_NOT_FOUND'
+        idx_dict[not_fount_key] = list()
+        for readid in readids_to_seek:
+            fmt_id = fmt_read_id(readid)[1:]
+            idx_dict[not_fount_key].append("read_" + fmt_id)
+        # end for
+    # end if
+
     # If after all TSV is checked but nothing have changed -- we miss taxonomic annotation
     #     for some reads! And we will write their IDs to 'missing_reads_lst.txt' file.
     if len(readids_to_seek) == len_before:

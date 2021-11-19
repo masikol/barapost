@@ -14,6 +14,7 @@ from src.binning_modules.fast5 import fast5_readids, copy_read_f5_2_f5, copy_sin
 
 from src.binning_modules.filters import get_QL_filter, get_QL_trash_fpath
 from src.binning_modules.filters import get_align_filter, get_align_trash_fpath
+from src.binning_modules.filters import get_classif_not_found_fpath
 
 from src.platform import platf_depend_exit
 from src.printlog import printlog_error, printlog_error_time
@@ -53,6 +54,9 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
     tsv_res_fpath = get_res_tsv_fpath(new_dpath)
     taxonomy_path = os.path.join(tax_annot_res_dir, "taxonomy", "taxonomy.tsv")
     resfile_lines = configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path)
+
+    # Configure path to "classification not found" file
+    classif_not_found_fpath = get_classif_not_found_fpath(f5_path, outdir_path)
 
     # Make filter for quality and length
     QL_filter = get_QL_filter(f5_path, min_qual, min_qlen)
@@ -109,12 +113,14 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
         try:
             hit_names, *vals_to_filter = resfile_lines[sys.intern(fmt_read_id(read_name))[1:]] # omit 'read_' in the beginning of FAST5 group's name
         except KeyError:
-            printlog_error_time("Error: read `{}` not found in TSV file containing taxonomic annotation."\
-                .format(fmt_read_id(read_name)))
-            printlog_error("This TSV file: `{}`".format(tsv_res_fpath))
-            printlog_error("Try running barapost-binning with `-u` (`--untwist-fast5`) flag.\n")
-            platf_depend_exit(1)
+            # Place this sequence into the "classification not found" file
+            if classif_not_found_fpath not in srt_file_dict.keys():
+                srt_file_dict = update_file_dict(srt_file_dict, classif_not_found_fpath)
+            # end if
+            f5_cpy_func(from_f5, read_name, srt_file_dict[classif_not_found_fpath])
+            continue
         # end try
+
         # If read is found in TSV file:
         if not QL_filter(vals_to_filter):
             QL_seqs_fail += 1

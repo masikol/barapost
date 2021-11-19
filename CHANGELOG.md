@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2021-11-19 edition.
+
+- barapost-binning: this script now does not terminate with error if it cannot find the classification for an input sequence. Instead, it now places all these sequences into a `classification_not_found` file. This file is different from the `unknown` file: an `unknowm` file contains sequences, for which similarity was not found during the classification. And a `classification_not_found` contains sequences, which have not been classified at all.
+
+## Vesrion changes:
+
+- barapost-binning: `4.8.d --> 4.8.a`
+
 ## 2021-06-24 edition.
 
 - barapost-prober: removed option `-e`, since it is the **program author's** email that [should](https://www.ncbi.nlm.nih.gov/books/NBK25497/) be sent to BLAST server within requests, not user's one.
