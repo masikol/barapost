@@ -1,5 +1,13 @@
 # "Barapost" changelog
 
+## 2022-08-02 edition.
+
+- barapost-binning: fix a bug that didn't allow to recover taxonomy.
+
+## Vesrion changes:
+
+- barapost-binning: `4.9.a --> 4.9.b`
+
 ## 2021-11-19 edition.
 
 - barapost-binning: this script now does not terminate with error if it cannot find the classification for an input sequence. Instead, it now places all these sequences into a `classification_not_found` file. This file is different from the `unknown` file: an `unknowm` file contains sequences, for which similarity was not found during the classification. And a `classification_not_found` contains sequences, which have not been classified at all.
