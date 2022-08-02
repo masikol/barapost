@@ -191,7 +191,7 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
             splt = line.split('\t')
             read_name = sys.intern(splt[0])
             hit_name = splt[1]
-            hit_acc = splt[2]
+            hit_accs = splt[2]
 
             try:
                 quality = float(splt[8]) # we will filter by quality
@@ -248,22 +248,26 @@ def configure_resfile_lines(tsv_res_fpath, sens, taxonomy_path):
             # end try
 
             try:
-                resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict),
+                resfile_lines[read_name] = [format_taxonomy_name(hit_accs, hit_name, sens, tax_dict),
                     quality, query_len, pident, coverage]
             except NoTaxonomyError:
-                printlog_warning("Can't find taxonomy for reference sequence `{}`".format(hit_acc))
+                printlog_warning("Can't find taxonomy for reference sequence `{}`".format(hit_accs))
                 printlog_warning("Trying to recover taxonomy.")
 
                 # Recover
-                src.taxonomy.recover_taxonomy(hit_acc, hit_name, taxonomy_path)
-                printlog_info("Taxonomy for {} is recovered.".format(hit_acc))
+                for acc, annotation in zip(hit_accs.split('&&'), hit_name.split('&&')):
+                    src.taxonomy.recover_taxonomy(acc, annotation, taxonomy_path)
+                    printlog_info("Taxonomy for {} is recovered.".format(acc))
 
-                # Update tax_dict
-                tax_dict = src.taxonomy.get_tax_dict(taxonomy_path)
+                    # Update tax_dict
+                    tax_dict = src.taxonomy.get_tax_dict(taxonomy_path)
 
-                # Format again -- with new tax_dict
-                resfile_lines[read_name] = [format_taxonomy_name(hit_acc, hit_name, sens, tax_dict),
-                    quality, query_len, pident, coverage]
+                    # Format again -- with new tax_dict
+                    resfile_lines[read_name] = [
+                        format_taxonomy_name(acc, annotation, sens, tax_dict),
+                        quality, query_len, pident, coverage
+                    ]
+                # end for
             # end try
 
             line = brpst_resfile.readline().strip() # get next line
