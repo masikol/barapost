@@ -13,7 +13,7 @@
 
 - barapost-prober: `1.24.a` (2021-06-28 edition).
 - barapost-local:  `3.18.e` (2021-06-24 edition).
-- barapost-binning: `4.9.a` (2021-11-19 edition).
+- barapost-binning: `4.9.b` (2022-08-02 edition).
 
 ## Getting started
 
