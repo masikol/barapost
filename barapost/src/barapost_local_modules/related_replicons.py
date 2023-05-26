@@ -47,7 +47,7 @@ def _get_record_title(record_id):
         # They are children of element "DocSum", which is
         #   the first child of root
         try:
-            docsum = next(iter(root.getchildren()))
+            docsum = next(iter(root))
         except StopIteration:
             print()
             printlog_info_time("Failed to retrieve data for record {}. Trying again...".format(record_id))
@@ -308,7 +308,7 @@ def _get_related_replicons(acc, acc_dict):
 
     # Parse this XML
     root = ElementTree.fromstring(text_link_to_bsmp)
-    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+    linkset = next(iter(root)).find("LinkSetDb")
 
     # XML should contain element "LinkSetDb"
     if linkset is None:
@@ -335,7 +335,7 @@ def _get_related_replicons(acc, acc_dict):
 
     # Parse this XML
     root = ElementTree.fromstring(text_link_to_ass)
-    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+    linkset = next(iter(root)).find("LinkSetDb")
 
     # XML should contain element "LinkSetDb"
     if linkset is None:
@@ -357,7 +357,7 @@ def _get_related_replicons(acc, acc_dict):
 
     # Parse this XML
     root = ElementTree.fromstring(text_link_to_nuc)
-    linkset = next(iter(root.getchildren())).find("LinkSetDb")
+    linkset = next(iter(root)).find("LinkSetDb")
 
     # XML should contain element "LinkSetDb"
     if linkset is None:
@@ -418,7 +418,7 @@ def search_for_related_replicons(acc_dict):
         try:
             related_repls = _get_related_replicons(acc, acc_dict)
         except AttributeError:
-            printlog_errot_time("Parsing error: cannot find replicons related to {}.".format(acc))
+            printlog_error_time("Parsing error: cannot find replicons related to {}.".format(acc))
             printlog_error("Please, contact the developer")
             platf_depend_exit(1)
         else:

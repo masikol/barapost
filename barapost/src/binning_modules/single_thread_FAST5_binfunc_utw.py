@@ -121,8 +121,8 @@ def bin_fast5_file(f5_path, tax_annot_res_dir, sens, min_qual, min_qlen,
 
     if not f5_path in index_f5_2_tsv.keys():
         printlog_error_time("Source FAST5 file `{}` not found in index".format(f5_path))
-        printlog_error("Try to rebuild index")
-        platf_depend_exit(1)
+        # like here: return (seqs_pass, QL_seqs_fail, align_seqs_fail)
+        return (0, 0, 0)
     # end if
 
     for tsv_path in index_f5_2_tsv[f5_path].keys():

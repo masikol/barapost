@@ -1,4 +1,21 @@
-# "Barapost" changelog
+# Barapost changelog
+
+## 2023-05-26 edition.
+
+### barapost-binning
+
+- Now the script won't just terminate if it does not find some reads in the index. The script will just omit the reads.
+
+### barapost-local
+
+- Fix a bug in search for related replicons. The thing is, since Python 3.9 the `xml.etree.ElementTree.Element.getchildren` method is removed, and barapost-local used it. Now it does not, and the bug is gone.
+
+- A note. Previously, Barapost was tested on `h5py` package version 2.10.0. However, its dependency, `numpy`, does not have attribute `typeDict` since version 1.21.0, and `h5py` 2.10.0 used this attribute. This used to cause Barapost failure (error message `AttributeError: module 'numpy' has no attribute 'typeDict'`). Now, Barapost is tested on `h5py` 3.8.0, and the inconsistency is gone.
+
+## Vesrion changes:
+
+- barapost-local: `3.18.e --> 3.18.f`
+- barapost-binning: `4.9.b --> 4.9.c`
 
 ## 2022-08-02 edition.
 

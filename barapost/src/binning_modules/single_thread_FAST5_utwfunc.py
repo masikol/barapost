@@ -147,16 +147,6 @@ def map_f5reads_2_taxann(f5_path, tsv_taxann_lst, tax_annot_res_dir):
             for readid in readids_to_seek:
                 missing_logfile.write(fmt_read_id(readid) + '\n')
             # end for
-        try:
-            for path in glob( os.path.join(index_dirpath, '*') ):
-                os.unlink(path)
-            # end for
-            os.rmdir(index_dirpath)
-        except OSError as oserr:
-            printlog_error("Error occured while removing index directory: {}".format(oserr))
-        finally:
-            platf_depend_exit(3)
-        # end try
     # end if
 
     try:
