@@ -2,8 +2,7 @@ import os
 import glob
 import gzip
 
-from ..Containers.FileContainer import FileContainer
-# from ..Containers.FastQ import FastQ
+from ..Containers.FastaContainer import FastaContainer
 
 from ..Config.config import OUTPUT_DIR
 
@@ -44,13 +43,13 @@ class FastaFileWriter():
         return self.file_record_count[label]
     # end def
 
-    def write(self, seqs : list[FileContainer]):
+    def write(self, seqs : list[FastaContainer]):
         for fasta in seqs:
             self.write_fasta(fasta)
         # end for
     # end def 
 
-    def write_fasta(self, fasta : FileContainer):
+    def write_fasta(self, fasta : FastaContainer):
         label = fasta.label
         extension = "fasta.gz" if self._gzip_ else "fasta"
 

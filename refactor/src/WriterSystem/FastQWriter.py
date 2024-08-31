@@ -2,7 +2,7 @@ import os
 import glob
 import gzip
 
-from ..Containers.FileContainer import FileContainer
+from ..Containers.FastQContainer import FastQContainer
 
 from ..Config.config import OUTPUT_DIR
 
@@ -43,13 +43,13 @@ class FastQWriter():
         return self.file_record_count[label]
     # end def
 
-    def write(self, seqs : list[FileContainer]):
+    def write(self, seqs : list[FastQContainer]):
         for fastq in seqs:
             self.write_fastq(fastq)
         # end for
     # end def
 
-    def write_fastq(self, fastq : FileContainer):
+    def write_fastq(self, fastq : FastQContainer):
         label = fastq.label
         extension = "fastq.gz" if self._gzip_ else "fastq"
 
