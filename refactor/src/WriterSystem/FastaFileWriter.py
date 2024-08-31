@@ -52,15 +52,16 @@ class FastaFileWriter():
 
     def write_fasta(self, fasta: Fasta):
         label = fasta.label
+        extension = "fasta.gz" if self._gzip_ else "fasta"
+
         if label not in self.file_record_count:
             last_index = self.get_last_file_index(label)
-            extension = "fasta.gz" if self._gzip_ else "fasta"
+            
             last_filename = os.path.join(OUTPUT_DIR, f'{label}_{last_index}.{extension}')
             record_count = self.get_record_count(label)
             self.file_record_count[label] = (last_index, record_count)
         else:
             last_index, record_count = self.file_record_count[label]
-            extension = "fasta.gz" if self._gzip_ else "fasta"
             last_filename = os.path.join(OUTPUT_DIR, f'{label}_{last_index}.{extension}')
         # end if
 
