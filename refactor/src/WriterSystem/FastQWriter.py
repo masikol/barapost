@@ -7,9 +7,9 @@ from ..Containers.FastQContainer import FastQContainer
 from ..Config.config import OUTPUT_DIR
 
 class FastQWriter():
-    def __init__(self, _gzip_: bool, N_MAX_OUT: int):
+    def __init__(self, _gzip_: bool, n_max_out: int):
         self._gzip_ = _gzip_
-        self.N_MAX_OUT = N_MAX_OUT
+        self.n_max_out = n_max_out
         self.file_record_count = {}
     #end def
 
@@ -63,7 +63,7 @@ class FastQWriter():
             last_filename = os.path.join(OUTPUT_DIR, f'{label}_{last_index}.{extension}')
         #end if
 
-        if record_count >= self.N_MAX_OUT:
+        if record_count >= self.n_max_out:
             last_index += 1
             last_filename = os.path.join(OUTPUT_DIR, f'{label}_{last_index}.{extension}')
             record_count = 0
