@@ -1,2 +1,5 @@
 *xml*
 *__pycache__*
+refactor/data/*.fasta
+refactor/data/*.fastq
+refactor/data/*.gz
