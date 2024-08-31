@@ -7,7 +7,7 @@ class FastQContainer():
         self.file = file
         self.label = label
         if offset not in [33, 64]:
-            print(f"Unexpected offset = {offset}! Set offset in 33!")
+            print(f"Unexpected offset = {offset}! Offset was set in 33!")
             self.offset = 33
         else:
             self.offset = offset
