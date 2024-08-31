@@ -6,10 +6,9 @@ from ..Containers.FastQ import FastQ
 
 from ..Config.config import OUTPUT_DIR
 
-class FileWriter:
-    def __init__(self, gzip: bool, file_type: str, N_MAX_OUT: int):
-        self.gzip = gzip
-        self.file_type = file_type
+class FastaFileWriter():
+    def __init__(self, _gzip: bool, N_MAX_OUT: int):
+        self._gzip = _gzip
         self.N_MAX_OUT = N_MAX_OUT
         self.file_record_count = {}
     #end def
@@ -41,60 +40,22 @@ class FileWriter:
     #end def
 
     def write(self, seqs: list):
-        if self.file_type == 'FASTA':
-            for fasta in seqs:
-                self.write_fasta(fasta)
-            #end for
-        elif self.file_type == 'FASTQ':
-            for fastq in seqs:
-                self.write_fastq(fastq)
-            #end for
-        #end if
-    #end def
-
-    def write_fasta(self, fasta: Fasta):
-        label = fasta.label
-        if label not in self.file_record_count:
-            last_index = self.get_last_file_index(label)
-            extension = "fasta.gz" if self.gzip else "fasta"
-            last_filename = f"{OUTPUT_DIR}/{label}_{last_index}.{extension}"
-            record_count = self.get_record_count(last_filename)
-            self.file_record_count[label] = (last_index, record_count)
-        else:
-            last_index, record_count = self.file_record_count[label]
-            extension = "fasta.gz" if self.gzip else "fasta"
-            last_filename = f"{OUTPUT_DIR}/{label}_{last_index}.{extension}"
-        #end if 
-
-        if record_count >= self.N_MAX_OUT:
-            last_index += 1
-            last_filename = f"{OUTPUT_DIR}/{label}_{last_index}.{extension}"
-            record_count = 0
-        #end if
-
-        write_mode = 'ab' if self.gzip else 'a'
-        open_func = gzip.open if self.gzip else open
-
-        with open_func(last_filename, write_mode) as f:
-            f.write(f">{fasta.fatataHeader}\n".encode())
-            f.write(f"{fasta.seq}\n".encode())
-        #end with
-
-        record_count += 1
-        self.file_record_count[label] = (last_index, record_count)
+        for fastq in seqs:
+            self.write_fastq(fastq)
+        #end for
     #end def
 
     def write_fastq(self, fastq: FastQ):
         label = fastq.label
         if label not in self.file_record_count:
             last_index = self.get_last_file_index(label)
-            extension = "fastq.gz" if self.gzip else "fastq"
+            extension = "fastq.gz" if self._gzip else "fastq"
             last_filename = f"{OUTPUT_DIR}/{label}_{last_index}.{extension}"
             record_count = self.get_record_count(last_filename)
             self.file_record_count[label] = (last_index, record_count)
         else:
             last_index, record_count = self.file_record_count[label]
-            extension = "fastq.gz" if self.gzip else "fastq"
+            extension = "fastq.gz" if self._gzip else "fastq"
             last_filename = f"{OUTPUT_DIR}/{label}_{last_index}.{extension}"
         #end if
 
@@ -104,11 +65,11 @@ class FileWriter:
             record_count = 0
         #end if
 
-        write_mode = 'ab' if self.gzip else 'a'
-        open_func = gzip.open if self.gzip else open
+        write_mode = 'ab' if self._gzip else 'a'
+        open_func = gzip.open if self._gzip else open
 
         with open_func(last_filename, write_mode) as f:
-            f.write(f"@{fastq.label}\n".encode())
+            f.write(f"@{fastq.header}\n".encode())
             f.write(f"{fastq.seq}\n".encode())
             f.write(f"{fastq.plus_line}\n".encode())
             f.write(f"{fastq.quality}\n".encode())
