@@ -2,7 +2,7 @@ import os
 import glob
 import gzip
 
-from ..Containers.FastQ import FastQ
+from ..Containers.FileContainer import FileContainer
 
 from ..Config.config import OUTPUT_DIR
 
@@ -43,14 +43,14 @@ class FastQWriter():
         return self.file_record_count[label]
     # end def
 
-    def write(self, seqs: list):
+    def write(self, seqs : list[FileContainer]):
         for fastq in seqs:
             self.write_fastq(fastq)
         # end for
     # end def
 
-    def write_fastq(self, fastq: FastQ):
-        label = fastq.header
+    def write_fastq(self, fastq : FileContainer):
+        label = fastq.label
         extension = "fastq.gz" if self._gzip_ else "fastq"
 
         if label not in self.file_record_count:
@@ -72,10 +72,10 @@ class FastQWriter():
         open_func = gzip.open if self._gzip_ else open
 
         with open_func(last_filename, 'at') as f:
-            f.write(f"@{fastq.header}\n")
-            f.write(f"{fastq.seq}\n")
-            f.write(f"{fastq.plus_line}\n")
-            f.write(f"{fastq.quality}\n")
+            f.write(f"@{fastq.file.header}\n")
+            f.write(f"{fastq.file.seq}\n")
+            f.write(f"{fastq.file.plus_line}\n")
+            f.write(f"{fastq.file.quality}\n")
         # end with
 
         record_count += 1
