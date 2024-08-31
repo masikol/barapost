@@ -40,7 +40,7 @@ class FastaFileWriter():
     def get_record_count(self, label):
         if label not in self.file_record_count:
             return 0
-        # end uf
+        # end if
         return self.file_record_count[label]
     # end def
 
