@@ -1,1 +1,1 @@
-OUTPUT_DIR = './refactor/data'
+OUTPUT_DIR = './data'

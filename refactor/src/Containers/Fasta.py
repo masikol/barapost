@@ -1,7 +1,7 @@
-class Fasta():
-    def __init__(self, seq : str, fastaHeader : str):
+
+class Fasta:
+    def __init__(self, header : str, seq : str):
+        self.header = header
         self.seq = seq
-        self.fastaHeader = fastaHeader
     # end def
 # end class
-
