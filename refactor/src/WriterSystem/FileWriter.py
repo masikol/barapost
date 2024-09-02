@@ -8,6 +8,10 @@ from src.Config.config import OUTPUT_DIR
 
 from src.Containers.ClassifContainer import ClassifContainer
 
+OUT_FILE_HANDLE_IDX = 0
+# CURR_INDEX_IDX      = 1 # not used for now but we leave it here
+RECORD_COUNT_IDX    = 2
+
 
 class FileWriter:
 
@@ -21,7 +25,7 @@ class FileWriter:
         self.open_func = gzip.open if self._gzip_ else open
         self.n_max_out = n_max_out
         self.ext = ext
-        self.file_record_count = {}
+        self.record_chunk_counter = dict()
     # end def
 
     def write(self, classif_records : MutableSequence[ClassifContainer]):
@@ -33,17 +37,19 @@ class FileWriter:
     # end def
 
     def _get_out_file_handle(self, label) -> str:
-        if label in self.file_record_count:
-            out_file_handle = self.file_record_count[label][0]
+        if label in self.record_chunk_counter:
+            out_file_handle = self.record_chunk_counter[label][
+                OUT_FILE_HANDLE_IDX
+            ]
         else:
             curr_index, record_count = 0, 0
             outfpath = self._get_out_file_path(label, curr_index)
             out_file_handle = self._open_new_outfile(outfpath)
-            self.file_record_count[label] = (
+            self.record_chunk_counter[label] = [
                 out_file_handle,
                 curr_index,
                 record_count
-            )
+            ]
         # end try
         return out_file_handle
     # end def
@@ -53,8 +59,9 @@ class FileWriter:
     # end def
 
     def _update_record_count(self, label):
-        outfile_handle, curr_index, record_count = self.file_record_count[label]
+        outfile_handle, curr_index, record_count = self.record_chunk_counter[label]
         record_count += 1
+        self.record_chunk_counter[label][RECORD_COUNT_IDX] = record_count
 
         if record_count >= self.n_max_out:
             outfile_handle.close()
@@ -62,13 +69,13 @@ class FileWriter:
             record_count = 0
             outfpath = self._get_out_file_path(label, curr_index)
             outfile_handle = self._open_new_outfile(outfpath)
-        # end if
 
-        self.file_record_count[label] = (
-            outfile_handle,
-            curr_index,
-            record_count
-        )
+            self.record_chunk_counter[label] = [
+                outfile_handle,
+                curr_index,
+                record_count
+            ]
+        # end if
     # end def
 
     def _get_out_file_path(self, label : str, index : str) -> str:
@@ -83,8 +90,8 @@ class FileWriter:
     # end def
 
     def close(self):
-        for v_tuple in self.file_record_count.values():
-            v_tuple[0].close()
+        for v_tuple in self.record_chunk_counter.values():
+            v_tuple[OUT_FILE_HANDLE_IDX].close()
         # end for
     # end def
 # end class
