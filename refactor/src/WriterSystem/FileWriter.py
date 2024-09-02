@@ -33,7 +33,7 @@ class FileWriter:
     # end def
 
     def _get_out_file_handle(self, label) -> str:
-        if label in self.self.file_record_count:
+        if label in self.file_record_count:
             out_file_handle = self.file_record_count[label][0]
         else:
             curr_index, record_count = 0, 0
@@ -48,7 +48,7 @@ class FileWriter:
         return out_file_handle
     # end def
 
-    def _open_new_outfile(outfpath : str) -> TextIO:
+    def _open_new_outfile(self, outfpath : str) -> TextIO:
         return self.open_func(outfpath, 'wt')
     # end def
 

@@ -2,8 +2,10 @@
 import math
 import statistics
 
+from src.Containers.SeqRecord import SeqRecord
 
-class FastQ:
+
+class FastQ(SeqRecord):
     def __init__(self,
                  header : str,
                  seq : str,
