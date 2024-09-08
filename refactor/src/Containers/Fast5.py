@@ -1,5 +1,4 @@
 
-from h5py import Group
 from h5py import File
 
 from src.Containers.SeqRecord import SeqRecord
