@@ -1,2 +1,12 @@
-pod5==0.3.15
 h5py==3.11.0
+iso8601==2.1.0
+lib_pod5==0.3.15
+more-itertools==10.5.0
+numpy==2.1.1
+packaging==24.1
+pod5==0.3.15
+polars==0.20.31
+pyarrow==16.1.0
+pytz==2024.1
+tqdm==4.66.5
+vbz-h5py-plugin==1.0.1
