@@ -1,7 +1,6 @@
 
 import os
 import gzip
-import glob
 from typing import TextIO, MutableSequence
 
 from src.Config.config import OUTPUT_DIR
