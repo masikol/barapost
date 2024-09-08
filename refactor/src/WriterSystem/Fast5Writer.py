@@ -11,13 +11,6 @@ from src.WriterSystem.FileWriter import FileWriter
 
 class Fast5Writer(FileWriter):
 
-    def __init__(self, _gzip_: bool, n_max_out: int, ext = 'fast5'):
-        super().__init__(_gzip_ = _gzip_,
-                        n_max_out = n_max_out,
-                        ext = ext)
-        self.open_func = File
-    # end def
-
     def _write_single_record(self,
                              sec_record : Fast5,
                              out_file_handle : File):
@@ -32,7 +25,7 @@ class Fast5Writer(FileWriter):
     # end def
 
     def _open_new_outfile(self, outfpath : str) -> File:
-        return self.open_func(outfpath, 'w')
+        return File(outfpath, 'w')
     # end def
 
 # end class

@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 class WriterWrapper(object):
     def __init__(self, _gzip_ : bool, n_max_out : int, _type_ : str):
-        if _type_ == 'fasta':
+        if _type_.lower() == 'fasta':
             self.writer = FastaWriter(_gzip_, n_max_out, 'fasta')
-        elif _type_ == 'fastq':
+        elif _type_.lower() == 'fastq':
             self.writer = FastQWriter(_gzip_, n_max_out, 'fastq')
-        elif _type_ == 'pod5':
+        elif _type_.lower() == 'pod5':
             self.writer = Pod5Writer(False, n_max_out, 'pod5')
-        elif _type_ == 'fast5':
+        elif _type_.lower() == 'fast5':
             self.writer = Fast5Writer(False, n_max_out, 'fast5')
         else:
             raise ValueError(
