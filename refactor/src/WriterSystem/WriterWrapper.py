@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 
 class WriterWrapper(object):
     def __init__(self, _gzip_ : bool, n_max_out : int, _type_ : str):
+
+        # TODO: What python version do u use?
+        # it's may be better to do 'match' instead of if-else bullshit
+        # it's like switch-case in C
+
         if _type_.lower() == 'fasta':
             self.writer = FastaWriter(_gzip_, n_max_out, 'fasta')
         elif _type_.lower() == 'fastq':
@@ -37,6 +42,6 @@ class WriterWrapper(object):
     # end def
 
     def __exit__(self, type, value, traceback):
-        self.writer.close()
+        self.writer.close()# 
     # end def
 # end class
