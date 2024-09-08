@@ -1,8 +1,12 @@
 
 import math
+import logging
 import statistics
 
 from src.Containers.SeqRecord import SeqRecord
+
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class FastQ(SeqRecord):
@@ -16,9 +20,9 @@ class FastQ(SeqRecord):
         self.seq = seq
         self.plus_line = plus_line
         self.quality = quality
+
         if offset not in (33, 64):
-            # TODO: print info messages with logging
-            print(f'Unexpected offset = {offset}! Offset was set to 33.')
+            logger.warning(f'Unexpected offset = {offset}! Offset was set to 33.')
             self.offset = 33
         else:
             self.offset = offset
