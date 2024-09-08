@@ -1,8 +1,13 @@
 
+import logging
+
 from src.WriterSystem.FileWriter import FileWriter
 from src.WriterSystem.FastaWriter import FastaWriter
 from src.WriterSystem.FastQWriter import FastQWriter
 from src.WriterSystem.Pod5Writer import Pod5Writer
+
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class WriterWrapper(object):
@@ -12,10 +17,12 @@ class WriterWrapper(object):
         elif _type_ == 'fastq':
             self.writer = FastQWriter(_gzip_, n_max_out, 'fastq')
         elif _type_ == 'pod5':
+            if _gzip_:
+                logger.warning(f'Cannot write POD5 format as GZIP!')
             self.writer = Pod5Writer(False, n_max_out, 'pod5')
         else:
             raise ValueError(
-                f'Invalid file type. Use fasta or fastq instead of {_type_}.'
+                f'Invalid file type. Use fasta, fastq or pod5 instead of {_type_}.'
             )
         # end if
     # end def
