@@ -7,6 +7,7 @@ from src.WriterSystem.FastQWriter import FastQWriter
 from src.WriterSystem.Pod5Writer import Pod5Writer
 from src.WriterSystem.Fast5Writer import Fast5Writer
 from src.WriterSystem.Blow5Writer import Blow5Writer
+from src.WriterSystem.Slow5Writer import Slow5Writer
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,13 +30,15 @@ class WriterWrapper(object):
             self.writer = Fast5Writer(False, n_max_out, 'fast5')
         elif _type_.lower() == 'blow5':
             self.writer = Blow5Writer(False, n_max_out, 'blow5')
+        elif _type_.lower() == 'slow5':
+            self.writer = Slow5Writer(False, n_max_out, 'slow5')
         else:
             raise ValueError(
-                f'Invalid file type. Use fasta, fastq, pod5, fast5 or blow5 instead of {_type_}.'
+                f'Invalid file type. Use fasta, fastq, pod5, fast5, blow5 ot slow5 instead of {_type_}.'
             )
         # end if
         
-        if _gzip_ and _type_.lower() in ('pod5', 'fast5', 'blow5'):
+        if _gzip_ and _type_.lower() in ('pod5', 'fast5', 'blow5', 'slow5'):
             logger.warning(f'Cannot gzip {_type_} format!')
         # end if
     # end def
