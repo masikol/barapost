@@ -35,7 +35,7 @@ class WriterWrapper(object):
             )
         # end if
         
-        if _gzip_ and _type_.lower() in ('pod5', 'fast5', 'blos5'):
+        if _gzip_ and _type_.lower() in ('pod5', 'fast5', 'blow5'):
             logger.warning(f'Cannot gzip {_type_} format!')
         # end if
     # end def
