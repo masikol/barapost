@@ -10,18 +10,6 @@ from src.WriterSystem.FileWriter import FileWriter
 from src.Containers.Pod5 import Pod5
 
 # TODO: if this labled file do exist throw "Input path already exists. Refusing to overwrite:"
-# May be it's better to make somethink like:
-# -- refracor
-# ---- data
-# ------ experement_1
-# -------- E.coli_0
-# -------- E.coli_1
-# -------- Bacillus
-#           ...
-# ------ experement_n
-# -------- E.coli_0
-# -------- E.coli_1
-# -------- Bacillus
 
 class Pod5Writer(FileWriter):
 

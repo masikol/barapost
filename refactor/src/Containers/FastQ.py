@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class FastQ(SeqRecord):
 
-    __slots__ = ['header', 'seq', 'plus_line', 'quality', 'offset'] 
+    __slots__ = ('header', 'seq', 'plus_line', 'quality', 'offset')
     
     def __init__(self,
                  header : str,
