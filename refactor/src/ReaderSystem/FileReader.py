@@ -16,8 +16,8 @@ class FileReader:
         self.probing_packet_size = probing_packet_size
         self._mode_ = _mode_
 
-        self.open_func = gipz_open if _gzip_ else open
-        self.total_records = 0
+        self._open_func = gipz_open if _gzip_ else open
+        self._total_records = 0
 
         # raise NotImplementedError()
     # end def
@@ -55,7 +55,7 @@ class FileReader:
             raise FileNotFoundError
         # end if
 
-        if self.total_records >= self.probing_packet_size or self.probing_packet_size == -1:
+        if self._total_records >= self.probing_packet_size or self.probing_packet_size == -1:
             raise StopIteration
         # end if
 
@@ -68,12 +68,12 @@ class FileReader:
                 # end if
                 raise StopIteration
             packet.append(file)
-            self.total_records += 1
+            self._total_records += 1
         return packet
     # end def
 
     def open(self) -> None:
-        self.reader = self.open_func(self.file_path, mode = 'rt')
+        self.reader = self._open_func(self.file_path, mode = 'rt')
     # end def
 
     def close(self) -> None:
