@@ -26,7 +26,7 @@ class FastaReader(FileReader):
         # end while
 
         seq = ''.join(seq_lines)
-        return Fasta(header, seq)
+        return Fasta(header = header, seq = seq)
     # end def
 
 # end class
