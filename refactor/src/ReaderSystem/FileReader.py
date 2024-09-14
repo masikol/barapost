@@ -36,9 +36,9 @@ class FileReader(ABC):
         sum_mode_map = {
             -1: lambda seq : len(seq),
         }
-        default_sum_func = lambda seq : min(self.max_seq_len, len(seq))
+        max_seq_len_sum_func = lambda seq : min(self.max_seq_len, len(seq))
 
-        self._sum_func = sum_mode_map.get(max_seq_len, default_sum_func)
+        self._sum_func = sum_mode_map.get(max_seq_len, max_seq_len_sum_func)
         self._total_records = 0
 
         self.common_condition = lambda condition: condition() and (
