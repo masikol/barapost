@@ -21,8 +21,8 @@ class FastaReader(FileReader):
             if line.startswith(">"):
                 self.reader.seek(pos)
                 break
-            seq_lines.append(line)
             # end if
+            seq_lines.append(line)
         # end while
 
         seq = ''.join(seq_lines)
