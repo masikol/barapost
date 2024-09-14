@@ -50,9 +50,6 @@ class FileReader:
 
         seq_count_condition = lambda: len(packet) < self.packet_size
         sum_seq_len_condition = lambda: current_sum < self.packet_size
-        
-        seq_count_condition = lambda: len(packet) < self.packet_size
-        sum_seq_len_condition = lambda: current_sum < self.packet_size
 
         condition = seq_count_condition if self.mode == 'seq_count' else sum_seq_len_condition
 
