@@ -1,5 +1,5 @@
 
-from gzip import open as gipz_open
+from gzip import open as gzip_open
 from typing import Generator
 
 from src.Containers.Fasta import Fasta
@@ -10,22 +10,23 @@ class FileReader:
                  _gzip_ : bool = False,
                  packet_size : int = 1, 
                  probing_packet_size : int = -1, 
-                 _mode_ = 'seq_count'):
+                 mode : str = 'seq_count',
+                 max_seq_len : int = -1):
+        
         self.file_path = file_path
         self.packet_size = packet_size
         self.probing_packet_size = probing_packet_size
-        self._mode_ = _mode_
+        self.mode = mode
+        self.max_seq_len = max_seq_len
 
-        generator_map = {
-            'seq_count': self._seq_count_generator,
-            'sum_seq_len': self._sum_seq_len_generator
+        sum_mode_map = {
+            -1: lambda seq : len(seq),
         }
+        default_sum_func =  lambda seq : min(self.max_seq_len, len(seq))
 
-        self._open_func = gipz_open if _gzip_ else open
-        self._generator_func = generator_map[_mode_]
+        self._open_func = gzip_open if _gzip_ else open
+        self._sum_func = sum_mode_map.get(max_seq_len, default_sum_func)
         self._total_records = 0
-
-        # raise NotImplementedError()
     # end def
 
 
@@ -55,35 +56,31 @@ class FileReader:
         return file.header == ''
     # end def
 
-    def _seq_count_generator(self) -> list[Fasta]:
-        packet = []
-        for _ in range(self.packet_size):
-            file = self._read_single_record()
-            if self._check_file_end(file):
-                if packet:
-                    return packet
-                # end if
-                raise StopIteration
-            packet.append(file)
-            self._total_records += 1
-        return packet
-    # end def
-    
-
-    def _sum_seq_len_generator(self) -> list[Fasta]:
+    def _common_generator(self) -> list[Fasta]:
         packet = []
         current_sum = 0
-        
-        while current_sum < self.packet_size:
+        seq_count_condition = lambda: len(packet) < self.packet_size
+        sum_seq_len_condition = lambda: current_sum < self.packet_size
+
+        condition = seq_count_condition if self.mode == 'seq_count' else sum_seq_len_condition
+
+        while condition():
             file = self._read_single_record()
             if self._check_file_end(file):
                 if packet:
                     return packet
                 # end if
                 raise StopIteration
+            # end if
             packet.append(file)
-            current_sum += len(file.seq)
+
+            if self.mode == 'sum_seq_len':
+                current_sum += self._sum_func(file.seq)
+            # end if
+            
             self._total_records += 1
+        # end while
+
         return packet
     # end def
 
@@ -97,12 +94,14 @@ class FileReader:
             raise StopIteration
         # end if
 
-        return self._generator_func()
+        return self._common_generator()
     # end def
+
 
     def open(self) -> None:
         self.reader = self._open_func(self.file_path, mode = 'rt')
     # end def
+
 
     def close(self) -> None:
         if self.reader:
