@@ -4,8 +4,8 @@ from src.Containers.Fasta import Fasta
 
 class FastaReader(FileReader):
 
-    def _check_file_end(self, file : Fasta) -> bool:
-        return file.header == ''
+    def _check_file_end(self, record : Fasta) -> bool:
+        return record.header == ''
     # end def
 
     def _read_single_record(self) -> Fasta:

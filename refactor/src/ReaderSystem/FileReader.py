@@ -53,7 +53,7 @@ class FileReader(ABC):
     # end def
 
     @abstractmethod
-    def _check_file_end(self, file : SeqRecord) -> bool:
+    def _check_file_end(self, record : SeqRecord) -> bool:
         raise NotImplementedError()
     # end def
 
@@ -64,17 +64,17 @@ class FileReader(ABC):
                           ) -> list[SeqRecord]:
 
         while condition():
-            file = self._read_single_record()
-            if self._check_file_end(file):
+            record = self._read_single_record()
+            if self._check_file_end(record):
                 if packet:
                     return packet
                 # end if
                 raise StopIteration
             # end if
-            packet.append(file)
+            packet.append(record)
 
             if self.mode == 'sum_seq_len':
-                current_sum[CURRENT_SUM_IDX] += self._sum_func(file.seq)
+                current_sum[CURRENT_SUM_IDX] += self._sum_func(record.seq)
             # end if
             
             self._total_records += 1

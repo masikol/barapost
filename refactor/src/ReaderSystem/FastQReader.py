@@ -4,8 +4,8 @@ from src.Containers.FastQ import FastQ
 
 class FastQReader(FileReader):
 
-    def _check_file_end(self, file : FastQ) -> bool:
-        return file.header == ''
+    def _check_file_end(self, record : FastQ) -> bool:
+        return record.header == ''
     # end def
 
     def _read_single_record(self) -> FastQ:
