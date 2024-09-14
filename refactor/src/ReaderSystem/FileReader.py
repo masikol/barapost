@@ -44,6 +44,7 @@ class FileReader(ABC):
         self.common_condition = lambda condition: condition() and (
             self.probing_packet_size == -1 or self._total_records < self.probing_packet_size
             )
+        
     # end def
 
     @abstractmethod
@@ -109,10 +110,6 @@ class FileReader(ABC):
     # end def
 
     def __next__(self) -> Generator[list[SeqRecord], None, None]:   
-        if not self.reader:
-            raise FileNotFoundError
-        # end if
-
         if self._total_records >= self.probing_packet_size and self.probing_packet_size != -1:
             raise StopIteration
         # end if
@@ -132,4 +129,4 @@ class FileReader(ABC):
             self.reader.close()
         # end if
     # end def 
-
+# ecd class
