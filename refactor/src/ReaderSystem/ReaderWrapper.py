@@ -62,7 +62,7 @@ class ReaderWrapper(object):
                                      max_seq_len = max_seq_len)
         else:
             raise ValueError(
-                f'Invalid file type. Use fasta(.gz), fastq(.gz), pod5, fast5, blow5 ot slow5 instead of {path_split[-1]}.'
+                f'Invalid file type. Use fasta(.gz), fastq(.gz), pod5, fast5, blow5 or slow5 instead of {path_split[-1]}.'
             )
         # end if
     # end def

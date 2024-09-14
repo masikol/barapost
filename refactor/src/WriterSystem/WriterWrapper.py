@@ -30,7 +30,7 @@ class WriterWrapper(object):
             self.writer = Slow5Writer(False, n_max_out, 'slow5')
         else:
             raise ValueError(
-                f'Invalid file type. Use fasta, fastq, pod5, fast5, blow5 ot slow5 instead of {_type_}.'
+                f'Invalid file type. Use fasta, fastq, pod5, fast5, blow5 or slow5 instead of {_type_}.'
             )
         # end if
         
