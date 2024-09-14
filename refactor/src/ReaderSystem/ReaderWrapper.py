@@ -4,6 +4,7 @@ import logging
 
 from src.ReaderSystem.FileReader import FileReader
 from src.ReaderSystem.FastaReader import FastaReader
+from src.ReaderSystem.FastQReader import FastQReader
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +46,13 @@ class ReaderWrapper(object):
         if path_split[-1] == 'fasta' or path_split[-2] == 'fasta':
             self.reader = FastaReader(file_path = file_path,
                                      _gzip_ = path_split[-2] == 'fasta',
+                                     packet_size = packet_size,
+                                     probing_packet_size = probing_packet_size,
+                                     mode = mode, 
+                                     max_seq_len = max_seq_len)
+        elif path_split[-1] == 'fastq' or path_split[-2] == 'fastq':
+            self.reader = FastQReader(file_path = file_path,
+                                     _gzip_ = path_split[-2] == 'fastq',
                                      packet_size = packet_size,
                                      probing_packet_size = probing_packet_size,
                                      mode = mode, 

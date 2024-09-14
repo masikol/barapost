@@ -48,4 +48,19 @@ class FastQ(SeqRecord):
     def _pe_to_Q(self, error_prob : float):
         return -10 * math.log10(error_prob)
     # end def
+
+    def __str__(self):
+        return f'''header : {self.header},
+                seq: {self.seq},
+                plus_line : {self.plus_line},
+                quality : {self.quality}.\n'''
+    # end def
+
+    def __repr__(self):
+        return f'''
+        FastQ(header={self.header!r}, 
+        sequence={self.seq!r}, 
+        plus_line={self.plus_line!r}, 
+        quality={self.quality!r})'''
+    # end def
 # end class
