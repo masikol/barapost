@@ -25,6 +25,8 @@ class FileReader(ABC):
         self.mode = mode
         self.max_seq_len = max_seq_len
 
+        self._open_func = gzip_open if _gzip_ else open
+
         generators_map = {
             'seq_count' : self._seq_count_generator,
             'sum_seq_len' : self._sum_seq_len_generator
@@ -36,7 +38,6 @@ class FileReader(ABC):
         }
         default_sum_func = lambda seq : min(self.max_seq_len, len(seq))
 
-        self._open_func = gzip_open if _gzip_ else open
         self._sum_func = sum_mode_map.get(max_seq_len, default_sum_func)
         self._total_records = 0
 
