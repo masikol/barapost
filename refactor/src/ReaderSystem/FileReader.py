@@ -25,6 +25,7 @@ class FileReader(ABC):
         self.mode = mode
         self.max_seq_len = max_seq_len
 
+        self._total_records = 0
         self._open_func = gzip_open if _gzip_ else open
 
         generators_map = {
@@ -37,9 +38,7 @@ class FileReader(ABC):
             -1: lambda seq : len(seq),
         }
         max_seq_len_sum_func = lambda seq : min(self.max_seq_len, len(seq))
-
         self._sum_func = sum_mode_map.get(max_seq_len, max_seq_len_sum_func)
-        self._total_records = 0
 
         self.common_condition = lambda condition: condition() and (
             self.probing_packet_size == -1 or self._total_records < self.probing_packet_size
