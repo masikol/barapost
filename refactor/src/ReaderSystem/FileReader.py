@@ -2,9 +2,10 @@
 from gzip import open as gzip_open
 from typing import Generator
 
-from src.Containers.Fasta import Fasta
+from src.Containers.SeqRecord import SeqRecord
 
 class FileReader:
+
     def __init__(self, 
                  file_path : str,
                  _gzip_ : bool = False,
@@ -30,41 +31,34 @@ class FileReader:
     # end def
 
 
-    def _read_single_record(self) -> Fasta:
-        header = self.reader.readline().strip('\r\n')
-        seq_lines = []
-
-        while True:
-            pos = self.reader.tell()
-            line = self.reader.readline().strip('\r\n')
-            if line == '':
-                break
-            # end if
-            if line.startswith(">"):
-                self.reader.seek(pos)
-                break
-            seq_lines.append(line)
-            # end if
-        # end while
-
-        seq = ''.join(seq_lines)
-        return Fasta(header, seq)
+    def _read_single_record(self) -> SeqRecord:
+        raise NotImplementedError()
     # end def
 
 
-    def _check_file_end(self, file : Fasta) -> bool:
-        return file.header == ''
+    def _check_file_end(self, file : SeqRecord) -> bool:
+        raise NotImplementedError()
     # end def
 
-    def _common_generator(self) -> list[Fasta]:
+    def _common_generator(self) -> list[SeqRecord]:
         packet = []
         current_sum = 0
+
+        common_condition = lambda condition: condition() and (
+            self.probing_packet_size == -1 or self._total_records < self.probing_packet_size
+            )
+
+        seq_count_condition = lambda: len(packet) < self.packet_size
+        sum_seq_len_condition = lambda: current_sum < self.packet_size
+        
         seq_count_condition = lambda: len(packet) < self.packet_size
         sum_seq_len_condition = lambda: current_sum < self.packet_size
 
         condition = seq_count_condition if self.mode == 'seq_count' else sum_seq_len_condition
 
-        while condition():
+        final_condition = lambda: common_condition(condition)
+
+        while final_condition():
             file = self._read_single_record()
             if self._check_file_end(file):
                 if packet:
@@ -85,12 +79,12 @@ class FileReader:
     # end def
 
 
-    def __next__(self) -> Generator[list[Fasta], None, None]:   
+    def __next__(self) -> Generator[list[SeqRecord], None, None]:   
         if not self.reader:
             raise FileNotFoundError
         # end if
 
-        if self._total_records >= self.probing_packet_size or self.probing_packet_size == -1:
+        if self._total_records >= self.probing_packet_size and self.probing_packet_size != -1:
             raise StopIteration
         # end if
 
