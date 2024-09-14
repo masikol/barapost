@@ -1,10 +1,15 @@
 
+from abc import ABC, abstractmethod
+
 from gzip import open as gzip_open
-from typing import Generator
+from typing import Generator, Callable
 
 from src.Containers.SeqRecord import SeqRecord
 
-class FileReader:
+CURRENT_SUM_IDX = 0
+
+
+class FileReader(ABC):
 
     def __init__(self, 
                  file_path : str,
@@ -20,42 +25,43 @@ class FileReader:
         self.mode = mode
         self.max_seq_len = max_seq_len
 
+        generators_map = {
+            'seq_count' : self._seq_count_generator,
+            'sum_seq_len' : self._sum_seq_len_generator
+        }
+        self.generator_func = generators_map[mode]
+
         sum_mode_map = {
             -1: lambda seq : len(seq),
         }
-        default_sum_func =  lambda seq : min(self.max_seq_len, len(seq))
+        default_sum_func = lambda seq : min(self.max_seq_len, len(seq))
 
         self._open_func = gzip_open if _gzip_ else open
         self._sum_func = sum_mode_map.get(max_seq_len, default_sum_func)
         self._total_records = 0
+
+        self.common_condition = lambda condition: condition() and (
+            self.probing_packet_size == -1 or self._total_records < self.probing_packet_size
+            )
     # end def
 
-
+    @abstractmethod
     def _read_single_record(self) -> SeqRecord:
         raise NotImplementedError()
     # end def
 
-
+    @abstractmethod
     def _check_file_end(self, file : SeqRecord) -> bool:
         raise NotImplementedError()
     # end def
 
-    def _common_generator(self) -> list[SeqRecord]:
-        packet = []
-        current_sum = 0
+    def _common_generator(self,
+                          condition : Callable,
+                          packet : list,
+                          current_sum : list[int],
+                          ) -> list[SeqRecord]:
 
-        common_condition = lambda condition: condition() and (
-            self.probing_packet_size == -1 or self._total_records < self.probing_packet_size
-            )
-
-        seq_count_condition = lambda: len(packet) < self.packet_size
-        sum_seq_len_condition = lambda: current_sum < self.packet_size
-
-        condition = seq_count_condition if self.mode == 'seq_count' else sum_seq_len_condition
-
-        final_condition = lambda: common_condition(condition)
-
-        while final_condition():
+        while condition():
             file = self._read_single_record()
             if self._check_file_end(file):
                 if packet:
@@ -66,7 +72,7 @@ class FileReader:
             packet.append(file)
 
             if self.mode == 'sum_seq_len':
-                current_sum += self._sum_func(file.seq)
+                current_sum[CURRENT_SUM_IDX] += self._sum_func(file.seq)
             # end if
             
             self._total_records += 1
@@ -75,6 +81,31 @@ class FileReader:
         return packet
     # end def
 
+    def _seq_count_generator(self,
+                             packet : list,
+                             current_sum : list[int]
+                             ) -> list[SeqRecord]:
+        
+        seq_count_condition = lambda: len(packet) < self.packet_size
+        final_condition = lambda: self.common_condition(seq_count_condition)
+
+        return self._common_generator(condition = final_condition,
+                                       packet = packet,
+                                       current_sum = current_sum)
+    # end def
+
+    def _sum_seq_len_generator(self,
+                               packet : list,
+                               current_sum : list[int]
+                               ) -> list[SeqRecord]:
+
+        sum_seq_len_condition = lambda: current_sum[CURRENT_SUM_IDX] < self.packet_size
+        final_condition = lambda: self.common_condition(sum_seq_len_condition)
+
+        return self._common_generator(condition = final_condition,
+                                      packet = packet,
+                                      current_sum = current_sum)
+    # end def
 
     def __next__(self) -> Generator[list[SeqRecord], None, None]:   
         if not self.reader:
@@ -85,14 +116,15 @@ class FileReader:
             raise StopIteration
         # end if
 
-        return self._common_generator()
-    # end def
+        packet = []
+        current_sum = [0] # Cause int immutable
 
+        return self.generator_func(packet = packet, current_sum = current_sum)
+    # end def
 
     def open(self) -> None:
         self.reader = self._open_func(self.file_path, mode = 'rt')
     # end def
-
 
     def close(self) -> None:
         if self.reader:

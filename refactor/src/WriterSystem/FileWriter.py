@@ -2,6 +2,7 @@
 import os
 import gzip
 from typing import TextIO, MutableSequence
+from abc import ABC, abstractmethod
 
 from src.Config.config import OUTPUT_DIR
 
@@ -12,8 +13,9 @@ OUT_FILE_HANDLE_IDX = 0
 RECORD_COUNT_IDX    = 2
 
 
-class FileWriter:
+class FileWriter(ABC):
 
+    @abstractmethod
     def _write_single_record(self, sec_record, outfpath):
         raise NotImplementedError()
     # end def
