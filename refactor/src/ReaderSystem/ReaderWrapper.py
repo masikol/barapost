@@ -18,6 +18,7 @@ class ReaderWrapper(object):
 
         if path_split[-1] == 'fasta' or path_split[-2] == 'fasta':
             self.reader = FileReader(file_path = file_path,
+                                     _gzip_ = path_split[-2] == 'fasta',
                                      packet_size = packet_size,
                                      probing_packet_size = probing_packet_size,
                                      _mode_ = _mode_)
@@ -29,10 +30,6 @@ class ReaderWrapper(object):
     # end def
 
     def __next__(self):   
-        return self.next()
-    # end def
-
-    def next(self):   
         return self.reader.next()
     # end def
 
