@@ -67,24 +67,20 @@ class ReaderWrapper(object):
         # end if
     # end def
 
-
     def _validate_positive_integer(self, value: int, name: str, allow_negative_one: bool = False):
         if value < 0 and not (allow_negative_one and value == -1):
             raise ValueError(f'"{name}" must be a positive integer. Received "{name}" = {value}.')
         # end if
     # end def
 
-
     def __next__(self) -> Generator[list[SeqRecord], None, None]:   
         return self.reader.__next__()
     # end def
-
 
     def __enter__(self) -> FileReader:
         self.reader.open()
         return self.reader
     # end def
-
 
     def __exit__(self, type, value, traceback):
         self.reader.close()
