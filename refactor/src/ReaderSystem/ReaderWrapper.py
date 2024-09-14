@@ -14,6 +14,11 @@ class ReaderWrapper(object):
                  probing_packet_size : int = 1,
                  _mode_ : str = 'seq_count'):
         
+        if _mode_ not in ('seq_count', 'sum_seq_len'):
+            logger.warning(f'Invalid {_mode_} mode. Set mode to "seq_count".')
+            _mode_ = 'seq_count'
+        # end if
+        
         path_split = file_path.split('.')
 
         if path_split[-1] == 'fasta' or path_split[-2] == 'fasta':

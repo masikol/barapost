@@ -16,7 +16,13 @@ class FileReader:
         self.probing_packet_size = probing_packet_size
         self._mode_ = _mode_
 
+        generator_map = {
+            'seq_count': self._seq_count_generator,
+            'sum_seq_len': self._sum_seq_len_generator
+        }
+
         self._open_func = gipz_open if _gzip_ else open
+        self._generator_func = generator_map[_mode_]
         self._total_records = 0
 
         # raise NotImplementedError()
@@ -49,16 +55,7 @@ class FileReader:
         return file.header == ''
     # end def
 
-
-    def __next__(self) -> Generator[list[Fasta], None, None]:   
-        if not self.reader:
-            raise FileNotFoundError
-        # end if
-
-        if self._total_records >= self.probing_packet_size or self.probing_packet_size == -1:
-            raise StopIteration
-        # end if
-
+    def _seq_count_generator(self) -> list[Fasta]:
         packet = []
         for _ in range(self.packet_size):
             file = self._read_single_record()
@@ -70,6 +67,37 @@ class FileReader:
             packet.append(file)
             self._total_records += 1
         return packet
+    # end def
+    
+
+    def _sum_seq_len_generator(self) -> list[Fasta]:
+        packet = []
+        current_sum = 0
+        
+        while current_sum < self.packet_size:
+            file = self._read_single_record()
+            if self._check_file_end(file):
+                if packet:
+                    return packet
+                # end if
+                raise StopIteration
+            packet.append(file)
+            current_sum += len(file.seq)
+            self._total_records += 1
+        return packet
+    # end def
+
+
+    def __next__(self) -> Generator[list[Fasta], None, None]:   
+        if not self.reader:
+            raise FileNotFoundError
+        # end if
+
+        if self._total_records >= self.probing_packet_size or self.probing_packet_size == -1:
+            raise StopIteration
+        # end if
+
+        return self._generator_func()
     # end def
 
     def open(self) -> None:
