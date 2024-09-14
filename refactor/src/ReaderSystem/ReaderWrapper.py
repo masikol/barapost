@@ -1,6 +1,9 @@
 
 import os
 import logging
+from typing import Generator
+
+from src.Containers.SeqRecord import SeqRecord
 
 from src.ReaderSystem.FileReader import FileReader
 from src.ReaderSystem.FastaReader import FastaReader
@@ -72,7 +75,7 @@ class ReaderWrapper(object):
     # end def
 
 
-    def __next__(self):   
+    def __next__(self) -> Generator[list[SeqRecord], None, None]:   
         return self.reader.__next__()
     # end def
 
