@@ -10,6 +10,7 @@ from src.ReaderSystem.FastaReader import FastaReader
 from src.ReaderSystem.FastQReader import FastQReader
 from src.ReaderSystem.Fast5Reader import Fast5Reader
 from src.ReaderSystem.Pod5Reader import Pod5Reader
+from src.ReaderSystem.Slow5Reader import Slow5Reader
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class ReaderWrapper(object):
             self.max_seq_len = -1
         # end if
 
-        if path_split[-1] in ('fast5', 'pod5'):
+        if path_split[-1] in ('fast5', 'pod5', 'slow5'):
             for name, value, allowed_value in zip(
                     ('packet_size', 'probing_packet_size', 'mode', 'max_seq_len'),
                     (packet_size, probing_packet_size, mode, max_seq_len),
@@ -91,6 +92,13 @@ class ReaderWrapper(object):
                                      probing_packet_size = self.probing_packet_size,
                                      mode = self.mode, 
                                      max_seq_len = self.max_seq_len)
+        elif path_split[-1] == 'slow5':
+            self.reader = Slow5Reader(file_path = self.file_path,
+                                     _gzip_ = False,
+                                     packet_size = self.packet_size,
+                                     probing_packet_size = self.probing_packet_size,
+                                     mode = self.mode, 
+                                     max_seq_len = self.max_seq_len)
         else:
             raise ValueError(
                 f'Invalid file type. Use fasta(.gz), fastq(.gz), pod5, fast5, blow5 or slow5 instead of {path_split[-1]}.'
@@ -111,7 +119,7 @@ class ReaderWrapper(object):
                                   name : str) -> bool:
         if value != allowed_value:
             logger.warning(
-                f'"{name}" parameter is not supported with {file_type} type. Setting "{name}" to "{allowed_value}".'
+                f'"{name}" parameter is not supported with {file_type} format. Setting "{name}" to "{allowed_value}".'
             )
             setattr(self, name, allowed_value)
         # end if
