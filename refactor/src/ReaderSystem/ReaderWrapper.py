@@ -127,7 +127,8 @@ class ReaderWrapper(object):
                                   name : str) -> bool:
         if value != allowed_value:
             logger.warning(
-                f'"{name}" parameter is not supported with {file_type} format. Setting "{name}" to "{allowed_value}" instead of {value}.'
+                f'''"{name}" parameter is not supported with {file_type} format. 
+                Setting "{name}" to "{allowed_value}" instead of {value}.'''
             )
             setattr(self, name, allowed_value)
         # end if
