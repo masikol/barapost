@@ -13,5 +13,13 @@ class Fast5(SeqRecord):
         self.out_file_handle = out_file_handle
         self.read_uuid = read_uuid
     # end def
-# end class
 
+    def __str__(self):
+        return f'''out_file_handle : {self.out_file_handle},
+                read_uuid: {self.read_uuid}.\n'''
+    # end def
+
+    def __repr__(self):
+        return f'Fast5(out_file_handle={self.out_file_handle!r}, read_uuid={self.read_uuid!r})'
+    # end def
+# end class
