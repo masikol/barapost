@@ -50,30 +50,32 @@ class FastQ(SeqRecord):
     # end def
 
     def __str__(self):
-        seq_concise = self._get_consice_seq()
+        seq_concise     = self._get_consice_str(self.seq)
+        quality_concise = self._get_consice_str(self.quality)
         return f'''header: {self.header},
 seq: {seq_concise},
 plus_line: {self.plus_line},
-quality: {self.quality}.\n'''
+quality: {quality_concise}.\n'''
     # end def
 
     def __repr__(self):
-        seq_concise = self._get_consice_seq()
+        seq_concise     = self._get_consice_str(self.seq)
+        quality_concise = self._get_consice_str(self.quality)
         return f'''FastQ(
     header={self.header!r}, 
     sequence={seq_concise!r}, 
     plus_line={self.plus_line!r}, 
-    quality={self.quality!r}
+    quality={quality_concise!r}
 )'''
     # end def
 
-    def _get_consice_seq(self):
+    def _get_consice_str(self, string):
         n_chars_show = 30
         n_chars_omitted = len(self.seq) - 2*n_chars_show
-        return '{}../{:,}bp/..{}'.format(
-            self.seq[:n_chars_show],
+        return '{}../{:,}chars/..{}'.format(
+            string[:n_chars_show],
             n_chars_omitted,
-            self.seq[-n_chars_show:]
+            string[-n_chars_show:]
         )
     # end def
 # end class

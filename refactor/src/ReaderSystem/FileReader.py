@@ -5,8 +5,6 @@ from typing import Generator, Callable, MutableSequence
 
 from src.Containers.SeqRecord import SeqRecord
 
-CURRENT_SUM_IDX = 0
-
 
 class FileReader(ABC):
 
@@ -24,24 +22,31 @@ class FileReader(ABC):
         self.mode = mode
         self.max_seq_len = max_seq_len
 
-        self._total_records = 0
+        self._packet = []
+        self._sum_seq_len_read = 0
+        self._n_records_read_total = 0
         self._open_func = gzip.open if _gzip_ else open
 
-        generators_map = {
-            'seq_count' : self._seq_count_generator,
-            'sum_seq_len' : self._sum_seq_len_generator
-        }
-        self.generator_func = generators_map[mode]
-
-        if max_seq_len == -1:
-            self._sum_func = lambda seq : len(seq)
+        if self.mode == 'seq_count':
+            self._make_packet = self._make_seq_count_packet
+        elif self.mode == 'sum_seq_len':
+            self._make_packet = self._make_sum_seq_len_packet
         else:
-            self._sum_func = lambda seq : min(self.max_seq_len, len(seq))
+            raise ValueError(
+                f'Indalid mode: `{self.mode}`. Allowed nodes: `seq_count`, `sum_seq_len`.'
+            )
         # end if
 
-        self.common_condition = lambda condition: condition() and (
-            self.probing_batch_size == -1 or self._total_records < self.probing_batch_size
-        )
+        if max_seq_len == -1:
+            self._increment_sum = lambda seq : len(seq)
+        elif max_seq_len > 0:
+            self._increment_sum = lambda seq : min(self.max_seq_len, len(seq))
+        else:
+            # TODO: this won't work is str (or sth, not int/float) is passed as max_seq_len
+            raise ValueError(
+                f'Indalid max_seq_len: `{max_seq_len}`. It must be a positive integer or -1.'
+            )
+        # end if
     # end def
 
     @abstractmethod
@@ -54,68 +59,85 @@ class FileReader(ABC):
         raise NotImplementedError()
     # end def
 
-    def _common_generator(self,
-                          condition : Callable,
-                          packet : MutableSequence,
-                          current_sum : MutableSequence[int]) -> MutableSequence[SeqRecord]:
+    def _make_conditional_packet(self,
+                                 condition : Callable) -> MutableSequence[SeqRecord]:
 
         while condition():
             record = self._read_single_record()
             if self._check_file_end(record):
-                if packet:
+                if len(self._packet) != 0:
+                    packet = self._packet
+                    self._reset_packet()
                     return packet
                 # end if
                 raise StopIteration
             # end if
-            packet.append(record)
+            self._packet.append(record)
 
             if self.mode == 'sum_seq_len':
-                current_sum[CURRENT_SUM_IDX] += self._sum_func(record.seq)
+                self._sum_seq_len_read += self._increment_sum(record.seq)
             # end if
 
-            self._total_records += 1
+            self._n_records_read_total += 1
         # end while
+
+        packet = self._packet
+        self._reset_packet()
 
         return packet
     # end def
 
-    def _seq_count_generator(self,
-                             packet : MutableSequence,
-                             current_sum : MutableSequence[int]) -> MutableSequence[SeqRecord]:
-        seq_count_condition = lambda: len(packet) < self.packet_size
-        final_condition = lambda: self.common_condition(seq_count_condition)
-        return self._common_generator(
-            condition = final_condition,
-            packet = packet,
-            current_sum = current_sum
+    def _reset_packet(self):
+        self._packet = []
+        self._sum_seq_len_read = 0
+    # end def
+
+
+    def _make_seq_count_packet(self) -> MutableSequence[SeqRecord]:
+        return self._make_conditional_packet(
+            condition=self._seq_count_stop_condition
         )
     # end def
 
-    def _sum_seq_len_generator(self,
-                               packet : MutableSequence,
-                               current_sum : MutableSequence[int]) -> MutableSequence[SeqRecord]:
-        sum_seq_len_condition = lambda: current_sum[CURRENT_SUM_IDX] < self.packet_size
-        final_condition = lambda: self.common_condition(sum_seq_len_condition)
-        return self._common_generator(
-            condition = final_condition,
-            packet = packet,
-            current_sum = current_sum
+    def _make_sum_seq_len_packet(self) -> MutableSequence[SeqRecord]:
+        return self._make_conditional_packet(
+            condition=self._sum_seq_len_stop_condition
         )
+    # end def
+
+    def _seq_count_stop_condition(self) -> bool:
+        return len(self._packet) < self.packet_size \
+               and self._common_stop_condition()
+    # end def
+
+    def _sum_seq_len_stop_condition(self) -> bool:
+        return self._sum_seq_len_read < self.packet_size \
+               and self._common_stop_condition()
+    # end def
+
+    def _common_stop_condition(self) -> bool:
+        return self.probing_batch_size == -1 \
+               or self._n_records_read_total < self.probing_batch_size
+    # end def
+
+
+    # TODO: add return type hint
+    def __iter__(self):
+        return self
     # end def
 
     def __next__(self) -> Generator[MutableSequence[SeqRecord], None, None]:
-        if self._total_records >= self.probing_batch_size and self.probing_batch_size != -1:
+        stop = self.probing_batch_size != -1 \
+               and self._n_records_read_total >= self.probing_batch_size
+        if stop:
             raise StopIteration
         # end if
 
-        packet = []
-        current_sum = [0] # Cause int immutable
-
-        return self.generator_func(packet = packet, current_sum = current_sum)
+        return self._make_packet()
     # end def
 
     def open(self) -> None:
-        self.reader = self._open_func(self.file_path, mode = 'rt')
+        self.reader = self._open_func(self.file_path, mode='rt')
     # end def
 
     def close(self) -> None:

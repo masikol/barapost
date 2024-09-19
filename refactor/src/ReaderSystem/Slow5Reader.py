@@ -18,6 +18,7 @@ class Slow5Reader(FileReader):
         except StopIteration:
             raise
         # end try
+
         return Slow5(record = record)
     # end def
 
