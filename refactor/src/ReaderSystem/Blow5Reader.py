@@ -4,7 +4,8 @@ from pyslow5 import Open
 from src.ReaderSystem.FileReader import FileReader
 from src.Containers.Blow5 import Blow5
 
-class Blow5Reader(FileReader):        
+
+class Blow5Reader(FileReader):
 
     def _check_file_end(self, record : Blow5) -> bool:
         return False
@@ -25,5 +26,4 @@ class Blow5Reader(FileReader):
         self.reader = Open(self.file_path, 'r')
         self.reader_iteraror = iter(self.reader.get_read_ids()[0])
     # end def
-
 # end class

@@ -2,6 +2,7 @@
 from src.ReaderSystem.FileReader import FileReader
 from src.Containers.Fasta import Fasta
 
+
 class FastaReader(FileReader):
 
     def _check_file_end(self, record : Fasta) -> bool:
@@ -18,7 +19,7 @@ class FastaReader(FileReader):
             if line == '':
                 break
             # end if
-            if line.startswith(">"):
+            if line.startswith('>'):
                 self.reader.seek(pos)
                 break
             # end if
@@ -28,5 +29,4 @@ class FastaReader(FileReader):
         seq = ''.join(seq_lines)
         return Fasta(header = header, seq = seq)
     # end def
-
 # end class

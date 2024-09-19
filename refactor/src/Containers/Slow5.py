@@ -14,6 +14,8 @@ class Slow5(SeqRecord):
     # end def
 
     def __repr__(self):
-        return f'Slow5(record={self.record!r})'
+        return f'''Slow5(
+    record={self.record!r}
+)'''
     # end def
 # end class

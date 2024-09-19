@@ -12,11 +12,26 @@ class Fasta(SeqRecord):
     # end def
 
     def __str__(self):
+        seq_concise = self._get_consice_seq()
         return f'''header : {self.header},
-                seq: {self.seq}.\n'''
+seq: {seq_concise}.\n'''
     # end def
 
     def __repr__(self):
-        return f'Fasta(header={self.header!r}, sequence={self.seq!r})'
+        seq_concise = self._get_consice_seq()
+        return f'''Fasta(
+    header={self.header!r},
+    sequence={seq_concise!r}
+)'''
+    # end def
+
+    def _get_consice_seq(self):
+        n_chars_show = 30
+        n_chars_omitted = len(self.seq) - 2*n_chars_show
+        return '{}../{:,}bp/..{}'.format(
+            self.seq[:n_chars_show],
+            n_chars_omitted,
+            self.seq[-n_chars_show:]
+        )
     # end def
 # end class

@@ -1,6 +1,7 @@
 
 from src.Containers.SeqRecord import SeqRecord
 
+
 class Blow5(SeqRecord):
 
     __slots__ = ('record')

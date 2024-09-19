@@ -29,6 +29,4 @@ class Pod5Writer(FileWriter):
             f'{label}_{index}.{self.ext}'
         )
     # end def
-
 # end class
-

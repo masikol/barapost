@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class FastQ(SeqRecord):
 
     __slots__ = ('header', 'seq', 'plus_line', 'quality', 'offset')
-    
+
     def __init__(self,
                  header : str,
                  seq : str,
@@ -25,7 +25,7 @@ class FastQ(SeqRecord):
         self.quality = quality
 
         if offset not in (33, 64):
-            logger.warning(f'Unexpected offset = {offset}! Offset was set to 33.')
+            logger.warning(f'Unexpected offset: `{offset}`. Setting offset to 33.')
             self.offset = 33
         else:
             self.offset = offset
@@ -50,17 +50,30 @@ class FastQ(SeqRecord):
     # end def
 
     def __str__(self):
-        return f'''header : {self.header},
-                seq: {self.seq},
-                plus_line : {self.plus_line},
-                quality : {self.quality}.\n'''
+        seq_concise = self._get_consice_seq()
+        return f'''header: {self.header},
+seq: {seq_concise},
+plus_line: {self.plus_line},
+quality: {self.quality}.\n'''
     # end def
 
     def __repr__(self):
-        return f'''
-        FastQ(header={self.header!r}, 
-        sequence={self.seq!r}, 
-        plus_line={self.plus_line!r}, 
-        quality={self.quality!r})'''
+        seq_concise = self._get_consice_seq()
+        return f'''FastQ(
+    header={self.header!r}, 
+    sequence={seq_concise!r}, 
+    plus_line={self.plus_line!r}, 
+    quality={self.quality!r}
+)'''
+    # end def
+
+    def _get_consice_seq(self):
+        n_chars_show = 30
+        n_chars_omitted = len(self.seq) - 2*n_chars_show
+        return '{}../{:,}bp/..{}'.format(
+            self.seq[:n_chars_show],
+            n_chars_omitted,
+            self.seq[-n_chars_show:]
+        )
     # end def
 # end class

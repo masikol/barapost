@@ -4,7 +4,8 @@ from pod5 import DatasetReader
 from src.ReaderSystem.FileReader import FileReader
 from src.Containers.Pod5 import Pod5
 
-class Pod5Reader(FileReader):        
+
+class Pod5Reader(FileReader):
 
     def _check_file_end(self, record : Pod5) -> bool:
         return False
@@ -16,7 +17,6 @@ class Pod5Reader(FileReader):
         except StopIteration:
             raise
         # end try
-
         return Pod5(record = record)
     # end def
 
@@ -30,5 +30,4 @@ class Pod5Reader(FileReader):
     def close(self) -> None:
         pass
     # end def
-
 # end class

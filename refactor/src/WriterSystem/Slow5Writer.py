@@ -27,6 +27,4 @@ class Slow5Writer(FileWriter):
     def _open_new_outfile(self, outfpath : str) -> Open:
         return Open(outfpath, 'w')
     # end def
-
 # end class
-

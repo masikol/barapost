@@ -2,6 +2,7 @@
 from src.Containers.SeqRecord import SeqRecord
 from pod5 import ReadRecord
 
+
 class Pod5(SeqRecord):
 
     __slots__ = ('record')
@@ -15,6 +16,8 @@ class Pod5(SeqRecord):
     # end def
 
     def __repr__(self):
-        return f'Pod5(record={self.record!r})'
+        return f'''Pod5(
+    record={self.record!r}
+)'''
     # end def
 # end class
