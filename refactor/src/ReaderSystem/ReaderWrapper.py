@@ -1,15 +1,16 @@
 
 import os
 import logging
-from typing import Generator, MutableSequence
+from typing import Generator, Sequence, MutableSequence
 
+import src.filesystem as fs
 from src.Containers.SeqRecord import SeqRecord
 
-from src.ReaderSystem.FileReader import FileReader
+from src.ReaderSystem.FileReader  import FileReader
 from src.ReaderSystem.FastaReader import FastaReader
-from src.ReaderSystem.FastQReader import FastQReader
+from src.ReaderSystem.FastqReader import FastqReader
 from src.ReaderSystem.Fast5Reader import Fast5Reader
-from src.ReaderSystem.Pod5Reader import Pod5Reader
+from src.ReaderSystem.Pod5Reader  import Pod5Reader
 from src.ReaderSystem.Slow5Reader import Slow5Reader
 from src.ReaderSystem.Blow5Reader import Blow5Reader
 
@@ -22,25 +23,24 @@ logger = logging.getLogger(__name__)
 class ReaderWrapper(object):
 
     def __init__(self,
-                 file_path : str,
+                 file_paths : Sequence[str],
                  packet_size : int = 1,
                  probing_batch_size : int = -1,
                  mode : str = 'seq_count',
                  max_seq_len : int = -1):
         
-        if not os.path.isfile(file_path):
-            raise FileNotFoundError(
-                f'File `{file_path}` does not exist.'
-            )
-        # end if
+        # TODO: we'll handle this at the arg parsing stage
+        # if not os.path.isfile(file_path):
+        #     raise FileNotFoundError(
+        #         f'File `{file_path}` does not exist.'
+        #     )
+        # # end if
 
-        self.file_path          = file_path
+        self.file_paths         = file_paths
         self.packet_size        = packet_size
         self.probing_batch_size = probing_batch_size
         self.mode               = mode
         self.max_seq_len        = max_seq_len
-
-        path_split = self.file_path.split('.')
 
         self._validate_positive_integer(self.packet_size, 'packet_size')
         self._validate_positive_integer(
@@ -67,52 +67,46 @@ class ReaderWrapper(object):
             self.mode = 'seq_count'
         # end if
 
-        # TODO: we should allow multiple variations of common fasta and fastq extentions.
-        # fastQ:
-        #   fastq, fq
-        # fastA:
-        #   fasta, fa, fna, fsa, fasta_nt, fa_nt, fna_nt, fsa_nt
-        # And all this might be .gz.
-        # Variant: make a module `filesystem` and make there functions
-        #   `is_fasta`, `is_fastq`, `is_gzipped`
-        if path_split[-1] == 'fasta' or path_split[-2] == 'fasta':
+        # TODO:
+        # 1. catch StopIteration? Or we will handle this at the arg parsing stage?
+        # 2. We will assume that file_paths is homogenous: only fasta, only fastq as so on
+        curr_file_path = next(iter(file_paths))
+
+        if fs.is_fasta(curr_file_path):
             self.reader = FastaReader(
-                file_path=self.file_path,
-                _gzip_=path_split[-2] == 'fasta',
+                file_paths=self.file_paths,
                 packet_size=self.packet_size,
                 probing_batch_size=self.probing_batch_size,
                 mode=self.mode,
                 max_seq_len=self.max_seq_len
             )
-        elif path_split[-1] == 'fastq' or path_split[-2] == 'fastq':
-            self.reader = FastQReader(
-                file_path=self.file_path,
-                _gzip_=path_split[-2] == 'fastq',
+        elif fs.is_fastq(curr_file_path):
+            self.reader = FastqReader(
+                file_paths=self.file_paths,
                 packet_size=self.packet_size,
                 probing_batch_size=self.probing_batch_size,
                 mode=self.mode,
                 max_seq_len=self.max_seq_len
             )
-        elif path_split[-1] == 'fast5':
+        elif fs.is_fast5(curr_file_path):
             self.reader = Fast5Reader(
-                file_path=self.file_path
+                file_paths=self.file_paths
             )
-        elif path_split[-1] == 'pod5':
+        elif fs.is_pod5(curr_file_path):
             self.reader = Pod5Reader(
-                file_path=self.file_path
+                file_paths=self.file_paths
             )
-        elif path_split[-1] == 'blow5':
+        elif fs.is_blow5(curr_file_path):
             self.reader = Blow5Reader(
-                file_path=self.file_path
+                file_paths=self.file_paths
             )
-        elif path_split[-1] == 'slow5':
+        elif fs.is_slow5(curr_file_path):
             self.reader = Slow5Reader(
-                file_path=self.file_path
+                file_paths=self.file_paths
             )
         else:
-            raise ValueError(
-                f'Invalid file type: `{path_split[-1]}`. Allowed types: fasta(.gz), fastq(.gz), pod5, fast5, blow5, slow5.'
-            )
+            err_msg = self._make_invalid_file_type_err_msg(curr_file_path)
+            raise ValueError(err_msg)
         # end if
     # end def
 
@@ -123,6 +117,17 @@ class ReaderWrapper(object):
         if value < 0 and not (allow_minus_one and value == -1):
             raise ValueError(f'`{name}` must be a positive integer. Received `{name}`=`{value}`')
         # end if
+    # end def
+
+    def _make_invalid_file_type_err_msg(self, file_path : str):
+        file_type = fs.get_hts_file_type(file_path)
+        allowed_extensions = fs.FASTA_EXTENSIONS \
+                           | fs.FASTQ_EXTENSIONS \
+                           | {'fast5', 'pod5', 'blow5', 'slow5'}
+        return 'Invalid file type (extension): `{}`. Allowed types: {}.'.format(
+            file_type,
+            ', '.join(allowed_extensions)
+        )
     # end def
 
     def __next__(self) -> Generator[MutableSequence[SeqRecord], None, None]:

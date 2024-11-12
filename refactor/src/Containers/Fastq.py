@@ -9,7 +9,7 @@ logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class FastQ(SeqRecord):
+class Fastq(SeqRecord):
 
     __slots__ = ('header', 'seq', 'plus_line', 'quality', 'offset')
 
@@ -61,7 +61,7 @@ quality: {quality_concise}.\n'''
     def __repr__(self):
         seq_concise     = self._get_consice_str(self.seq)
         quality_concise = self._get_consice_str(self.quality)
-        return f'''FastQ(
+        return f'''Fastq(
     header={self.header!r}, 
     sequence={seq_concise!r}, 
     plus_line={self.plus_line!r}, 

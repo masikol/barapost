@@ -43,4 +43,5 @@ class Fast5Reader(FileReader):
     # TODO: Manualy close it after writing!!!
     def close(self) -> None: # Do not close FAST5 files till write it
         pass
+    # end def
 # end class

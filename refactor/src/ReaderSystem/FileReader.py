@@ -1,22 +1,28 @@
 
 import gzip
+from io import TextIOWrapper
 from abc import ABC, abstractmethod
-from typing import Generator, Callable, MutableSequence
+from typing import Generator, Callable, Sequence, MutableSequence
 
+import src.filesystem as fs
 from src.Containers.SeqRecord import SeqRecord
 
 
 class FileReader(ABC):
 
     def __init__(self,
-                 file_path : str,
-                 _gzip_ : bool = False,
+                 file_paths : Sequence[str],
                  packet_size : int = 1,
                  probing_batch_size : int = -1,
                  mode : str = 'seq_count',
                  max_seq_len : int = -1):
 
-        self.file_path = file_path
+        self.file_paths = file_paths
+        # TODO: catch StopIteration
+        # Or we will handle this at the arg parsing stage?
+        self.curr_file_path = next(iter(file_paths))
+        self.curr_file_i = 0
+
         self.packet_size = packet_size
         self.probing_batch_size = probing_batch_size
         self.mode = mode
@@ -25,7 +31,6 @@ class FileReader(ABC):
         self._packet = []
         self._sum_seq_len_read = 0
         self._n_records_read_total = 0
-        self._open_func = gzip.open if _gzip_ else open
 
         if self.mode == 'seq_count':
             self._make_packet = self._make_seq_count_packet
@@ -43,6 +48,7 @@ class FileReader(ABC):
             self._increment_sum = lambda seq : min(self.max_seq_len, len(seq))
         else:
             # TODO: this won't work is str (or sth, not int/float) is passed as max_seq_len
+            # Anyway, this validation will be done at the arg parsing stage
             raise ValueError(
                 f'Indalid max_seq_len: `{max_seq_len}`. It must be a positive integer or -1.'
             )
@@ -63,14 +69,21 @@ class FileReader(ABC):
                                  condition : Callable) -> MutableSequence[SeqRecord]:
 
         while condition():
-            record = self._read_single_record()
+            try:
+                record = self._read_single_record()
+            except StopIteration:
+                self._switch_to_next_input_file()
+                record = self._read_single_record()
+            # end try
+
             if self._check_file_end(record):
                 if len(self._packet) != 0:
                     packet = self._packet
                     self._reset_packet()
                     return packet
                 # end if
-                raise StopIteration
+                self._switch_to_next_input_file()
+                record = self._read_single_record()
             # end if
             self._packet.append(record)
 
@@ -85,6 +98,17 @@ class FileReader(ABC):
         self._reset_packet()
 
         return packet
+    # end def
+
+    def _switch_to_next_input_file(self):
+        # TODO: this won't work if self.file_paths is a generator
+        #   It won't be a generator, anyway, so let it be so
+        self.curr_file_i += 1
+        if self.curr_file_i >= len(self.file_paths):
+            raise StopIteration
+        # end if
+        self.curr_file_path = self.file_paths[self.curr_file_i]
+        self.reader = self._open_gzipwise(self.curr_file_path)
     # end def
 
     def _reset_packet(self):
@@ -137,7 +161,15 @@ class FileReader(ABC):
     # end def
 
     def open(self) -> None:
-        self.reader = self._open_func(self.file_path, mode='rt')
+        self.reader = self._open_gzipwise(self.curr_file_path)
+    # end def
+
+    def _open_gzipwise(self, infile_path : str) -> TextIOWrapper:
+        if fs.is_gzipped(infile_path):
+            return gzip.open(infile_path, mode='rt')
+        else:
+            return open(infile_path, mode='rt')
+        # end if
     # end def
 
     def close(self) -> None:

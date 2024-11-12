@@ -3,7 +3,7 @@ import logging
 
 from src.WriterSystem.FileWriter  import FileWriter
 from src.WriterSystem.FastaWriter import FastaWriter
-from src.WriterSystem.FastQWriter import FastQWriter
+from src.WriterSystem.FastqWriter import FastqWriter
 from src.WriterSystem.Pod5Writer  import Pod5Writer
 from src.WriterSystem.Fast5Writer import Fast5Writer
 from src.WriterSystem.Blow5Writer import Blow5Writer
@@ -20,7 +20,7 @@ class WriterWrapper(object):
         if _type_.lower() == 'fasta':
             self.writer = FastaWriter(_gzip_, n_max_out, 'fasta')
         elif _type_.lower() == 'fastq':
-            self.writer = FastQWriter(_gzip_, n_max_out, 'fastq')
+            self.writer = FastqWriter(_gzip_, n_max_out, 'fastq')
         elif _type_.lower() == 'pod5':
             self.writer = Pod5Writer( False,  n_max_out,  'pod5')
         elif _type_.lower() == 'fast5':

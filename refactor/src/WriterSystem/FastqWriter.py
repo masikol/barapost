@@ -1,14 +1,14 @@
 
 from typing import TextIO
 
-from src.Containers.FastQ import FastQ
+from src.Containers.Fastq import Fastq
 from src.WriterSystem.FileWriter import FileWriter
 
 
-class FastQWriter(FileWriter):
+class FastqWriter(FileWriter):
 
     def _write_single_record(self,
-                             sec_record : FastQ,
+                             sec_record : Fastq,
                              out_file_handle : TextIO):
         out_file_handle.write(f'@{sec_record.header}\n')
         out_file_handle.write(f'{sec_record.seq}\n')
