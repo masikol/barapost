@@ -13,8 +13,8 @@ class Blow5Reader(FileReader):
 
     def _read_single_record(self) -> Blow5:
         try:
-            record_uuid = next(self.reader_iteraror)
-            record = self.reader.get_read(record_uuid)
+            record_id = next(self.reader_iteraror)
+            record = self.reader.get_read(record_id)
         except StopIteration:
             raise
         # end try
