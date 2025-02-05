@@ -1,5 +1,17 @@
 # Barapost changelog
 
+## 2025-02-05 edition.
+
+### barapost-prober
+
+A patch update.
+
+Now, barapost-prober won't crush if it cannot parse a taxonomy ID from a GenBank page. It will arrogantly ignore such a record and give it empty taxonomy.
+
+## Vesrion changes:
+
+- barapost-prober: `1.24.a --> 1.24.b`
+
 ## 2023-05-26 edition.
 
 ### barapost-binning

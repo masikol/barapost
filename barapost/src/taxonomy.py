@@ -85,95 +85,103 @@ def download_taxonomy(hit_acc, hit_def, taxonomy_path):
     gb_summary = lingering_https_get_request("www.ncbi.nlm.nih.gov",
         "/nuccore/{}".format(hit_acc), "GenBank summary", hit_acc)
 
-    try:
-        taxid = re.search(r"ORGANISM=([0-9]+)", gb_summary).group(1)
-    except AttributeError:
-        printlog_error_time("Error: taxonomy parsing error 115-{}".format(hit_acc))
-        printlog_error("Please, contact the developer.")
-        platf_depend_exit(115)
-    # end try
 
-    # Get taxonomy page of the organism
-    taxonomy_url = "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
-    taxonomy_text = lingering_https_get_request("www.ncbi.nlm.nih.gov",
-        taxonomy_url, "taxonomy", hit_acc)
+    re_search_obj = re.search(r"ORGANISM=([0-9]+)", gb_summary)
+    if not re_search_obj is None:
+        taxid = re_search_obj.group(1)
 
-    # This pattern will match taxonomic names along with their ranks
-    tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z].+?)\</a\>"
+        # Get taxonomy page of the organism
+        taxonomy_url = "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}&lvl=3&lin=f&keep=1&srchmode=1&unlock".format(taxid)
+        taxonomy_text = lingering_https_get_request("www.ncbi.nlm.nih.gov",
+            taxonomy_url, "taxonomy", hit_acc)
 
-    # Get all taxonomic names of the organism
-    taxonomy = re.findall(tax_rank_pattern, taxonomy_text)
+        # This pattern will match taxonomic names along with their ranks
+        tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z].+?)\</a\>"
 
-    # We will convert ranks to lowercase just in case.
-    # Firstly convert tuples to lists in order to change them:
-    taxonomy = list(map(lambda x: list(x), taxonomy))
+        # Get all taxonomic names of the organism
+        taxonomy = re.findall(tax_rank_pattern, taxonomy_text)
 
-    # Remove odd information from beginnig of names:
-    for i in range(len(taxonomy)):
-        taxonomy[i][0] = taxonomy[i][0].lower() # just in case
-    # end for
+        # We will convert ranks to lowercase just in case.
+        # Firstly convert tuples to lists in order to change them:
+        taxonomy = list(map(lambda x: list(x), taxonomy))
 
-    # We will leave only following taxonomic ranks: domain, phylum, class, order, family, genus.
-    # Species name requires special handling, it will be added later.
-    ranks_to_select = ranks[:-1]
+        # Remove odd information from beginnig of names:
+        for i in range(len(taxonomy)):
+            taxonomy[i][0] = taxonomy[i][0].lower() # just in case
+        # end for
 
-    # Remove redundant ranks:
-    taxonomy = filter( lambda x: x[0].lower() in ranks_to_select, taxonomy )
+        # We will leave only following taxonomic ranks: domain, phylum, class, order, family, genus.
+        # Species name requires special handling, it will be added later.
+        ranks_to_select = ranks[:-1]
 
-    # Convert back to tuples:
-    taxonomy = list(map(lambda x: tuple(x), taxonomy))
+        # Remove redundant ranks:
+        taxonomy = filter( lambda x: x[0].lower() in ranks_to_select, taxonomy )
 
-    # E.g., this record has no appropriate ranks: CP034535
-    # Merely return it's definition
-    if len(taxonomy) == 0:
-        # Save taxonomy
-        _tax_accs.append(hit_acc)
-        with open(taxonomy_path, 'a') as tax_file:
-            tax_file.write("{}\n".format('\t'.join( (hit_acc, hit_def) )))
-        # end with
-    # end if
+        # Convert back to tuples:
+        taxonomy = list(map(lambda x: tuple(x), taxonomy))
 
-    # Check if species name is specified like other ranks:
-    check_direct_species_patt = r"TITLE=\"(species)\"\>([A-Za-z0-9 \.]+)\</a\>"
-    match_direct_species = re.search(check_direct_species_patt, taxonomy_text)
-
-    if not match_direct_species is None:
-        # If species name is specified like other ranks, merely add it to list:
-        taxonomy.append( (match_direct_species.group(1), match_direct_species.group(2).partition(" ")[2]) )
-    else:
-        # Otherwise we need to parse species name from title
-        title = re.search(r"\<title\>Taxonomy browser \((.+)\)\</title\>", taxonomy_text).group(1)
-
-        # Get words
-        title = title.split(' ')
-
-        # We will take all this words as species name.
-        # Viruses also often have unpredictable names.
-        #   Example: MN908947
-        try:
-            if title[1] in second_words_not_species or taxonomy[0][1].lower() == "viruses":
-                taxonomy.append( ("species", '_'.join(title[1:])) )
-            else:
-                taxonomy.append( ("species", title[1]) )
-            # end if
-        except IndexError:
-            # Handle absence of species name, e.g., this: AC150248.3
-            # Well, nothing to append in this case!
-            pass
-        # end try
-    # end if
-
-    # Fill in missing ranks with empty strings
-    for i in range(len(ranks)):
-        if len(taxonomy) < i+1: # for this (missing in the end): AC150248
-            taxonomy.append( (ranks[i], "") )
-        elif taxonomy[i][0] != ranks[i]: # for this (mising in the middle): MN908947
-            taxonomy.insert( i, (ranks[i], "") )
+        # E.g., this record has no appropriate ranks: CP034535
+        # Merely return it's definition
+        if len(taxonomy) == 0:
+            # Save taxonomy
+            _tax_accs.append(hit_acc)
+            with open(taxonomy_path, 'a') as tax_file:
+                tax_file.write("{}\n".format('\t'.join( (hit_acc, hit_def) )))
+            # end with
         # end if
-    # end for
 
-    # It will be a bit faster
-    taxonomy = tuple(taxonomy)
+        # Check if species name is specified like other ranks:
+        check_direct_species_patt = r"TITLE=\"(species)\"\>([A-Za-z0-9 \.]+)\</a\>"
+        match_direct_species = re.search(check_direct_species_patt, taxonomy_text)
+
+        if not match_direct_species is None:
+            # If species name is specified like other ranks, merely add it to list:
+            taxonomy.append( (match_direct_species.group(1), match_direct_species.group(2).partition(" ")[2]) )
+        else:
+            # Otherwise we need to parse species name from title
+            title = re.search(r"\<title\>Taxonomy browser \((.+)\)\</title\>", taxonomy_text).group(1)
+
+            # Get words
+            title = title.split(' ')
+
+            # We will take all this words as species name.
+            # Viruses also often have unpredictable names.
+            #   Example: MN908947
+            try:
+                if title[1] in second_words_not_species or taxonomy[0][1].lower() == "viruses":
+                    taxonomy.append( ("species", '_'.join(title[1:])) )
+                else:
+                    taxonomy.append( ("species", title[1]) )
+                # end if
+            except IndexError:
+                # Handle absence of species name, e.g., this: AC150248.3
+                # Well, nothing to append in this case!
+                pass
+            # end try
+        # end if
+
+        # Fill in missing ranks with empty strings
+        for i in range(len(ranks)):
+            if len(taxonomy) < i+1: # for this (missing in the end): AC150248
+                taxonomy.append( (ranks[i], "") )
+            elif taxonomy[i][0] != ranks[i]: # for this (mising in the middle): MN908947
+                taxonomy.insert( i, (ranks[i], "") )
+            # end if
+        # end for
+
+        # It will be a bit faster
+        taxonomy = tuple(taxonomy)
+    else:
+        taxonomy = (
+            ('Domain', '',),
+            ('Phylum', '',),
+            ('Class', '',),
+            ('Order', '',),
+            ('Family', '',),
+            ('Genus', '',),
+            ('Species', '',),
+        )
+    # end if
 
     # Save taxonomy
     _tax_accs.append(hit_acc)
