@@ -13,7 +13,7 @@ from src.filesystem import remove_bad_chars
 from src.filesystem import is_fasta, OPEN_FUNCS, FORMATTING_FUNCS, is_gzipped
 
 
-ranks = ("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+ranks = ("domain", "phylum", "class", "order", "family", "genus", "species")
 
 # These words at second (with index 1) position of title indicate that
 #   actual species name are specified after it.
@@ -96,29 +96,14 @@ def download_taxonomy(hit_acc, hit_def, taxonomy_path):
             taxonomy_url, "taxonomy", hit_acc)
 
         # This pattern will match taxonomic names along with their ranks
-        tax_rank_pattern = r"TITLE=\"([a-z ]+)\"\>([A-Z].+?)\</a\>"
+        tax_rank_pattern = (
+            r'<a alt="[a-z]+" '
+            r'href="\?command=show\&mode=tree\&id=[0-9]+[^"]*" '
+            r'title="([a-z]+)">([^<]+)</a>'
+        )
 
         # Get all taxonomic names of the organism
         taxonomy = re.findall(tax_rank_pattern, taxonomy_text)
-
-        # We will convert ranks to lowercase just in case.
-        # Firstly convert tuples to lists in order to change them:
-        taxonomy = list(map(lambda x: list(x), taxonomy))
-
-        # Remove odd information from beginnig of names:
-        for i in range(len(taxonomy)):
-            taxonomy[i][0] = taxonomy[i][0].lower() # just in case
-        # end for
-
-        # We will leave only following taxonomic ranks: domain, phylum, class, order, family, genus.
-        # Species name requires special handling, it will be added later.
-        ranks_to_select = ranks[:-1]
-
-        # Remove redundant ranks:
-        taxonomy = filter( lambda x: x[0].lower() in ranks_to_select, taxonomy )
-
-        # Convert back to tuples:
-        taxonomy = list(map(lambda x: tuple(x), taxonomy))
 
         # E.g., this record has no appropriate ranks: CP034535
         # Merely return it's definition
@@ -128,58 +113,53 @@ def download_taxonomy(hit_acc, hit_def, taxonomy_path):
             with open(taxonomy_path, 'a') as tax_file:
                 tax_file.write("{}\n".format('\t'.join( (hit_acc, hit_def) )))
             # end with
+            return
         # end if
 
-        # Check if species name is specified like other ranks:
-        check_direct_species_patt = r"TITLE=\"(species)\"\>([A-Za-z0-9 \.]+)\</a\>"
-        match_direct_species = re.search(check_direct_species_patt, taxonomy_text)
-
-        if not match_direct_species is None:
-            # If species name is specified like other ranks, merely add it to list:
-            taxonomy.append( (match_direct_species.group(1), match_direct_species.group(2).partition(" ")[2]) )
-        else:
-            # Otherwise we need to parse species name from title
-            title = re.search(r"\<title\>Taxonomy browser \((.+)\)\</title\>", taxonomy_text).group(1)
-
-            # Get words
-            title = title.split(' ')
-
-            # We will take all this words as species name.
-            # Viruses also often have unpredictable names.
-            #   Example: MN908947
-            try:
-                if title[1] in second_words_not_species or taxonomy[0][1].lower() == "viruses":
-                    taxonomy.append( ("species", '_'.join(title[1:])) )
-                else:
-                    taxonomy.append( ("species", title[1]) )
-                # end if
-            except IndexError:
-                # Handle absence of species name, e.g., this: AC150248.3
-                # Well, nothing to append in this case!
-                pass
-            # end try
-        # end if
-
-        # Fill in missing ranks with empty strings
-        for i in range(len(ranks)):
-            if len(taxonomy) < i+1: # for this (missing in the end): AC150248
-                taxonomy.append( (ranks[i], "") )
-            elif taxonomy[i][0] != ranks[i]: # for this (mising in the middle): MN908947
-                taxonomy.insert( i, (ranks[i], "") )
+        taxonomy_dict = dict()
+        for rank, tax_name in taxonomy:
+            rank = rank.lower() # just in case
+            if rank in ranks:
+                taxonomy_dict[rank] = tax_name
             # end if
         # end for
 
-        # It will be a bit faster
-        taxonomy = tuple(taxonomy)
+        species_in_lineage = 'species' in taxonomy_dict.keys()
+        if not species_in_lineage:
+            is_species_page_pattern = r'Rank: <strong>species</strong><br>'
+            is_species_page_reobj = re.search(is_species_page_pattern, taxonomy_text)
+            is_species_page = not is_species_page_reobj is None
+            if is_species_page:
+                # re.search does not caprute '\n' with . so we replace them all with @
+                species_pattern = r'<h2>([^<]+)</h2>@[ ]*Taxonomy ID: [0-9]+'
+                species_names_reobj = re.search(
+                    species_pattern,
+                    taxonomy_text.replace('\r\n', '@').replace('\n', '@')
+                )
+                if not species_names_reobj is None:
+                    taxonomy_dict['species'] = species_names_reobj.group(1)
+            # end if
+        # end if
+
+        for rank in ranks:
+            if not rank in taxonomy_dict.keys():
+                taxonomy_dict[rank] = ''
+            # end if
+        # enf for
+
+        # Convert back to tuple of tuples as my stupid old barapost requires
+        taxonomy = (
+            (rank, taxonomy_dict[rank],) for rank in ranks
+        )
     else:
         taxonomy = (
-            ('Domain', '',),
-            ('Phylum', '',),
-            ('Class', '',),
-            ('Order', '',),
-            ('Family', '',),
-            ('Genus', '',),
-            ('Species', '',),
+            ('domain', '',),
+            ('phylum', '',),
+            ('class', '',),
+            ('order', '',),
+            ('family', '',),
+            ('genus', '',),
+            ('species', '',),
         )
     # end if
 

@@ -1,5 +1,13 @@
 # Barapost changelog
 
+## 2025-10-05 edition.
+
+### barapost-prober, barapost-local
+
+A patch update.
+
+Fixed a bug that would cause barapost-prober and barapost-local to crash while requesting taxonomy from NCBI Taxonomy.
+
 ## 2025-02-05 edition.
 
 ### barapost-prober

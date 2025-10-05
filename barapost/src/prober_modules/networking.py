@@ -36,7 +36,13 @@ def verify_taxids(taxid_list):
                 tax_resp = lingering_https_get_request("www.ncbi.nlm.nih.gov",
                     "/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={}".format(taxid),
                     "taxonomy")
-                tax_name = re.search(r"Taxonomy browser \((.+?)\)", tax_resp).group(1)
+                tax_name_pattern = r'<h2>([^<]+)</h2>@[ ]*Taxonomy ID: {}'.format(taxid)
+                # re.search does not caprute '\n' with . so we replace them all with @
+                tax_name_reobj = re.search(
+                    tax_name_pattern,
+                    tax_resp.replace('\r\n', '@').replace('\n', '@')
+                )
+                tax_name = tax_name_reobj.group(1)
             except AttributeError:
                 printlog_error("\aError: TaxID not found")
                 printlog_error("Please, check your TaxID: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")

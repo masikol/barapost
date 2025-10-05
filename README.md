@@ -11,8 +11,8 @@
 
 ## Current versions
 
-- barapost-prober: `1.24.b` (2025-02-05 edition).
-- barapost-local:  `3.18.f` (2023-05-26 edition).
+- barapost-prober: `1.24.c` (2025-10-05 edition).
+- barapost-local:  `3.18.g` (2025-10-05 edition).
 - barapost-binning: `4.9.c` (2023-05-26 edition).
 
 ## Getting started
