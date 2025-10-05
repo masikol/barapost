@@ -8,6 +8,11 @@ A patch update.
 
 Fixed a bug that would cause barapost-prober and barapost-local to crash while requesting taxonomy from NCBI Taxonomy.
 
+## Vesrion changes:
+
+- barapost-prober: `1.24.b --> 1.24.c`
+- barapost-local: `3.18.f --> 3.18.g`
+
 ## 2025-02-05 edition.
 
 ### barapost-prober
