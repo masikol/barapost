@@ -1,5 +1,17 @@
 # Barapost changelog
 
+## 2026-03-25 edition.
+
+### barapost-prober, barapost-local
+
+A patch update.
+
+Fixed a bug: option `--no-trash` didn't work in `barapost-binning.py`. It works now.
+
+## Vesrion changes:
+
+- barapost-binning: `4.9.c --> 4.9.d`
+
 ## 2025-10-05 edition.
 
 ### barapost-prober, barapost-local

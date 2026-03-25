@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "4.9.c"
+__version__ = "4.9.d"
 # Year, month, day
-__last_update_date__ = "2023-05-26"
+__last_update_date__ = "2026-03-25"
 
 # |===== Check python interpreter version =====|
 
@@ -318,7 +318,7 @@ for opt, arg in opts:
         fq_fa_list.extend(list( filter(is_fastqa, glob("{}{}*".format(indir_path, os.sep))) ))
         fast5_list.extend(list( filter(is_fast5, glob("{}{}*".format(indir_path, os.sep))) ))
 
-    elif opt in ("-n", "--no_trash"):
+    elif opt in ("-n", "--no-trash"):
         no_trash = True
     # end if
 # end for
