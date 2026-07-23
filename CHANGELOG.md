@@ -1,5 +1,14 @@
 # Barapost changelog
 
+## 2026-07-23 edition.
+
+Bug fix: now, barapost does not crush when `http.clientIncompleteRead` exception gets raised.
+
+## Vesrion changes:
+
+- barapost-prober: `1.24.c --> 1.24.d`
+- barapost-local: `3.18.g --> 3.18.h`
+
 ## 2026-03-25 edition.
 
 ### barapost-prober, barapost-local

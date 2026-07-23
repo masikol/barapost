@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__version__ = "1.24.c"
+__version__ = "1.24.d"
 # Year, month, day
-__last_update_date__ = "2025-10-05"
-__author__ = "Maksim Sikolenko"
+__last_update_date__ = "2026-07-23"
+# __author__ = "Maksim Sikolenko"
 __author_email__ = "maximdeynonih" + "@" + "gmail" + ".com"
 
 # |===== Check python interpreter version =====|

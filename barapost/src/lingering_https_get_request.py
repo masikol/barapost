@@ -62,10 +62,11 @@ def lingering_https_get_request(server, url, request_for=None, acc=None):
             # end if
 
             resp_content = str(response.read(), "utf-8") # get response text
-        except (OSError,\
-                http.client.RemoteDisconnected,\
-                socket.gaierror,\
-                http.client.CannotSendRequest) as err:
+        except (OSError, \
+                http.client.RemoteDisconnected, \
+                socket.gaierror, \
+                http.client.CannotSendRequest, \
+                http.client.IncompleteRead) as err:
             comment_str = ""
             if not request_for is None:
                 comment_str += " requesting for {}".format(request_for)

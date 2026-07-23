@@ -3,7 +3,9 @@
 
 __version__ = "4.9.d"
 # Year, month, day
-__last_update_date__ = "2026-03-25"
+__last_update_date__ = "2026-07-23"
+# __author__ = "Maksim Sikolenko"
+# __author_email__ = "maximdeynonih" + "@" + "gmail" + ".com"
 
 # |===== Check python interpreter version =====|
 
