@@ -50,9 +50,10 @@ def lingering_https_get_request(server, url, request_for=None, acc=None):
                 if attempt_i < max_attempts and "ncbi.nlm.nih.gov" in server:
                     printlog_error("Error {}: {}.".format(response.code, response.reason))
                     printlog_error("It may be due to instable work of NCBI servers.")
-                    printlog_error("{} attempts to connect left, waiting 15 sec..."\
+                    printlog_error("{} attempts to connect left."\
                         .format(max_attempts - attempt_i))
                     attempt_i += 1
+                    raise OSError(response.reason)
                 else:
                     printlog_error("Cannot find {} for {}.".format(request_for, acc))
                     printlog_error("Request failed with status code {}: {}"\
@@ -68,18 +69,21 @@ def lingering_https_get_request(server, url, request_for=None, acc=None):
                 http.client.CannotSendRequest, \
                 http.client.IncompleteRead) as err:
             comment_str = ""
-            if not request_for is None:
+            if request_for is not None:
                 comment_str += " requesting for {}".format(request_for)
-                if not acc is None:
+                if acc is not None:
                     comment_str += " (accession: `{}`)".format(acc)
                 # end if
                 comment_str += '.'
             # end if
             print()
+            num_secs_to_wait = 15
             printlog_info("Can't connect to `{}`{}".format(server + url, comment_str))
             printlog_info( str(err) )
-            printlog_info("""the program will sleep for 30 seconds and try to connect again.""")
-            sleep(30)
+            printlog_info(
+                "the program will sleep for {} seconds and try to connect again.".format(num_secs_to_wait)
+            )
+            sleep(num_secs_to_wait)
         else:
             error = False # if no exception ocured, get out of the loop
         finally:

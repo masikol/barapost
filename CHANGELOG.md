@@ -1,5 +1,14 @@
 # Barapost changelog
 
+## 2026-10-13 edition.
+
+Bug fix: now, barapost does not crush when NCBI responds with “429: Too many requests”.
+
+## Vesrion changes:
+
+- barapost-prober: `1.24.d --> 1.24.e`
+- barapost-local: `3.18.h --> 3.18.i`
+
 ## 2026-07-23 edition.
 
 Bug fix: now, barapost does not crush when `http.clientIncompleteRead` exception gets raised.

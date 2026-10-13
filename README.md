@@ -11,8 +11,8 @@
 
 ## Current versions (2026-07-23 edition)
 
-- barapost-prober: `1.24.d`.
-- barapost-local:  `3.18.h`.
+- barapost-prober: `1.24.e`.
+- barapost-local:  `3.18.i`.
 - barapost-binning: `4.9.d`.
 
 ## Getting started
